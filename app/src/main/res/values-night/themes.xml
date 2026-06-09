@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Base.Theme.Jarvis9" parent="Theme.Material3.DayNight.NoActionBar">
+
+        <!-- 1. Der Screen-Gradient als Hintergrund -->
+        <item name="android:windowBackground">@drawable/status_bar</item>
+
+        <!-- 2. Statusleiste & Navigation transparent -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- 3. Edge-to-Edge aktivieren -->
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+
+        <!-- 4. System-Icons auf hell (weiß) fixieren -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o">false</item>
+
+        <!-- Akzentfarben passend zum Jarvis-Look -->
+        <item name="colorPrimary">#3B82F6</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">#93C5FD</item>
+
+        <!-- Verhindert graue Overlays auf der Statusbar -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <style name="Theme.Jarvis9" parent="Base.Theme.Jarvis9" />
+</resources>
