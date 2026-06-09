@@ -10,9 +10,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.jarvis9.R;
 import com.example.studyOS.DataStructures.Message;
 import com.example.studyOS.DataStructures.Speaker;
-import com.example.studyOS.R; // Stelle sicher, dass dein R-Package importiert ist
 
 import java.util.List;
 
