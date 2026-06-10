@@ -58,5 +58,4 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
     implementation("com.google.ai.edge.litert:litert-api:1.4.2")
     implementation("com.google.ai.edge.litert:litert-gpu:1.4.2")
-    implementation("com.google.ai.edge.litert:litert-support:1.4.2")
 }
