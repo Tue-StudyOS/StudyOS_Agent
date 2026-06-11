@@ -72,7 +72,12 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
         result(FlutterError(code: "empty_message", message: "Message text must not be empty.", details: nil))
         return
       }
-      respondToMessage(text.trimmingCharacters(in: .whitespacesAndNewlines), result: result)
+      let prompt = args["systemPrompt"] as? String
+      respondToMessage(
+        text.trimmingCharacters(in: .whitespacesAndNewlines),
+        systemPrompt: prompt,
+        result: result
+      )
     case "createReminder":
       createReminder(call: call, result: result)
     case "speak":
@@ -99,13 +104,13 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     }
   }
 
-  private func respondToMessage(_ text: String, result: @escaping FlutterResult) {
+  private func respondToMessage(_ text: String, systemPrompt: String?, result: @escaping FlutterResult) {
     #if canImport(FoundationModels)
     if #available(iOS 26.0, *) {
       Task {
         do {
           let session = LanguageModelSession(
-            instructions: "You are JARVIS for StudyOS. Answer concisely and helpfully."
+            instructions: systemPrompt ?? "You are StudyOS Agent. Answer concisely and helpfully."
           )
           let response = try await session.respond(to: text)
           await MainActor.run {

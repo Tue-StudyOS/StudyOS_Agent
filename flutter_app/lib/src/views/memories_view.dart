@@ -3,13 +3,19 @@ import 'package:flutter/material.dart';
 import '../studyos_theme.dart';
 
 class MemoriesView extends StatelessWidget {
-  const MemoriesView({required this.worldState, super.key});
+  const MemoriesView({
+    required this.worldState,
+    required this.memoryText,
+    super.key,
+  });
 
   final Map<String, Object?> worldState;
+  final String memoryText;
 
   @override
   Widget build(BuildContext context) {
     final hasWorldState = worldState.isNotEmpty;
+    final hasMemory = memoryText.trim().isNotEmpty;
 
     return ListView(
       padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
@@ -19,12 +25,7 @@ class MemoriesView extends StatelessWidget {
           description: 'Saved, personalized study context will appear here.',
         ),
         const SizedBox(height: StudyOsSpacing.lg),
-        _EmptyStateCard(
-          icon: Icons.psychology_alt_outlined,
-          title: 'No saved memories yet',
-          description:
-              'When memory storage is connected, StudyOS can show durable preferences, courses, and study habits here.',
-        ),
+        _MemoryCard(hasMemory: hasMemory, memoryText: memoryText),
         const SizedBox(height: StudyOsSpacing.lg),
         _ContextPreviewCard(
           hasWorldState: hasWorldState,
@@ -54,16 +55,11 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
+class _MemoryCard extends StatelessWidget {
+  const _MemoryCard({required this.hasMemory, required this.memoryText});
 
-  final IconData icon;
-  final String title;
-  final String description;
+  final bool hasMemory;
+  final String memoryText;
 
   @override
   Widget build(BuildContext context) {
@@ -77,11 +73,23 @@ class _EmptyStateCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(icon, color: StudyOsColors.accent, size: 30),
+          const Icon(
+            Icons.psychology_alt_outlined,
+            color: StudyOsColors.accent,
+            size: 30,
+          ),
           const SizedBox(height: StudyOsSpacing.lg),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            hasMemory ? 'Saved memory document' : 'No saved memories yet',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: StudyOsSpacing.sm),
-          Text(description, style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            hasMemory
+                ? memoryText.trim()
+                : 'The agent can append durable study preferences, habits, and context here.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ],
       ),
     );

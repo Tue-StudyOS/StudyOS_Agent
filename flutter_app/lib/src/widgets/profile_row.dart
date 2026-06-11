@@ -29,6 +29,8 @@ class ProfileRow extends StatelessWidget {
   String _profileSubtitle(OnboardingProfile profile) {
     final semester = profile.semester;
     final parts = <String>[
+      if (profile.email != null && profile.email!.isNotEmpty) profile.email!,
+      profile.username,
       profile.degreeProgram,
       if (semester != null) 'Semester $semester',
       if (profile.livesInTuebingen) 'Tübingen',

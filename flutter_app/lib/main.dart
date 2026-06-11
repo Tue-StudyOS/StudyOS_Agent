@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'src/agent_home_page.dart';
 import 'src/models.dart';
 import 'src/onboarding_flow.dart';
+import 'src/profile_store.dart';
 import 'src/studyos_theme.dart';
 
 void main() {
@@ -17,18 +20,46 @@ class StudyOsAgentApp extends StatefulWidget {
 }
 
 class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
+  final ProfileStore _profileStore = ProfileStore();
+
   UserSession? _session;
   OnboardingProfile? _profile;
+  bool _isLoadingProfile = true;
 
-  void _handleLogin(UserSession session) {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadProfile());
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _profileStore.loadProfile();
+    if (!mounted) return;
+    setState(() {
+      _profile = profile;
+      _isLoadingProfile = false;
+    });
+  }
+
+  Future<void> _handleLogin(UserSession session, String password) async {
+    await _profileStore.saveLogin(session: session, password: password);
+    if (!mounted) return;
     setState(() => _session = session);
   }
 
-  void _handleOnboardingComplete(OnboardingProfile profile) {
+  Future<void> _handleOnboardingComplete(OnboardingProfile profile) async {
+    await _profileStore.saveProfile(profile);
+    if (!mounted) return;
     setState(() => _profile = profile);
   }
 
   void _handleLogout() {
+    unawaited(_clearProfile());
+  }
+
+  Future<void> _clearProfile() async {
+    await _profileStore.clear();
+    if (!mounted) return;
     setState(() {
       _session = null;
       _profile = null;
@@ -46,17 +77,20 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
   }
 
   Widget _buildHome() {
+    if (_isLoadingProfile) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final session = _session;
     final profile = _profile;
+    if (profile != null) {
+      return AgentHomePage(profile: profile, onLogout: _handleLogout);
+    }
     if (session == null) {
       return LoginPage(onLogin: _handleLogin);
     }
-    if (profile == null) {
-      return OnboardingPage(
-        session: session,
-        onComplete: _handleOnboardingComplete,
-      );
-    }
-    return AgentHomePage(profile: profile, onLogout: _handleLogout);
+    return OnboardingPage(
+      session: session,
+      onComplete: _handleOnboardingComplete,
+    );
   }
 }

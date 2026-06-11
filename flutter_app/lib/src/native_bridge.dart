@@ -35,10 +35,10 @@ class NativeBridge {
     return result ?? const {};
   }
 
-  Future<String> sendMessage(String text) async {
+  Future<String> sendMessage(String text, {String? systemPrompt}) async {
     final result = await _methods.invokeMethod<String>(
       'sendMessage',
-      <String, Object?>{'text': text},
+      <String, Object?>{'text': text, 'systemPrompt': systemPrompt},
     );
     return result ?? 'Native bridge returned no status.';
   }
