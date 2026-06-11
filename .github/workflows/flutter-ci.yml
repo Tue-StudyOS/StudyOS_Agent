@@ -1,0 +1,97 @@
+name: Flutter CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/flutter-ci.yml"
+      - "flutter_app/**"
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  flutter:
+    name: Test and build Flutter app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter_app
+    env:
+      ANDROID_PLATFORM: android-35
+      ANDROID_BUILD_TOOLS: 35.0.0
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Flutter stable
+        run: |
+          FLUTTER_ROOT="$RUNNER_TOOL_CACHE/flutter-stable"
+          rm -rf "$FLUTTER_ROOT"
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$FLUTTER_ROOT"
+          echo "FLUTTER_ROOT=$FLUTTER_ROOT" >> "$GITHUB_ENV"
+          echo "$FLUTTER_ROOT/bin" >> "$GITHUB_PATH"
+          "$FLUTTER_ROOT/bin/flutter" --version
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;${ANDROID_PLATFORM}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}"
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze Flutter app
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+
+      - name: Build Android release APK
+        run: flutter build apk --release
+
+      - name: Stage Android release APK
+        run: |
+          mkdir -p "$RUNNER_TEMP/studyos-agent"
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "$RUNNER_TEMP/studyos-agent/studyos-agent-android-release.apk"
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: studyos-agent-android-release-apk
+          path: ${{ runner.temp }}/studyos-agent/studyos-agent-android-release.apk
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" \
+              --notes "StudyOS Agent Android release for $GITHUB_REF_NAME."
+          gh release upload "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/studyos-agent/studyos-agent-android-release.apk" \
+            --clobber
