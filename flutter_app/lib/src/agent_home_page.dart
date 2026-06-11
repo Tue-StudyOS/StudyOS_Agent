@@ -7,6 +7,7 @@ import 'agent_config_store.dart';
 import 'cloud_agent_client.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'profile_context.dart';
 import 'session_store.dart';
 import 'studyos_theme.dart';
 import 'views/chat_view.dart';
@@ -16,7 +17,10 @@ import 'widgets/app_drawer.dart';
 import 'widgets/study_header.dart';
 
 class AgentHomePage extends StatefulWidget {
-  const AgentHomePage({super.key});
+  const AgentHomePage({this.profile, this.onLogout, super.key});
+
+  final OnboardingProfile? profile;
+  final VoidCallback? onLogout;
 
   @override
   State<AgentHomePage> createState() => _AgentHomePageState();
@@ -68,7 +72,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
 
       setState(() {
         _status = init['status']?.toString() ?? 'Ready';
-        _worldState = worldState;
+        _worldState = withProfileContext(worldState, widget.profile);
       });
     } on MissingPluginException {
       setState(() => _status = 'Bridge missing');
@@ -159,7 +163,9 @@ class _AgentHomePageState extends State<AgentHomePage> {
       _addAssistantMessage(response);
       final worldState = await _bridge.getWorldState();
       if (!mounted) return;
-      setState(() => _worldState = worldState);
+      setState(
+        () => _worldState = withProfileContext(worldState, widget.profile),
+      );
     } on CloudAgentException catch (error) {
       _addAssistantMessage(error.message);
     } on MissingPluginException {
@@ -280,8 +286,10 @@ class _AgentHomePageState extends State<AgentHomePage> {
       AppView.memories => MemoriesView(worldState: _worldState),
       AppView.settings => SettingsView(
         config: _agentConfig,
+        profile: widget.profile,
         status: _status,
         compactMessages: _compactMessages,
+        onLogout: widget.onLogout,
         onSaveAgentConfig: _saveAgentConfig,
         onCompactMessagesChanged: (value) {
           setState(() => _compactMessages = value);

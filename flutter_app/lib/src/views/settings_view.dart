@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/profile_row.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({
     required this.config,
+    required this.profile,
     required this.status,
     required this.compactMessages,
+    required this.onLogout,
     required this.onSaveAgentConfig,
     required this.onCompactMessagesChanged,
     super.key,
   });
 
   final AgentConfig config;
+  final OnboardingProfile? profile;
   final String status;
   final bool compactMessages;
+  final VoidCallback? onLogout;
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
   final ValueChanged<bool> onCompactMessagesChanged;
@@ -118,15 +123,19 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(height: StudyOsSpacing.lg),
         _SettingsCard(
           children: <Widget>[
-            _ProfileRow(),
+            ProfileRow(profile: widget.profile),
             const Divider(color: StudyOsColors.border),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.logout_rounded),
               title: const Text('Logout'),
-              subtitle: const Text('No active profile session'),
-              enabled: false,
-              onTap: null,
+              subtitle: Text(
+                widget.profile == null
+                    ? 'No active profile session'
+                    : 'End this app session',
+              ),
+              enabled: widget.onLogout != null,
+              onTap: widget.onLogout,
             ),
           ],
         ),
@@ -257,21 +266,6 @@ class _SettingsCard extends StatelessWidget {
         padding: const EdgeInsets.all(StudyOsSpacing.lg),
         child: Column(children: children),
       ),
-    );
-  }
-}
-
-class _ProfileRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        backgroundColor: StudyOsColors.accent.withValues(alpha: 0.14),
-        child: const Icon(Icons.person_outline_rounded),
-      ),
-      title: const Text('Profile not connected'),
-      subtitle: const Text('Sign-in data is not available in this shell yet.'),
     );
   }
 }

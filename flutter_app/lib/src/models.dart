@@ -1,5 +1,38 @@
 import 'dart:convert';
 
+class UserSession {
+  const UserSession({required this.username});
+
+  final String username;
+
+  String get suggestedDisplayName {
+    final cleaned = username
+        .split('@')
+        .first
+        .replaceAll(RegExp(r'[._-]+'), ' ')
+        .trim();
+    if (cleaned.isEmpty) return '';
+    return cleaned
+        .split(RegExp(r'\s+'))
+        .map((part) => part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+}
+
+class OnboardingProfile {
+  const OnboardingProfile({
+    required this.displayName,
+    required this.degreeProgram,
+    required this.semester,
+    required this.livesInTuebingen,
+  });
+
+  final String displayName;
+  final String degreeProgram;
+  final int? semester;
+  final bool livesInTuebingen;
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.author,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
+import 'package:studyos_agent/src/onboarding_flow.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
 import 'package:studyos_agent/src/views/settings_view.dart';
@@ -113,8 +114,10 @@ void main() {
       _TestShell(
         child: SettingsView(
           config: const AgentConfig.defaults(),
+          profile: null,
           status: 'Ready',
           compactMessages: false,
+          onLogout: null,
           onSaveAgentConfig: (config, apiKey) async {
             savedConfig = config;
             savedKey = apiKey;
@@ -142,6 +145,47 @@ void main() {
     expect(savedConfig?.cloudModel, 'studyos');
     expect(savedKey, 'secret');
     expect(find.text('Stored with the platform secure store.'), findsOneWidget);
+  });
+
+  testWidgets('login and onboarding collect student profile context', (
+    WidgetTester tester,
+  ) async {
+    UserSession? session;
+    OnboardingProfile? profile;
+
+    await tester.pumpWidget(
+      _TestShell(child: LoginPage(onLogin: (value) => session = value)),
+    );
+
+    expect(find.text('Connect your student workspace'), findsOneWidget);
+
+    await tester.enterText(find.byType(EditableText).at(0), 'zxabc12');
+    await tester.enterText(find.byType(EditableText).at(1), 'local-secret');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(session?.username, 'zxabc12');
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: OnboardingPage(
+          session: session!,
+          onComplete: (value) => profile = value,
+        ),
+      ),
+    );
+
+    expect(find.text('Set up profile'), findsOneWidget);
+    expect(find.text('zxabc12'), findsOneWidget);
+
+    await tester.enterText(find.byType(EditableText).at(1), 'M.Sc. AI');
+    await tester.enterText(find.byType(EditableText).at(2), '4');
+    await tester.tap(find.text('Start StudyOS'));
+    await tester.pumpAndSettle();
+
+    expect(profile?.displayName, 'Zxabc12');
+    expect(profile?.degreeProgram, 'M.Sc. AI');
+    expect(profile?.semester, 4);
   });
 }
 
