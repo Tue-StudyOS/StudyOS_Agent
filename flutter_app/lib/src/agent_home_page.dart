@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'agent_config_store.dart';
+import 'cloud_agent_client.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'session_store.dart';
@@ -23,11 +25,14 @@ class AgentHomePage extends StatefulWidget {
 class _AgentHomePageState extends State<AgentHomePage> {
   final NativeBridge _bridge = NativeBridge();
   final SessionStore _sessionStore = SessionStore();
+  final AgentConfigStore _configStore = AgentConfigStore();
+  final CloudAgentClient _cloudClient = CloudAgentClient();
   final TextEditingController _inputController = TextEditingController();
 
   StreamSubscription<NativeEvent>? _eventSubscription;
   List<ChatSession> _sessions = <ChatSession>[];
   String? _activeSessionId;
+  AgentConfig _agentConfig = const AgentConfig.defaults();
   Map<String, Object?> _worldState = const {};
   AppView _selectedView = AppView.chat;
   String _status = 'Starting';
@@ -44,6 +49,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       },
     );
     unawaited(_loadSessions());
+    unawaited(_loadAgentConfig());
     unawaited(_initializeNativeLayer());
   }
 
@@ -93,6 +99,19 @@ class _AgentHomePageState extends State<AgentHomePage> {
     });
   }
 
+  Future<void> _loadAgentConfig() async {
+    final config = await _configStore.load();
+    if (!mounted) return;
+    setState(() => _agentConfig = config);
+  }
+
+  Future<void> _saveAgentConfig(AgentConfig config, String? apiKey) async {
+    await _configStore.save(config: config, apiKey: apiKey);
+    final savedConfig = await _configStore.load();
+    if (!mounted) return;
+    setState(() => _agentConfig = savedConfig);
+  }
+
   Future<void> _persistSessions() async {
     final activeSessionId = _activeSessionId;
     if (activeSessionId == null || _sessions.isEmpty) return;
@@ -136,18 +155,39 @@ class _AgentHomePageState extends State<AgentHomePage> {
     });
 
     try {
-      final response = await _bridge.sendMessage(text);
+      final response = await _sendToSelectedProvider(text);
       _addAssistantMessage(response);
       final worldState = await _bridge.getWorldState();
       if (!mounted) return;
       setState(() => _worldState = worldState);
+    } on CloudAgentException catch (error) {
+      _addAssistantMessage(error.message);
     } on MissingPluginException {
       _addAssistantMessage('Native bridge is not implemented on this target.');
     } on PlatformException catch (error) {
       _addAssistantMessage('Native bridge error: ${error.message}');
+    } on FormatException {
+      _addAssistantMessage('Cloud response could not be read.');
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
+  }
+
+  Future<String> _sendToSelectedProvider(String text) async {
+    if (!_agentConfig.usesCloud) {
+      return _bridge.sendMessage(text);
+    }
+
+    final apiKey = await _configStore.readApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw const CloudAgentException('Cloud API key is required.');
+    }
+    return _cloudClient.sendMessage(
+      config: _agentConfig,
+      apiKey: apiKey,
+      history: _activeSession?.messages ?? const <ChatMessage>[],
+      userText: text,
+    );
   }
 
   void _addAssistantMessage(String text) {
@@ -239,8 +279,10 @@ class _AgentHomePageState extends State<AgentHomePage> {
       ),
       AppView.memories => MemoriesView(worldState: _worldState),
       AppView.settings => SettingsView(
+        config: _agentConfig,
         status: _status,
         compactMessages: _compactMessages,
+        onSaveAgentConfig: _saveAgentConfig,
         onCompactMessagesChanged: (value) {
           setState(() => _compactMessages = value);
         },

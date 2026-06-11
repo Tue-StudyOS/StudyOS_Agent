@@ -26,6 +26,44 @@ class ChatMessage {
 
 enum AppView { chat, memories, settings }
 
+enum AgentProvider { local, cloud }
+
+class AgentConfig {
+  const AgentConfig({
+    required this.provider,
+    required this.cloudEndpoint,
+    required this.cloudModel,
+    required this.hasApiKey,
+  });
+
+  const AgentConfig.defaults()
+    : provider = AgentProvider.local,
+      cloudEndpoint = '',
+      cloudModel = '',
+      hasApiKey = false;
+
+  final AgentProvider provider;
+  final String cloudEndpoint;
+  final String cloudModel;
+  final bool hasApiKey;
+
+  bool get usesCloud => provider == AgentProvider.cloud;
+
+  AgentConfig copyWith({
+    AgentProvider? provider,
+    String? cloudEndpoint,
+    String? cloudModel,
+    bool? hasApiKey,
+  }) {
+    return AgentConfig(
+      provider: provider ?? this.provider,
+      cloudEndpoint: cloudEndpoint ?? this.cloudEndpoint,
+      cloudModel: cloudModel ?? this.cloudModel,
+      hasApiKey: hasApiKey ?? this.hasApiKey,
+    );
+  }
+}
+
 class ChatSession {
   const ChatSession({
     required this.id,
