@@ -244,7 +244,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
             const SizedBox(height: StudyOsSpacing.sm),
             Text(
-              'iOS uses the system language model when Foundation Models is available. Android on-device AI is exposed through Gemini Nano task APIs on supported devices; neither platform provides a general installed-model list here.',
+              'iOS local mode uses Apple Foundation Models through SystemLanguageModel.default and registers StudyOS tools with the session. Android on-device AI is exposed through Gemini Nano task APIs on supported devices; neither platform provides a general installed-model list here.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],

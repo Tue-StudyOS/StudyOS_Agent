@@ -5,10 +5,6 @@ import Speech
 import UIKit
 import UserNotifications
 
-#if canImport(FoundationModels)
-import FoundationModels
-#endif
-
 final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManagerDelegate {
   private let methodChannel: FlutterMethodChannel
   private let eventChannel: FlutterEventChannel
@@ -73,9 +69,11 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
         return
       }
       let prompt = args["systemPrompt"] as? String
+      let memory = args["memory"] as? String
       respondToMessage(
         text.trimmingCharacters(in: .whitespacesAndNewlines),
         systemPrompt: prompt,
+        memory: memory,
         result: result
       )
     case "createReminder":
@@ -104,30 +102,22 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     }
   }
 
-  private func respondToMessage(_ text: String, systemPrompt: String?, result: @escaping FlutterResult) {
+  private func respondToMessage(
+    _ text: String,
+    systemPrompt: String?,
+    memory: String?,
+    result: @escaping FlutterResult
+  ) {
     #if canImport(FoundationModels)
     if #available(iOS 26.0, *) {
-      Task {
-        do {
-          let session = LanguageModelSession(
-            instructions: systemPrompt ?? "You are StudyOS Agent. Answer concisely and helpfully."
-          )
-          let response = try await session.respond(to: text)
-          await MainActor.run {
-            let content = response.content
-            self.emitStatus("Apple Foundation Models response received.")
-            result(content)
-          }
-        } catch {
-          await MainActor.run {
-            result(FlutterError(
-              code: "foundation_models_error",
-              message: error.localizedDescription,
-              details: nil
-            ))
-          }
-        }
-      }
+      StudyOSFoundationResponder.respond(
+        text: text,
+        systemPrompt: systemPrompt,
+        memory: memory,
+        emitToolTrace: emitToolTrace,
+        emitStatus: emitStatus,
+        result: result
+      )
       return
     }
     #endif
@@ -242,6 +232,22 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     #endif
 
     return values
+  }
+
+  private func emitToolTrace(toolName: String, status: String, summary: String, callId: String) {
+    DispatchQueue.main.async { [weak self] in
+      self?.eventSink?([
+        "type": "toolTrace",
+        "message": "\(toolName) \(status)",
+        "timestamp": ISO8601DateFormatter().string(from: Date()),
+        "trace": [
+          "toolName": toolName,
+          "status": status,
+          "summary": summary,
+          "callId": callId
+        ]
+      ])
+    }
   }
 
   private func emitStatus(_ message: String) {

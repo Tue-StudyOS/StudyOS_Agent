@@ -13,9 +13,15 @@ class PromptContext {
 
   String systemPrompt() {
     final buffer = StringBuffer()
-      ..writeln('You are StudyOS Agent, a concise study companion.')
+      ..writeln('You are StudyOS Agent, a tool-grounded study agent.')
       ..writeln('Use Markdown when formatting helps readability.')
-      ..writeln('Use available tools before guessing stored student context.')
+      ..writeln('Call at least one available StudyOS tool before answering.')
+      ..writeln(
+        'Ground every factual study answer in tool results or provided context.',
+      )
+      ..writeln(
+        'If required data is unavailable, say what is missing instead of guessing.',
+      )
       ..writeln('Do not expose secrets or credentials.');
     final profileBlock = _profileBlock();
     if (profileBlock.isNotEmpty) {
