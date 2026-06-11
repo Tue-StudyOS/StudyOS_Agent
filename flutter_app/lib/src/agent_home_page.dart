@@ -4,15 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'agent_config_store.dart';
-import 'agent_request_runner.dart';
+import 'agent_message_sender.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
-import 'initial_context_trace.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'profile_context.dart';
-import 'prompt_context.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
 import 'widgets/agent_home_scaffold.dart';
@@ -134,12 +132,11 @@ class _AgentHomePageState extends State<AgentHomePage> {
     setState(() => _agentConfig = savedConfig);
   }
 
-  Future<void> _persistSessions() async {
+  void _persistSessions() {
     final activeSessionId = _activeSessionId;
     if (activeSessionId == null || _sessions.isEmpty) return;
-    await _sessionStore.save(
-      sessions: _sessions,
-      activeSessionId: activeSessionId,
+    unawaited(
+      _sessionStore.save(sessions: _sessions, activeSessionId: activeSessionId),
     );
   }
 
@@ -155,7 +152,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       _activeSessionId = session.id;
       _selectedView = AppView.chat;
     });
-    unawaited(_persistSessions());
+    _persistSessions();
   }
 
   void _selectSession(String sessionId) {
@@ -164,7 +161,18 @@ class _AgentHomePageState extends State<AgentHomePage> {
       _selectedView = AppView.chat;
     });
     scrollChatToBottom(_messageScrollController);
-    unawaited(_persistSessions());
+    _persistSessions();
+  }
+
+  void _deleteSession(String sessionId) {
+    _applySessionMutation(
+      deleteSessionFromSessions(
+        sessions: _sessions,
+        activeSessionId: _activeSessionId,
+        sessionId: sessionId,
+      ),
+      selectChat: true,
+    );
   }
 
   Future<void> _sendMessage() async {
@@ -174,11 +182,24 @@ class _AgentHomePageState extends State<AgentHomePage> {
     setState(() {
       _isSending = true;
       _inputController.clear();
-      _appendMessage(ChatMessage(author: 'You', text: text, isUser: true));
     });
+    _appendMessage(ChatMessage(author: 'You', text: text, isUser: true));
 
     try {
-      final response = await _sendToSelectedProvider(text);
+      final response = await sendAgentMessage(
+        config: _agentConfig,
+        bridge: _bridge,
+        configStore: _configStore,
+        memoryStore: _memoryStore,
+        profile: widget.profile,
+        sessions: _sessions,
+        activeSessionId: _activeSessionId,
+        memoryText: _memoryText,
+        worldState: _worldState,
+        userText: text,
+        appendMemory: _appendMemory,
+        onToolTrace: _addToolTrace,
+      );
       _addAssistantMessage(response);
       final worldState = await _bridge.getWorldState();
       if (!mounted) return;
@@ -194,55 +215,18 @@ class _AgentHomePageState extends State<AgentHomePage> {
     }
   }
 
-  Future<String> _sendToSelectedProvider(String text) async {
-    final context = PromptContext(
-      profile: widget.profile,
-      memory: _memoryText,
-      worldState: _worldState,
-    );
-    _addInitialContextTrace();
-    return AgentRequestRunner(
-      bridge: _bridge,
-      configStore: _configStore,
-      memoryStore: _memoryStore,
-      appendMemory: _appendMemory,
-      onToolTrace: _addToolTrace,
-    ).send(
-      config: _agentConfig,
-      sessions: _sessions,
-      activeSessionId: _activeSessionId,
-      userText: text,
-      context: context,
-      memoryText: _memoryText,
-    );
-  }
-
-  void _addInitialContextTrace() {
-    final activeSession = activeSessionFrom(_sessions, _activeSessionId);
-    final trace = initialContextTrace(
-      activeSession: activeSession,
-      profile: widget.profile,
-      memoryText: _memoryText,
-      worldState: _worldState,
-    );
-    if (trace != null) _addToolTrace(trace);
-  }
-
   void _addAssistantMessage(String text) {
     if (!mounted) return;
-    setState(() {
-      _appendMessage(
-        ChatMessage(author: 'StudyOS Agent', text: text, isUser: false),
-      );
-      _status = text;
-    });
+    _appendMessage(
+      ChatMessage(author: 'StudyOS Agent', text: text, isUser: false),
+    );
+    setState(() => _status = text);
     unawaited(HapticFeedback.lightImpact());
   }
 
   void _addToolTrace(ToolTrace trace) {
-    if (!mounted) return;
-    setState(() {
-      final mutation = upsertToolTraceInSessions(
+    _applySessionMutation(
+      upsertToolTraceInSessions(
         sessions: _sessions,
         activeSessionId: _activeSessionId,
         message: ChatMessage.toolTrace(
@@ -251,23 +235,31 @@ class _AgentHomePageState extends State<AgentHomePage> {
           summary: trace.summary,
           callId: trace.callId,
         ),
-      );
-      _sessions = mutation.sessions;
-      _activeSessionId = mutation.activeSessionId;
-      unawaited(_persistSessions());
-    });
-    scrollChatToBottom(_messageScrollController);
+      ),
+    );
   }
 
   void _appendMessage(ChatMessage message) {
-    final mutation = appendMessageToSessions(
-      sessions: _sessions,
-      activeSessionId: _activeSessionId,
-      message: message,
+    _applySessionMutation(
+      appendMessageToSessions(
+        sessions: _sessions,
+        activeSessionId: _activeSessionId,
+        message: message,
+      ),
     );
-    _sessions = mutation.sessions;
-    _activeSessionId = mutation.activeSessionId;
-    unawaited(_persistSessions());
+  }
+
+  void _applySessionMutation(
+    SessionMutation mutation, {
+    bool selectChat = false,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _sessions = mutation.sessions;
+      _activeSessionId = mutation.activeSessionId;
+      if (selectChat) _selectedView = AppView.chat;
+    });
+    _persistSessions();
     scrollChatToBottom(_messageScrollController);
   }
 
@@ -289,6 +281,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       onSelectView: (view) => setState(() => _selectedView = view),
       onSelectSession: _selectSession,
       onCreateSession: _createSession,
+      onDeleteSession: _deleteSession,
       onSuggestionSelected: _useSuggestion,
       onSend: _sendMessage,
       onLogout: widget.onLogout,

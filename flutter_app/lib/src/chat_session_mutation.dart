@@ -62,6 +62,29 @@ SessionMutation upsertToolTraceInSessions({
   return _replaceSession(sessions, activeSession.id, nextSession);
 }
 
+SessionMutation deleteSessionFromSessions({
+  required List<ChatSession> sessions,
+  required String? activeSessionId,
+  required String sessionId,
+}) {
+  final remaining = sessions
+      .where((session) => session.id != sessionId)
+      .toList();
+  if (remaining.isEmpty) {
+    final fresh = ChatSession.fresh();
+    return SessionMutation(
+      sessions: <ChatSession>[fresh],
+      activeSessionId: fresh.id,
+    );
+  }
+  final nextActiveId =
+      activeSessionId != sessionId &&
+          remaining.any((session) => session.id == activeSessionId)
+      ? activeSessionId!
+      : remaining.first.id;
+  return SessionMutation(sessions: remaining, activeSessionId: nextActiveId);
+}
+
 SessionMutation _replaceSession(
   List<ChatSession> sessions,
   String activeSessionId,

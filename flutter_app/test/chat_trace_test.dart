@@ -55,6 +55,44 @@ void main() {
     expect(traces.single.trace?.status, 'done');
   });
 
+  test('deleting sessions keeps a valid active chat', () {
+    final first = ChatSession(
+      id: 'chat-1',
+      title: 'First',
+      updatedAt: DateTime(2026),
+      messages: const <ChatMessage>[],
+    );
+    final second = ChatSession(
+      id: 'chat-2',
+      title: 'Second',
+      updatedAt: DateTime(2026),
+      messages: const <ChatMessage>[],
+    );
+
+    final inactiveDeleted = deleteSessionFromSessions(
+      sessions: <ChatSession>[first, second],
+      activeSessionId: first.id,
+      sessionId: second.id,
+    );
+    expect(inactiveDeleted.activeSessionId, first.id);
+    expect(inactiveDeleted.sessions, hasLength(1));
+
+    final activeDeleted = deleteSessionFromSessions(
+      sessions: <ChatSession>[first, second],
+      activeSessionId: first.id,
+      sessionId: first.id,
+    );
+    expect(activeDeleted.activeSessionId, second.id);
+
+    final lastDeleted = deleteSessionFromSessions(
+      sessions: <ChatSession>[first],
+      activeSessionId: first.id,
+      sessionId: first.id,
+    );
+    expect(lastDeleted.sessions, hasLength(1));
+    expect(lastDeleted.activeSessionId, lastDeleted.sessions.single.id);
+  });
+
   test('adjacent trace updates render as one current-state item', () {
     final messages = compactTraceMessages(<ChatMessage>[
       ChatMessage.toolTrace(

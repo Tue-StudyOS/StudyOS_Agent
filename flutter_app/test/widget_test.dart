@@ -45,6 +45,7 @@ void main() {
     WidgetTester tester,
   ) async {
     final session = ChatSession.fresh().copyWith(title: 'Algorithms review');
+    String? deletedSessionId;
 
     await tester.pumpWidget(
       _TestShell(
@@ -55,6 +56,7 @@ void main() {
           onSelectView: (_) {},
           onSelectSession: (_) {},
           onCreateSession: () {},
+          onDeleteSession: (value) => deletedSessionId = value,
         ),
       ),
     );
@@ -67,6 +69,15 @@ void main() {
     expect(find.textContaining('Active ID:'), findsOneWidget);
     expect(find.text('Capabilities'), findsNothing);
     expect(find.text('World State'), findsNothing);
+
+    await tester.tap(find.byTooltip('Delete chat'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete chat?'), findsOneWidget);
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(deletedSessionId, session.id);
   });
 
   testWidgets('assistant messages render markdown content', (

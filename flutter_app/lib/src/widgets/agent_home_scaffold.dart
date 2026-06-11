@@ -23,6 +23,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.onSelectView,
     required this.onSelectSession,
     required this.onCreateSession,
+    required this.onDeleteSession,
     required this.onSuggestionSelected,
     required this.onSend,
     required this.onLogout,
@@ -46,6 +47,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final ValueChanged<AppView> onSelectView;
   final ValueChanged<String> onSelectSession;
   final VoidCallback onCreateSession;
+  final ValueChanged<String> onDeleteSession;
   final ValueChanged<String> onSuggestionSelected;
   final VoidCallback onSend;
   final VoidCallback? onLogout;
@@ -63,6 +65,7 @@ class AgentHomeScaffold extends StatelessWidget {
         onSelectView: onSelectView,
         onSelectSession: onSelectSession,
         onCreateSession: onCreateSession,
+        onDeleteSession: onDeleteSession,
       ),
       body: SafeArea(
         child: Center(

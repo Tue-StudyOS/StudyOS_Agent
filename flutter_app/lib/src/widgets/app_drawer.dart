@@ -11,6 +11,7 @@ class AppDrawer extends StatelessWidget {
     required this.onSelectView,
     required this.onSelectSession,
     required this.onCreateSession,
+    required this.onDeleteSession,
     super.key,
   });
 
@@ -20,6 +21,7 @@ class AppDrawer extends StatelessWidget {
   final ValueChanged<AppView> onSelectView;
   final ValueChanged<String> onSelectSession;
   final VoidCallback onCreateSession;
+  final ValueChanged<String> onDeleteSession;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +90,7 @@ class AppDrawer extends StatelessWidget {
                           onSelectSession(session.id);
                           Navigator.of(context).pop();
                         },
+                        onDelete: () => _confirmDeleteSession(context, session),
                       ),
                   ],
                 ),
@@ -115,6 +118,31 @@ class AppDrawer extends StatelessWidget {
       if (session.id == activeSessionId) return session.shortId;
     }
     return 'none';
+  }
+
+  Future<void> _confirmDeleteSession(
+    BuildContext context,
+    ChatSession session,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete chat?'),
+        content: Text('Delete "${session.title}" from this device?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onDeleteSession(session.id);
   }
 }
 
@@ -170,11 +198,13 @@ class _SessionTile extends StatelessWidget {
     required this.session,
     required this.selected,
     required this.onTap,
+    required this.onDelete,
   });
 
   final ChatSession session;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +228,11 @@ class _SessionTile extends StatelessWidget {
           session.shortId,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+        trailing: IconButton(
+          tooltip: 'Delete chat',
+          icon: const Icon(Icons.delete_outline_rounded),
+          onPressed: onDelete,
         ),
         onTap: onTap,
       ),
