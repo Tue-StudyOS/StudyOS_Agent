@@ -30,7 +30,7 @@ class ChatView extends StatelessWidget {
         Expanded(
           child: MessageList(messages: messages, compact: compactMessages),
         ),
-        SuggestionStrip(onSelected: onSuggestionSelected),
+        if (messages.isEmpty) SuggestionStrip(onSelected: onSuggestionSelected),
         ComposerBar(
           controller: inputController,
           isSending: isSending,

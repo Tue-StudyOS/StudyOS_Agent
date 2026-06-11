@@ -49,7 +49,7 @@ ChatSession activeSessionFrom(
 
 String _titleForMessages(List<ChatMessage> messages) {
   for (final message in messages) {
-    if (!message.isUser) continue;
+    if (!message.isUser || message.isTrace) continue;
     final text = message.text.trim();
     if (text.isEmpty) break;
     return text.length > 34 ? '${text.substring(0, 34)}…' : text;

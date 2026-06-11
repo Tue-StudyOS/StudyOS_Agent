@@ -17,8 +17,75 @@ class MessageList extends StatelessWidget {
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
+        if (message.isTrace) {
+          return _ToolTraceRow(message: message, compact: compact);
+        }
         return _MessageBubble(message: message, compact: compact);
       },
+    );
+  }
+}
+
+class _ToolTraceRow extends StatelessWidget {
+  const _ToolTraceRow({required this.message, required this.compact});
+
+  final ChatMessage message;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final trace = message.trace!;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 620),
+        margin: EdgeInsets.symmetric(vertical: compact ? 3 : 5),
+        child: Wrap(
+          spacing: StudyOsSpacing.sm,
+          runSpacing: StudyOsSpacing.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            _TraceChip(
+              label: trace.toolName,
+              icon: Icons.build_circle_outlined,
+            ),
+            _TraceChip(label: trace.status, icon: Icons.check_circle_outline),
+            Text(trace.summary, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TraceChip extends StatelessWidget {
+  const _TraceChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: StudyOsColors.surfaceRaised,
+        border: Border.all(color: StudyOsColors.border),
+        borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: StudyOsSpacing.sm,
+          vertical: StudyOsSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 14, color: StudyOsColors.textMuted),
+            const SizedBox(width: StudyOsSpacing.xs),
+            Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      ),
     );
   }
 }
