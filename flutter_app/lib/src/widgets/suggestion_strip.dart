@@ -51,7 +51,6 @@ class _SuggestionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ActionChip(
-      avatar: const Icon(Icons.auto_awesome_rounded, size: 16),
       label: Text(label),
       backgroundColor: StudyOsColors.surfaceRaised,
       side: const BorderSide(color: StudyOsColors.border),

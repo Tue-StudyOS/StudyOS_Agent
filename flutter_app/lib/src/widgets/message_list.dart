@@ -31,18 +31,12 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final alignment = message.isUser
-        ? Alignment.centerRight
-        : Alignment.centerLeft;
-    final bubbleColor = message.isUser
-        ? StudyOsColors.accentStrong
-        : StudyOsColors.surfaceRaised;
-    final borderColor = message.isUser
-        ? StudyOsColors.accent
-        : StudyOsColors.border;
+    if (!message.isUser) {
+      return _AssistantText(message: message, compact: compact);
+    }
 
     return Align(
-      alignment: alignment,
+      alignment: Alignment.centerRight,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 620),
         margin: EdgeInsets.symmetric(vertical: compact ? 3 : 5),
@@ -50,43 +44,40 @@ class _MessageBubble extends StatelessWidget {
           compact ? StudyOsSpacing.sm : StudyOsSpacing.md,
         ),
         decoration: BoxDecoration(
-          color: bubbleColor,
-          border: Border.all(color: borderColor.withValues(alpha: 0.8)),
+          color: StudyOsColors.accentStrong,
+          border: Border.all(
+            color: StudyOsColors.accent.withValues(alpha: 0.8),
+          ),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(StudyOsRadii.lg),
             topRight: const Radius.circular(StudyOsRadii.lg),
-            bottomLeft: Radius.circular(
-              message.isUser ? StudyOsRadii.lg : StudyOsRadii.sm,
-            ),
-            bottomRight: Radius.circular(
-              message.isUser ? StudyOsRadii.sm : StudyOsRadii.lg,
-            ),
+            bottomLeft: const Radius.circular(StudyOsRadii.lg),
+            bottomRight: const Radius.circular(StudyOsRadii.sm),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              message.author,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: message.isUser
-                    ? const Color(0xFFEAF4FF)
-                    : StudyOsColors.accent,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 6),
-            message.isUser
-                ? Text(
-                    message.text,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  )
-                : MarkdownBody(
-                    data: message.text,
-                    selectable: true,
-                    styleSheet: _markdownStyle(context),
-                  ),
-          ],
+        child: Text(message.text, style: Theme.of(context).textTheme.bodyLarge),
+      ),
+    );
+  }
+}
+
+class _AssistantText extends StatelessWidget {
+  const _AssistantText({required this.message, required this.compact});
+
+  final ChatMessage message;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 620),
+        margin: EdgeInsets.symmetric(vertical: compact ? 7 : 11),
+        child: MarkdownBody(
+          data: message.text,
+          selectable: true,
+          styleSheet: _markdownStyle(context),
         ),
       ),
     );
