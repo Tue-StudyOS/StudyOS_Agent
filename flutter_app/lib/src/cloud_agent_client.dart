@@ -216,6 +216,7 @@ class CloudAgentClient {
       toolName: call.name,
       status: status,
       summary: '$summary$outputSuffix',
+      callId: call.id,
     );
   }
 

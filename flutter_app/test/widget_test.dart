@@ -14,13 +14,16 @@ void main() {
     WidgetTester tester,
   ) async {
     final controller = TextEditingController();
+    final scrollController = ScrollController();
     addTearDown(controller.dispose);
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
       _TestShell(
         child: ChatView(
           messages: const <ChatMessage>[],
           inputController: controller,
+          messageScrollController: scrollController,
           isSending: false,
           compactMessages: false,
           onSuggestionSelected: (value) => controller.text = value,
@@ -70,7 +73,9 @@ void main() {
     WidgetTester tester,
   ) async {
     final controller = TextEditingController();
+    final scrollController = ScrollController();
     addTearDown(controller.dispose);
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
       _TestShell(
@@ -83,6 +88,7 @@ void main() {
             ),
           ],
           inputController: controller,
+          messageScrollController: scrollController,
           isSending: false,
           compactMessages: false,
           onSuggestionSelected: (_) {},

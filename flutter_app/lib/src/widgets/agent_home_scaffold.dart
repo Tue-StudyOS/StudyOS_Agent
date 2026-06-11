@@ -12,6 +12,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.sessions,
     required this.activeSessionId,
     required this.inputController,
+    required this.messageScrollController,
     required this.isSending,
     required this.compactMessages,
     required this.status,
@@ -34,6 +35,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final List<ChatSession> sessions;
   final String? activeSessionId;
   final TextEditingController inputController;
+  final ScrollController messageScrollController;
   final bool isSending;
   final bool compactMessages;
   final String status;
@@ -79,6 +81,7 @@ class AgentHomeScaffold extends StatelessWidget {
                       sessions: sessions,
                       activeSessionId: activeSessionId,
                       inputController: inputController,
+                      messageScrollController: messageScrollController,
                       isSending: isSending,
                       compactMessages: compactMessages,
                       onSuggestionSelected: onSuggestionSelected,

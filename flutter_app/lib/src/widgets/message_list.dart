@@ -5,14 +5,21 @@ import '../models.dart';
 import '../studyos_theme.dart';
 
 class MessageList extends StatelessWidget {
-  const MessageList({required this.messages, required this.compact, super.key});
+  const MessageList({
+    required this.messages,
+    required this.compact,
+    required this.controller,
+    super.key,
+  });
 
   final List<ChatMessage> messages;
   final bool compact;
+  final ScrollController controller;
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      controller: controller,
       padding: const EdgeInsets.symmetric(vertical: StudyOsSpacing.sm),
       itemCount: messages.length,
       itemBuilder: (context, index) {
@@ -63,23 +70,12 @@ class _ToolTraceRow extends StatelessWidget {
             ),
             const SizedBox(width: StudyOsSpacing.sm),
             Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    trace.toolName,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: StudyOsColors.text,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    trace.summary,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+              child: Text(
+                trace.toolName,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: StudyOsColors.text,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
