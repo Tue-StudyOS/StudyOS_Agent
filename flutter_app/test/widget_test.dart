@@ -33,6 +33,7 @@ void main() {
     expect(find.text('Find next lecture'), findsOneWidget);
     expect(find.text('Plan study block'), findsOneWidget);
     expect(find.text('Nachricht an Jarvis...'), findsOneWidget);
+    expect(find.byIcon(Icons.auto_awesome_rounded), findsNothing);
     expect(find.text('Native'), findsNothing);
     expect(find.textContaining('Ask about lectures'), findsNothing);
   });
@@ -91,6 +92,7 @@ void main() {
     );
 
     expect(find.byType(MarkdownBody), findsOneWidget);
+    expect(find.text('StudyOS Agent'), findsNothing);
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -98,6 +100,13 @@ void main() {
       ),
       findsOneWidget,
     );
+    final assistantContainer = tester.widget<Container>(
+      find.ancestor(
+        of: find.byType(MarkdownBody),
+        matching: find.byType(Container),
+      ),
+    );
+    expect(assistantContainer.decoration, isNull);
   });
 
   testWidgets('settings expose cloud provider and secure key fields', (
