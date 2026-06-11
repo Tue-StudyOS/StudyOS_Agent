@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'agent_config_store.dart';
 import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
+import 'context_trace_summary.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
@@ -192,13 +193,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       memory: _memoryText,
       worldState: _worldState,
     );
-    _addToolTrace(
-      ToolTrace(
-        toolName: 'get_study_context',
-        status: 'attached',
-        summary: _contextTraceSummary(),
-      ),
-    );
+    _addInitialContextTrace();
     if (!_agentConfig.usesCloud) {
       return _bridge.sendMessage(text, systemPrompt: context.systemPrompt());
     }
@@ -219,14 +214,20 @@ class _AgentHomePageState extends State<AgentHomePage> {
     );
   }
 
-  String _contextTraceSummary() {
-    final parts = <String>[
-      if (widget.profile != null) 'profile',
-      if (_memoryText.trim().isNotEmpty) 'memory',
-      if (_worldState.isNotEmpty) 'device state',
-    ];
-    if (parts.isEmpty) return 'No local context available yet.';
-    return 'Attached ${parts.join(', ')} to the model request.';
+  void _addInitialContextTrace() {
+    final activeSession = activeSessionFrom(_sessions, _activeSessionId);
+    if (hasAttachedContextTrace(activeSession)) return;
+    _addToolTrace(
+      ToolTrace(
+        toolName: 'get_study_context',
+        status: 'attached',
+        summary: contextTraceSummary(
+          profile: widget.profile,
+          memoryText: _memoryText,
+          worldState: _worldState,
+        ),
+      ),
+    );
   }
 
   void _addAssistantMessage(String text) {
@@ -241,15 +242,15 @@ class _AgentHomePageState extends State<AgentHomePage> {
 
   void _addToolTrace(ToolTrace trace) {
     if (!mounted) return;
-    setState(() {
-      _appendMessage(
+    setState(
+      () => _appendMessage(
         ChatMessage.toolTrace(
           toolName: trace.toolName,
           status: trace.status,
           summary: trace.summary,
         ),
-      );
-    });
+      ),
+    );
   }
 
   void _appendMessage(ChatMessage message) {
@@ -284,9 +285,8 @@ class _AgentHomePageState extends State<AgentHomePage> {
       onSend: _sendMessage,
       onLogout: widget.onLogout,
       onSaveAgentConfig: _saveAgentConfig,
-      onCompactMessagesChanged: (value) {
-        setState(() => _compactMessages = value);
-      },
+      onCompactMessagesChanged: (value) =>
+          setState(() => _compactMessages = value),
     );
   }
 }

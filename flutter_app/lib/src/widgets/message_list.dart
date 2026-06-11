@@ -35,22 +35,53 @@ class _ToolTraceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trace = message.trace!;
+    final style = _TraceStatusStyle.forStatus(trace.status);
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 620),
         margin: EdgeInsets.symmetric(vertical: compact ? 3 : 5),
-        child: Wrap(
-          spacing: StudyOsSpacing.sm,
-          runSpacing: StudyOsSpacing.xs,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: StudyOsSpacing.sm,
+          vertical: StudyOsSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: StudyOsColors.surface.withValues(alpha: 0.42),
+          border: Border.all(color: style.borderColor, width: style.width),
+          borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            _TraceChip(
-              label: trace.toolName,
-              icon: Icons.build_circle_outlined,
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Tooltip(
+                message: trace.status,
+                child: _StatusDot(color: style.dotColor),
+              ),
             ),
-            _TraceChip(label: trace.status, icon: Icons.check_circle_outline),
-            Text(trace.summary, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(width: StudyOsSpacing.sm),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    trace.toolName,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: StudyOsColors.text,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    trace.summary,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -58,35 +89,54 @@ class _ToolTraceRow extends StatelessWidget {
   }
 }
 
-class _TraceChip extends StatelessWidget {
-  const _TraceChip({required this.label, required this.icon});
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.color});
 
-  final String label;
-  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: StudyOsColors.surfaceRaised,
-        border: Border.all(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.sm),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: StudyOsSpacing.sm,
-          vertical: StudyOsSpacing.xs,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 14, color: StudyOsColors.textMuted),
-            const SizedBox(width: StudyOsSpacing.xs),
-            Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          ],
-        ),
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: const SizedBox.square(dimension: 7),
     );
+  }
+}
+
+class _TraceStatusStyle {
+  const _TraceStatusStyle({
+    required this.borderColor,
+    required this.dotColor,
+    required this.width,
+  });
+
+  final Color borderColor;
+  final Color dotColor;
+  final double width;
+
+  static _TraceStatusStyle forStatus(String status) {
+    return switch (status) {
+      'running' => _TraceStatusStyle(
+        borderColor: StudyOsColors.accent.withValues(alpha: 0.6),
+        dotColor: StudyOsColors.accent,
+        width: 1,
+      ),
+      'done' => _TraceStatusStyle(
+        borderColor: StudyOsColors.success.withValues(alpha: 0.72),
+        dotColor: StudyOsColors.success,
+        width: 1.4,
+      ),
+      'failed' => _TraceStatusStyle(
+        borderColor: StudyOsColors.warning,
+        dotColor: StudyOsColors.warning,
+        width: 1.8,
+      ),
+      _ => _TraceStatusStyle(
+        borderColor: StudyOsColors.border,
+        dotColor: StudyOsColors.textMuted,
+        width: 1,
+      ),
+    };
   }
 }
 

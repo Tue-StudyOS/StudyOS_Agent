@@ -27,23 +27,7 @@ class StudyHeader extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(width: StudyOsSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'StudyOS Agent',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Study companion',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
+          const Spacer(),
           const SizedBox(width: StudyOsSpacing.md),
           _StatusChip(label: _isReady ? 'Ready' : status, isReady: _isReady),
         ],
