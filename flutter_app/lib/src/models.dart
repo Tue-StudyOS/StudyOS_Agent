@@ -277,17 +277,23 @@ class NativeEvent {
     required this.type,
     required this.message,
     required this.timestamp,
+    this.trace,
   });
 
   factory NativeEvent.fromMap(Map<String, Object?> map) {
+    final rawTrace = map['trace'];
     return NativeEvent(
       type: map['type']?.toString() ?? 'status',
       message: map['message']?.toString() ?? '',
       timestamp: map['timestamp']?.toString() ?? '',
+      trace: rawTrace is Map
+          ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
+          : null,
     );
   }
 
   final String type;
   final String message;
   final String timestamp;
+  final ToolTrace? trace;
 }

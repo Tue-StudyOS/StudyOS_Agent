@@ -43,45 +43,46 @@ class CloudAgentClient {
     final decoded = _decodeResponse(response);
     final message = _messageFromResponse(decoded);
     final toolCalls = _toolCalls(message);
-    if (toolCalls.isNotEmpty) {
-      final toolMessages = <Map<String, Object?>>[];
-      for (final call in toolCalls) {
-        onToolTrace?.call(_traceForCall(call, 'running'));
-        final String output;
-        try {
-          output = await _executeTool(
-            call,
-            context: context,
-            appendMemory: appendMemory,
-            readMemory: readMemory,
-          );
-        } on Object catch (error) {
-          onToolTrace?.call(
-            _traceForCall(call, 'failed', output: error.toString()),
-          );
-          rethrow;
-        }
-        onToolTrace?.call(_traceForCall(call, 'done', output: output));
-        toolMessages.add(<String, Object?>{
-          'role': 'tool',
-          'tool_call_id': call.id,
-          'content': output,
-        });
-      }
-      final followUp = await _post(endpoint, apiKey, <String, Object?>{
-        ...request,
-        'messages': <Map<String, Object?>>[
-          ...List<Map<String, Object?>>.from(request['messages'] as List),
-          message,
-          ...toolMessages,
-        ],
-      });
-      return _contentFromMessage(
-        _messageFromResponse(_decodeResponse(followUp)),
+    if (toolCalls.isEmpty) {
+      throw const CloudAgentException(
+        'The selected model did not call a StudyOS tool. Choose a tool-capable cloud model.',
       );
     }
 
-    return _contentFromMessage(message);
+    final toolMessages = <Map<String, Object?>>[];
+    for (final call in toolCalls) {
+      onToolTrace?.call(_traceForCall(call, 'running'));
+      final String output;
+      try {
+        output = await _executeTool(
+          call,
+          context: context,
+          appendMemory: appendMemory,
+          readMemory: readMemory,
+        );
+      } on Object catch (error) {
+        onToolTrace?.call(
+          _traceForCall(call, 'failed', output: error.toString()),
+        );
+        rethrow;
+      }
+      onToolTrace?.call(_traceForCall(call, 'done', output: output));
+      toolMessages.add(<String, Object?>{
+        'role': 'tool',
+        'tool_call_id': call.id,
+        'content': output,
+      });
+    }
+
+    final followUp = await _post(endpoint, apiKey, <String, Object?>{
+      'model': config.cloudModel.trim(),
+      'messages': <Map<String, Object?>>[
+        ...List<Map<String, Object?>>.from(request['messages'] as List),
+        message,
+        ...toolMessages,
+      ],
+    });
+    return _contentFromMessage(_messageFromResponse(_decodeResponse(followUp)));
   }
 
   Future<http.Response> _post(
@@ -124,7 +125,7 @@ class CloudAgentClient {
         <String, Object?>{'role': 'user', 'content': userText},
       ],
       'tools': cloudToolDefinitions(),
-      'tool_choice': 'auto',
+      'tool_choice': 'required',
     };
   }
 

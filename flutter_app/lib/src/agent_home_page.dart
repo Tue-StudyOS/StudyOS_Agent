@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'agent_config_store.dart';
+import 'agent_request_runner.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
-import 'cloud_agent_client.dart';
 import 'initial_context_trace.dart';
 import 'memory_store.dart';
 import 'models.dart';
@@ -32,7 +32,6 @@ class _AgentHomePageState extends State<AgentHomePage> {
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
   final MemoryStore _memoryStore = MemoryStore();
-  final CloudAgentClient _cloudClient = CloudAgentClient();
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _messageScrollController = ScrollController();
 
@@ -89,7 +88,13 @@ class _AgentHomePageState extends State<AgentHomePage> {
   }
 
   void _handleNativeEvent(NativeEvent event) {
-    if (!mounted || event.message.isEmpty) return;
+    if (!mounted) return;
+    final trace = event.trace;
+    if (event.type == 'toolTrace' && trace != null) {
+      _addToolTrace(trace);
+      return;
+    }
+    if (event.message.isEmpty) return;
     setState(() => _status = event.message);
   }
 
@@ -196,23 +201,19 @@ class _AgentHomePageState extends State<AgentHomePage> {
       worldState: _worldState,
     );
     _addInitialContextTrace();
-    if (!_agentConfig.usesCloud) {
-      return _bridge.sendMessage(text, systemPrompt: context.systemPrompt());
-    }
-
-    final apiKey = await _configStore.readApiKey();
-    if (apiKey == null || apiKey.isEmpty) {
-      throw const CloudAgentException('Cloud API key is required.');
-    }
-    return _cloudClient.sendMessage(
+    return AgentRequestRunner(
+      bridge: _bridge,
+      configStore: _configStore,
+      memoryStore: _memoryStore,
+      appendMemory: _appendMemory,
+      onToolTrace: _addToolTrace,
+    ).send(
       config: _agentConfig,
-      apiKey: apiKey,
-      history: activeSessionFrom(_sessions, _activeSessionId).messages,
+      sessions: _sessions,
+      activeSessionId: _activeSessionId,
       userText: text,
       context: context,
-      appendMemory: _appendMemory,
-      readMemory: _memoryStore.read,
-      onToolTrace: _addToolTrace,
+      memoryText: _memoryText,
     );
   }
 
