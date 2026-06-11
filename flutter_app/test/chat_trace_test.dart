@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/chat_session_mutation.dart';
+import 'package:studyos_agent/src/message_trace_compaction.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
@@ -52,6 +53,38 @@ void main() {
     final traces = done.sessions.single.messages.where((item) => item.isTrace);
     expect(traces.length, 1);
     expect(traces.single.trace?.status, 'done');
+  });
+
+  test('adjacent trace updates render as one current-state item', () {
+    final messages = compactTraceMessages(<ChatMessage>[
+      ChatMessage.toolTrace(
+        toolName: 'get_study_context',
+        status: 'attached',
+        summary: 'Attached context.',
+      ),
+      ChatMessage.toolTrace(
+        toolName: 'get_study_context',
+        status: 'done',
+        summary: 'Attached context.',
+      ),
+      ChatMessage.toolTrace(
+        toolName: 'read_memories',
+        status: 'running',
+        summary: 'Reading memory.',
+        callId: 'call_1',
+      ),
+      ChatMessage.toolTrace(
+        toolName: 'read_memories',
+        status: 'done',
+        summary: 'Read memory.',
+        callId: 'call_1',
+      ),
+    ]);
+
+    expect(messages.length, 2);
+    expect(messages.first.trace?.status, 'done');
+    expect(messages.last.trace?.toolName, 'read_memories');
+    expect(messages.last.trace?.status, 'done');
   });
 
   testWidgets('suggestions hide after a conversation starts', (
