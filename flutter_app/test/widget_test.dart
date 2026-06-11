@@ -3,6 +3,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/onboarding_flow.dart';
+import 'package:studyos_agent/src/prompt_context.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
 import 'package:studyos_agent/src/views/settings_view.dart';
@@ -154,7 +155,13 @@ void main() {
     OnboardingProfile? profile;
 
     await tester.pumpWidget(
-      _TestShell(child: LoginPage(onLogin: (value) => session = value)),
+      _TestShell(
+        child: LoginPage(
+          onLogin: (value, _) async {
+            session = value;
+          },
+        ),
+      ),
     );
 
     expect(find.text('Connect your student workspace'), findsOneWidget);
@@ -178,14 +185,42 @@ void main() {
     expect(find.text('Set up profile'), findsOneWidget);
     expect(find.text('zxabc12'), findsOneWidget);
 
-    await tester.enterText(find.byType(EditableText).at(1), 'M.Sc. AI');
-    await tester.enterText(find.byType(EditableText).at(2), '4');
+    await tester.enterText(
+      find.byType(EditableText).at(1),
+      'zxabc12@student.uni-tuebingen.de',
+    );
+    await tester.enterText(find.byType(EditableText).at(2), 'M.Sc. AI');
+    await tester.enterText(find.byType(EditableText).at(3), '4');
     await tester.tap(find.text('Start StudyOS'));
     await tester.pumpAndSettle();
 
     expect(profile?.displayName, 'Zxabc12');
+    expect(profile?.email, 'zxabc12@student.uni-tuebingen.de');
     expect(profile?.degreeProgram, 'M.Sc. AI');
     expect(profile?.semester, 4);
+  });
+
+  test('prompt context injects profile and memory', () {
+    const context = PromptContext(
+      profile: OnboardingProfile(
+        displayName: 'Ada',
+        username: 'ada42',
+        email: 'ada@example.edu',
+        degreeProgram: 'M.Sc. AI',
+        semester: 2,
+        livesInTuebingen: true,
+      ),
+      memory: '- Prefers morning study blocks.',
+      worldState: <String, Object?>{'weekday': 'Thursday'},
+    );
+
+    final prompt = context.systemPrompt();
+
+    expect(prompt, contains('Ada'));
+    expect(prompt, contains('ada@example.edu'));
+    expect(prompt, contains('M.Sc. AI'));
+    expect(prompt, contains('Prefers morning study blocks'));
+    expect(prompt, contains('Thursday'));
   });
 }
 

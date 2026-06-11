@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'models.dart';
@@ -6,7 +8,7 @@ import 'studyos_theme.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({required this.onLogin, super.key});
 
-  final ValueChanged<UserSession> onLogin;
+  final Future<void> Function(UserSession session, String password) onLogin;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -33,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     _passwordController.clear();
-    widget.onLogin(UserSession(username: username));
+    unawaited(widget.onLogin(UserSession(username: username), password));
   }
 
   @override
@@ -90,6 +92,7 @@ class OnboardingPage extends StatefulWidget {
 
 class _OnboardingPageState extends State<OnboardingPage> {
   late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
   final TextEditingController _degreeController = TextEditingController();
   final TextEditingController _semesterController = TextEditingController();
   bool _livesInTuebingen = true;
@@ -101,11 +104,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _nameController = TextEditingController(
       text: widget.session.suggestedDisplayName,
     );
+    _emailController = TextEditingController(
+      text: widget.session.displayEmail ?? '',
+    );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _degreeController.dispose();
     _semesterController.dispose();
     super.dispose();
@@ -113,6 +120,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   void _submit() {
     final displayName = _nameController.text.trim();
+    final email = _emailController.text.trim();
     final degreeProgram = _degreeController.text.trim();
     final semesterText = _semesterController.text.trim();
     final semester = semesterText.isEmpty ? null : int.tryParse(semesterText);
@@ -129,6 +137,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
     widget.onComplete(
       OnboardingProfile(
         displayName: displayName,
+        username: widget.session.username,
+        email: email.contains('@') ? email : null,
         degreeProgram: degreeProgram,
         semester: semester,
         livesInTuebingen: _livesInTuebingen,
@@ -148,6 +158,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
             controller: _nameController,
             label: 'Name',
             icon: Icons.badge_outlined,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: StudyOsSpacing.md),
+          _InputField(
+            controller: _emailController,
+            label: 'Email',
+            icon: Icons.alternate_email_rounded,
+            keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: StudyOsSpacing.md),

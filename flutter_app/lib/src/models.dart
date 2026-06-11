@@ -1,9 +1,10 @@
 import 'dart:convert';
 
 class UserSession {
-  const UserSession({required this.username});
+  const UserSession({required this.username, this.email});
 
   final String username;
+  final String? email;
 
   String get suggestedDisplayName {
     final cleaned = username
@@ -17,20 +18,66 @@ class UserSession {
         .map((part) => part[0].toUpperCase() + part.substring(1))
         .join(' ');
   }
+
+  String? get displayEmail {
+    if (email != null && email!.contains('@')) return email;
+    return username.contains('@') ? username : null;
+  }
 }
 
 class OnboardingProfile {
   const OnboardingProfile({
     required this.displayName,
+    required this.username,
+    required this.email,
     required this.degreeProgram,
     required this.semester,
     required this.livesInTuebingen,
   });
 
   final String displayName;
+  final String username;
+  final String? email;
   final String degreeProgram;
   final int? semester;
   final bool livesInTuebingen;
+
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'displayName': displayName,
+      'username': username,
+      'email': email,
+      'degreeProgram': degreeProgram,
+      'semester': semester,
+      'livesInTuebingen': livesInTuebingen,
+    };
+  }
+
+  static OnboardingProfile? fromJson(Map<String, Object?> json) {
+    final displayName = json['displayName']?.toString().trim();
+    final username = json['username']?.toString().trim();
+    final degreeProgram = json['degreeProgram']?.toString().trim();
+    if (displayName == null ||
+        displayName.isEmpty ||
+        username == null ||
+        username.isEmpty ||
+        degreeProgram == null ||
+        degreeProgram.isEmpty) {
+      return null;
+    }
+
+    final semesterValue = json['semester'];
+    return OnboardingProfile(
+      displayName: displayName,
+      username: username,
+      email: json['email']?.toString(),
+      degreeProgram: degreeProgram,
+      semester: semesterValue is int
+          ? semesterValue
+          : int.tryParse(semesterValue?.toString() ?? ''),
+      livesInTuebingen: json['livesInTuebingen'] == true,
+    );
+  }
 }
 
 class ChatMessage {

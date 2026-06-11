@@ -235,6 +235,23 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(height: StudyOsSpacing.lg),
         _SettingsCard(
           children: <Widget>[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Local model availability',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            Text(
+              'iOS uses the system language model when Foundation Models is available. Android on-device AI is exposed through Gemini Nano task APIs on supported devices; neither platform provides a general installed-model list here.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: StudyOsSpacing.lg),
+        _SettingsCard(
+          children: <Widget>[
             Text(
               'Device bridge',
               style: Theme.of(context).textTheme.titleMedium,

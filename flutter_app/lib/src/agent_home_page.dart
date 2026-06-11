@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'agent_config_store.dart';
+import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
+import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'profile_context.dart';
+import 'prompt_context.dart';
 import 'session_store.dart';
 import 'studyos_theme.dart';
 import 'views/chat_view.dart';
@@ -30,6 +33,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
   final NativeBridge _bridge = NativeBridge();
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
+  final MemoryStore _memoryStore = MemoryStore();
   final CloudAgentClient _cloudClient = CloudAgentClient();
   final TextEditingController _inputController = TextEditingController();
 
@@ -37,6 +41,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
   List<ChatSession> _sessions = <ChatSession>[];
   String? _activeSessionId;
   AgentConfig _agentConfig = const AgentConfig.defaults();
+  String _memoryText = '';
   Map<String, Object?> _worldState = const {};
   AppView _selectedView = AppView.chat;
   String _status = 'Starting';
@@ -54,6 +59,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
     );
     unawaited(_loadSessions());
     unawaited(_loadAgentConfig());
+    unawaited(_loadMemory());
     unawaited(_initializeNativeLayer());
   }
 
@@ -87,13 +93,6 @@ class _AgentHomePageState extends State<AgentHomePage> {
     setState(() => _status = event.message);
   }
 
-  ChatSession? get _activeSession {
-    for (final session in _sessions) {
-      if (session.id == _activeSessionId) return session;
-    }
-    return _sessions.isEmpty ? null : _sessions.first;
-  }
-
   Future<void> _loadSessions() async {
     final state = await _sessionStore.load();
     if (!mounted) return;
@@ -107,6 +106,19 @@ class _AgentHomePageState extends State<AgentHomePage> {
     final config = await _configStore.load();
     if (!mounted) return;
     setState(() => _agentConfig = config);
+  }
+
+  Future<void> _loadMemory() async {
+    final memory = await _memoryStore.read();
+    if (!mounted) return;
+    setState(() => _memoryText = memory);
+  }
+
+  Future<void> _appendMemory(String text) async {
+    await _memoryStore.append(text);
+    final memory = await _memoryStore.read();
+    if (!mounted) return;
+    setState(() => _memoryText = memory);
   }
 
   Future<void> _saveAgentConfig(AgentConfig config, String? apiKey) async {
@@ -180,8 +192,13 @@ class _AgentHomePageState extends State<AgentHomePage> {
   }
 
   Future<String> _sendToSelectedProvider(String text) async {
+    final context = PromptContext(
+      profile: widget.profile,
+      memory: _memoryText,
+      worldState: _worldState,
+    );
     if (!_agentConfig.usesCloud) {
-      return _bridge.sendMessage(text);
+      return _bridge.sendMessage(text, systemPrompt: context.systemPrompt());
     }
 
     final apiKey = await _configStore.readApiKey();
@@ -191,8 +208,11 @@ class _AgentHomePageState extends State<AgentHomePage> {
     return _cloudClient.sendMessage(
       config: _agentConfig,
       apiKey: apiKey,
-      history: _activeSession?.messages ?? const <ChatMessage>[],
+      history: activeSessionFrom(_sessions, _activeSessionId).messages,
       userText: text,
+      context: context,
+      appendMemory: _appendMemory,
+      readMemory: _memoryStore.read,
     );
   }
 
@@ -207,38 +227,14 @@ class _AgentHomePageState extends State<AgentHomePage> {
   }
 
   void _appendMessage(ChatMessage message) {
-    final activeSession = _activeSession ?? ChatSession.fresh();
-    final nextMessages = <ChatMessage>[...activeSession.messages, message];
-    final nextSession = activeSession.copyWith(
-      title: _titleForMessages(nextMessages),
-      updatedAt: DateTime.now(),
-      messages: nextMessages,
+    final mutation = appendMessageToSessions(
+      sessions: _sessions,
+      activeSessionId: _activeSessionId,
+      message: message,
     );
-    final existing = _sessions.any((session) => session.id == activeSession.id);
-
-    _sessions = existing
-        ? _sessions
-              .map(
-                (session) =>
-                    session.id == activeSession.id ? nextSession : session,
-              )
-              .toList()
-        : <ChatSession>[nextSession, ..._sessions];
-    _activeSessionId = nextSession.id;
+    _sessions = mutation.sessions;
+    _activeSessionId = mutation.activeSessionId;
     unawaited(_persistSessions());
-  }
-
-  String _titleForMessages(List<ChatMessage> messages) {
-    ChatMessage? firstUserMessage;
-    for (final message in messages) {
-      if (message.isUser) {
-        firstUserMessage = message;
-        break;
-      }
-    }
-    final text = firstUserMessage?.text.trim();
-    if (text == null || text.isEmpty) return 'New chat';
-    return text.length > 34 ? '${text.substring(0, 34)}…' : text;
   }
 
   @override
@@ -276,14 +272,17 @@ class _AgentHomePageState extends State<AgentHomePage> {
   Widget _buildSelectedView() {
     return switch (_selectedView) {
       AppView.chat => ChatView(
-        messages: _activeSession?.messages ?? const <ChatMessage>[],
+        messages: activeSessionFrom(_sessions, _activeSessionId).messages,
         inputController: _inputController,
         isSending: _isSending,
         compactMessages: _compactMessages,
         onSuggestionSelected: _useSuggestion,
         onSend: _sendMessage,
       ),
-      AppView.memories => MemoriesView(worldState: _worldState),
+      AppView.memories => MemoriesView(
+        worldState: _worldState,
+        memoryText: _memoryText,
+      ),
       AppView.settings => SettingsView(
         config: _agentConfig,
         profile: widget.profile,

@@ -8,6 +8,9 @@ Map<String, Object?> withProfileContext(
   return <String, Object?>{
     ...worldState,
     'student': profile.displayName,
+    'username': profile.username,
+    if (profile.email != null && profile.email!.isNotEmpty)
+      'email': profile.email,
     'degreeProgram': profile.degreeProgram,
     if (profile.semester != null) 'semester': profile.semester,
     'livesInTuebingen': profile.livesInTuebingen,
