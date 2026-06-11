@@ -2,9 +2,6 @@ package com.studyos.studyos_agent
 
 import android.os.Handler
 import android.os.Looper
-import com.example.studyOS.Controller.JarvisController
-import com.example.studyOS.DataStructures.Message
-import com.example.studyOS.DataStructures.Speaker
 import com.example.studyOS.Memory.FileIO
 import com.example.studyOS.Reminder.ReminderManager
 import com.example.studyOS.Sensors.WorldStateProvider
@@ -21,7 +18,7 @@ import java.util.Locale
 class MainActivity : FlutterActivity() {
     private var eventSink: EventChannel.EventSink? = null
     private var nativeInitialized = false
-    private var controllerInitialized = false
+    private var localPromptClient: AndroidLocalPromptClient? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -57,7 +54,12 @@ class MainActivity : FlutterActivity() {
                     result.error("empty_message", "Message text must not be empty.", null)
                     return
                 }
-                result.success(sendMessageToNativeLayer(text))
+                sendMessageToNativeLayer(
+                    text = text,
+                    systemPrompt = call.argument<String>("systemPrompt").orEmpty(),
+                    memory = call.argument<String>("memory").orEmpty(),
+                    result = result,
+                )
             }
             else -> result.notImplemented()
         }
@@ -87,32 +89,73 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun sendMessageToNativeLayer(text: String): String {
+    private fun sendMessageToNativeLayer(
+        text: String,
+        systemPrompt: String,
+        memory: String,
+        result: MethodChannel.Result,
+    ) {
         if (!nativeInitialized) {
             initializeNativeLayer()
         }
 
-        return try {
-            val received = Message(text, Speaker.BOSS)
-            val controller = controller()
-            controller.process(received)
-
-            val status = "Message forwarded to Android JarvisController."
-            emitStatus(status)
-            status
+        try {
+            localPromptClient().generate(
+                prompt = localPrompt(systemPrompt, memory, text),
+                onSuccess = { response ->
+                    emitStatus("Android Gemini Nano response received.")
+                    Handler(Looper.getMainLooper()).post {
+                        result.success(response)
+                    }
+                },
+                onError = { message ->
+                    emitStatus(message)
+                    Handler(Looper.getMainLooper()).post {
+                        result.error(
+                            "android_local_model_unavailable",
+                            message,
+                            null,
+                        )
+                    }
+                },
+            )
         } catch (error: Throwable) {
             val message = "Native message handling failed: ${error.message}"
             emitStatus(message)
-            message
+            result.error("android_native_error", message, null)
         }
     }
 
-    private fun controller(): JarvisController {
-        if (!controllerInitialized) {
-            JarvisController.init(this)
-            controllerInitialized = true
+    private fun localPrompt(
+        systemPrompt: String,
+        memory: String,
+        userText: String,
+    ): String {
+        return buildString {
+            appendLine(systemPrompt.ifBlank { "You are StudyOS Agent." })
+            appendLine()
+            appendLine(
+                "Runtime note: Android local mode uses ML Kit Prompt API. " +
+                    "It cannot execute StudyOS tool calls in this app, so only " +
+                    "answer from provided context and say what is missing.",
+            )
+            if (memory.isNotBlank()) {
+                appendLine()
+                appendLine("Local StudyOS memory:")
+                appendLine(memory.trim())
+            }
+            appendLine()
+            appendLine("User request:")
+            appendLine(userText)
+        }.trim()
+    }
+
+    private fun localPromptClient(): AndroidLocalPromptClient {
+        val existing = localPromptClient
+        if (existing != null) return existing
+        return AndroidLocalPromptClient(applicationContext).also {
+            localPromptClient = it
         }
-        return JarvisController.getInstance()
     }
 
     private fun worldStateMap(): Map<String, Any?> {
@@ -129,6 +172,7 @@ class MainActivity : FlutterActivity() {
         }
 
         return mapOf(
+            "platform" to "android",
             "date" to worldState.date(),
             "time" to worldState.time(),
             "weekday" to worldState.weekday(),
@@ -148,11 +192,12 @@ class MainActivity : FlutterActivity() {
             "canOpenInstalledApps" to true,
             "canReadCalendar" to true,
             "canUseOfflineLiteRtModel" to true,
+            "canUseAndroidGeminiNanoPrompt" to true,
             "canControlFlashlight" to true,
             "canStartPhoneCall" to true,
             "iosParity" to "limited by iOS background execution and app-control policies",
             "webDesktopParity" to "limited shell only until adapters are implemented",
-        )
+        ) + localPromptClient().capabilities()
     }
 
     private fun emitStatus(message: String) {

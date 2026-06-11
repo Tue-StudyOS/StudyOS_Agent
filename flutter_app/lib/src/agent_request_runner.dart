@@ -33,7 +33,14 @@ class AgentRequestRunner {
     required String memoryText,
   }) async {
     final traceId = 'model-${DateTime.now().microsecondsSinceEpoch}';
-    onToolTrace(modelRequestTrace(config, status: 'running', callId: traceId));
+    onToolTrace(
+      modelRequestTrace(
+        config,
+        status: 'running',
+        callId: traceId,
+        localModelName: _localModelName(context.worldState),
+      ),
+    );
     try {
       final response = config.usesCloud
           ? await _sendCloud(
@@ -48,10 +55,24 @@ class AgentRequestRunner {
               systemPrompt: context.systemPrompt(),
               memory: memoryText,
             );
-      onToolTrace(modelRequestTrace(config, status: 'done', callId: traceId));
+      onToolTrace(
+        modelRequestTrace(
+          config,
+          status: 'done',
+          callId: traceId,
+          localModelName: _localModelName(context.worldState),
+        ),
+      );
       return response;
     } on Object {
-      onToolTrace(modelRequestTrace(config, status: 'failed', callId: traceId));
+      onToolTrace(
+        modelRequestTrace(
+          config,
+          status: 'failed',
+          callId: traceId,
+          localModelName: _localModelName(context.worldState),
+        ),
+      );
       rethrow;
     }
   }
@@ -77,5 +98,13 @@ class AgentRequestRunner {
       readMemory: memoryStore.read,
       onToolTrace: onToolTrace,
     );
+  }
+
+  String? _localModelName(Map<String, Object?> worldState) {
+    return switch (worldState['platform']?.toString()) {
+      'ios' => 'apple_foundation',
+      'android' => 'gemini_nano',
+      _ => null,
+    };
   }
 }

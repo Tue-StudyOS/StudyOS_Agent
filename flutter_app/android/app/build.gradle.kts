@@ -58,4 +58,5 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
     implementation("com.google.ai.edge.litert:litert-api:1.4.2")
     implementation("com.google.ai.edge.litert:litert-gpu:1.4.2")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 }
