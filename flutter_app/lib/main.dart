@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 void main() {
@@ -42,68 +41,32 @@ class NativeBridge {
       });
 
   Future<Map<String, Object?>> initialize() async {
-    try {
-      final result = await _methods.invokeMapMethod<String, Object?>(
-        'initialize',
-      );
-      return result ?? const {};
-    } on MissingPluginException {
-      return _fallback('Platform bridge not implemented for $platformLabel.');
-    }
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'initialize',
+    );
+    return result ?? const {};
   }
 
   Future<Map<String, Object?>> getWorldState() async {
-    try {
-      final result = await _methods.invokeMapMethod<String, Object?>(
-        'getWorldState',
-      );
-      return result ?? const {};
-    } on MissingPluginException {
-      return _fallback('World state unavailable on $platformLabel.');
-    }
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'getWorldState',
+    );
+    return result ?? const {};
   }
 
   Future<Map<String, Object?>> getCapabilities() async {
-    try {
-      final result = await _methods.invokeMapMethod<String, Object?>(
-        'getCapabilities',
-      );
-      return result ?? const {};
-    } on MissingPluginException {
-      return <String, Object?>{
-        'platform': platformLabel,
-        'canUseAlwaysListeningService': false,
-        'canUseBackgroundLocation': false,
-        'canCreateExactAlarm': false,
-        'canOpenInstalledApps': false,
-        'canReadCalendar': false,
-        'canUseOfflineLiteRtModel': false,
-        'canControlFlashlight': false,
-        'canStartPhoneCall': false,
-        'adapterStatus': 'native adapter not implemented',
-      };
-    }
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'getCapabilities',
+    );
+    return result ?? const {};
   }
 
   Future<String> sendMessage(String text) async {
-    try {
-      final result = await _methods.invokeMethod<String>(
-        'sendMessage',
-        <String, Object?>{'text': text},
-      );
-      return result ?? 'Native bridge returned no status.';
-    } on MissingPluginException {
-      return 'No native adapter is implemented for $platformLabel yet.';
-    }
-  }
-
-  static String get platformLabel {
-    if (kIsWeb) return 'web';
-    return defaultTargetPlatform.name;
-  }
-
-  static Map<String, Object?> _fallback(String status) {
-    return <String, Object?>{'status': status, 'platform': platformLabel};
+    final result = await _methods.invokeMethod<String>(
+      'sendMessage',
+      <String, Object?>{'text': text},
+    );
+    return result ?? 'Native bridge returned no status.';
   }
 }
 
@@ -194,6 +157,9 @@ class _AgentHomePageState extends State<AgentHomePage> {
         _capabilities = capabilities;
         _worldState = worldState;
       });
+    } on MissingPluginException {
+      _addAssistantMessage('Native bridge is not implemented on this target.');
+      setState(() => _status = 'Native bridge missing');
     } on PlatformException catch (error) {
       _addAssistantMessage('Native bridge failed: ${error.message}');
       setState(() => _status = 'Native bridge failed');
@@ -205,7 +171,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
     setState(() {
       _status = event.message;
       _messages.add(
-        ChatMessage(author: 'Android', text: event.message, isUser: false),
+        ChatMessage(author: 'Native', text: event.message, isUser: false),
       );
     });
   }
@@ -226,6 +192,8 @@ class _AgentHomePageState extends State<AgentHomePage> {
       final worldState = await _bridge.getWorldState();
       if (!mounted) return;
       setState(() => _worldState = worldState);
+    } on MissingPluginException {
+      _addAssistantMessage('Native bridge is not implemented on this target.');
     } on PlatformException catch (error) {
       _addAssistantMessage('Native bridge error: ${error.message}');
     } finally {

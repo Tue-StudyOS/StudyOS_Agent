@@ -8,8 +8,11 @@ it to Flutter through platform channels.
 flutter run
 ```
 
-The current bridge is intentionally conservative: it initializes native Android
-managers, exposes capability/world-state data, and forwards messages into the
-native storage layer. The next step is to refactor the Java controller/brain
-classes so assistant responses are streamed back into Flutter instead of being
-coupled to the old Android XML UI.
+The current bridge initializes native Android managers, routes Android messages
+into the copied `JarvisController`, and exposes capability/world-state data.
+The iOS bridge exposes native location/device state, notification reminders,
+speech availability, text-to-speech, and Apple Foundation Models responses
+when the current SDK/device supports the `FoundationModels` framework.
+
+Unsupported native features should return explicit platform errors rather than
+mock responses.

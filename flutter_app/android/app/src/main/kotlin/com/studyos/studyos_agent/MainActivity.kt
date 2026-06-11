@@ -2,11 +2,10 @@ package com.studyos.studyos_agent
 
 import android.os.Handler
 import android.os.Looper
-import com.example.studyOS.DataStructures.MemoryEntry
+import com.example.studyOS.Controller.JarvisController
 import com.example.studyOS.DataStructures.Message
 import com.example.studyOS.DataStructures.Speaker
 import com.example.studyOS.Memory.FileIO
-import com.example.studyOS.Memory.StorageFiles
 import com.example.studyOS.Reminder.ReminderManager
 import com.example.studyOS.Sensors.WorldStateProvider
 import com.example.studyOS.System.RuntimeEnvironment
@@ -22,6 +21,7 @@ import java.util.Locale
 class MainActivity : FlutterActivity() {
     private var eventSink: EventChannel.EventSink? = null
     private var nativeInitialized = false
+    private var controllerInitialized = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -93,24 +93,26 @@ class MainActivity : FlutterActivity() {
         }
 
         return try {
-            val worldState = runCatching {
-                WorldStateProvider.getInstance().worldState
-            }.getOrNull()
-
-            FileIO.getInstance().appendMemory(
-                StorageFiles.MEMORY,
-                MemoryEntry(Speaker.BOSS, text, worldState, "flutter", true)
-            )
-
             val received = Message(text, Speaker.BOSS)
-            emitStatus("Native Android bridge received: ${received.text()}")
+            val controller = controller()
+            controller.process(received)
 
-            "Message forwarded to Android native layer. Agent processing can now be wired from JarvisController into this bridge without changing the Flutter UI."
+            val status = "Message forwarded to Android JarvisController."
+            emitStatus(status)
+            status
         } catch (error: Throwable) {
             val message = "Native message handling failed: ${error.message}"
             emitStatus(message)
             message
         }
+    }
+
+    private fun controller(): JarvisController {
+        if (!controllerInitialized) {
+            JarvisController.init(this)
+            controllerInitialized = true
+        }
+        return JarvisController.getInstance()
     }
 
     private fun worldStateMap(): Map<String, Any?> {
