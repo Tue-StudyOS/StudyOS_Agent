@@ -7,6 +7,7 @@ import 'src/models.dart';
 import 'src/onboarding_flow.dart';
 import 'src/profile_store.dart';
 import 'src/studyos_theme.dart';
+import 'src/tuebingen_profile_client.dart';
 
 void main() {
   runApp(const StudyOsAgentApp());
@@ -42,9 +43,20 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
   }
 
   Future<void> _handleLogin(UserSession session, String password) async {
-    await _profileStore.saveLogin(session: session, password: password);
+    final profileClient = TuebingenProfileClient();
+    final prefill = await profileClient
+        .fetch(username: session.username, password: password)
+        .whenComplete(profileClient.close);
+    final enrichedSession = UserSession(
+      username: session.username,
+      displayName: prefill.displayName,
+      email: prefill.email,
+      degreeProgram: prefill.degreeProgram,
+      profileWarning: prefill.warning,
+    );
+    await _profileStore.saveLogin(session: enrichedSession, password: password);
     if (!mounted) return;
-    setState(() => _session = session);
+    setState(() => _session = enrichedSession);
   }
 
   Future<void> _handleOnboardingComplete(OnboardingProfile profile) async {

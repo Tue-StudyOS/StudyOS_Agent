@@ -1,12 +1,24 @@
 import 'dart:convert';
 
 class UserSession {
-  const UserSession({required this.username, this.email});
+  const UserSession({
+    required this.username,
+    this.displayName,
+    this.email,
+    this.degreeProgram,
+    this.profileWarning,
+  });
 
   final String username;
+  final String? displayName;
   final String? email;
+  final String? degreeProgram;
+  final String? profileWarning;
 
   String get suggestedDisplayName {
+    if (displayName != null && displayName!.trim().isNotEmpty) {
+      return displayName!.trim();
+    }
     final cleaned = username
         .split('@')
         .first
