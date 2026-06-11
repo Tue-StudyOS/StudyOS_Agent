@@ -258,7 +258,14 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
   }
 
   private func locationAuthorizationName() -> String {
-    switch locationManager.authorizationStatus {
+    let status: CLAuthorizationStatus
+    if #available(iOS 14.0, *) {
+      status = locationManager.authorizationStatus
+    } else {
+      status = CLLocationManager.authorizationStatus()
+    }
+
+    switch status {
     case .authorizedAlways: return "authorizedAlways"
     case .authorizedWhenInUse: return "authorizedWhenInUse"
     case .denied: return "denied"
