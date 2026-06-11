@@ -193,20 +193,48 @@ void main() {
 
     expect(find.text('Set up profile'), findsOneWidget);
     expect(find.text('zxabc12'), findsOneWidget);
+    expect(find.text('Email'), findsNothing);
 
-    await tester.enterText(
-      find.byType(EditableText).at(1),
-      'zxabc12@student.uni-tuebingen.de',
-    );
-    await tester.enterText(find.byType(EditableText).at(2), 'M.Sc. AI');
-    await tester.enterText(find.byType(EditableText).at(3), '4');
+    await tester.enterText(find.byType(EditableText).at(1), 'M.Sc. AI');
+    await tester.enterText(find.byType(EditableText).at(2), '4');
     await tester.tap(find.text('Start StudyOS'));
     await tester.pumpAndSettle();
 
     expect(profile?.displayName, 'Zxabc12');
-    expect(profile?.email, 'zxabc12@student.uni-tuebingen.de');
+    expect(profile?.email, isNull);
     expect(profile?.degreeProgram, 'M.Sc. AI');
     expect(profile?.semester, 4);
+  });
+
+  testWidgets('onboarding uses profile prefill from login', (
+    WidgetTester tester,
+  ) async {
+    OnboardingProfile? profile;
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: OnboardingPage(
+          session: const UserSession(
+            username: 'zxabc12',
+            displayName: 'Sebastian Böhler',
+            degreeProgram: 'Master Informatik / Computer Science',
+            profileWarning: 'Could not load email from ALMA.',
+          ),
+          onComplete: (value) => profile = value,
+        ),
+      ),
+    );
+
+    expect(find.text('Sebastian Böhler'), findsOneWidget);
+    expect(find.text('Master Informatik / Computer Science'), findsOneWidget);
+    expect(find.text('Could not load email from ALMA.'), findsOneWidget);
+
+    await tester.tap(find.text('Start StudyOS'));
+    await tester.pumpAndSettle();
+
+    expect(profile?.displayName, 'Sebastian Böhler');
+    expect(profile?.email, isNull);
+    expect(profile?.degreeProgram, 'Master Informatik / Computer Science');
   });
 
   test('prompt context injects profile and memory', () {

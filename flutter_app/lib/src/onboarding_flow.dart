@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'models.dart';
 import 'studyos_theme.dart';
+import 'widgets/study_input_field.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({required this.onLogin, super.key});
@@ -17,6 +18,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isSubmitting = false;
   String? _error;
 
   @override
@@ -26,7 +28,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
     if (username.isEmpty || password.isEmpty) {
@@ -34,8 +37,19 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    _passwordController.clear();
-    unawaited(widget.onLogin(UserSession(username: username), password));
+    setState(() {
+      _error = null;
+      _isSubmitting = true;
+    });
+    try {
+      await widget.onLogin(UserSession(username: username), password);
+      _passwordController.clear();
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -46,19 +60,19 @@ class _LoginPageState extends State<LoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          _InputField(
+          StudyInputField(
             controller: _usernameController,
             label: 'University ID or email',
             icon: Icons.account_circle_outlined,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: StudyOsSpacing.md),
-          _InputField(
+          StudyInputField(
             controller: _passwordController,
             label: 'Password',
             icon: Icons.lock_outline_rounded,
             obscureText: true,
-            onSubmitted: _submit,
+            onSubmitted: () => unawaited(_submit()),
           ),
           if (_error != null) ...<Widget>[
             const SizedBox(height: StudyOsSpacing.md),
@@ -66,9 +80,14 @@ class _LoginPageState extends State<LoginPage> {
           ],
           const SizedBox(height: StudyOsSpacing.xl),
           FilledButton.icon(
-            onPressed: _submit,
-            icon: const Icon(Icons.arrow_forward_rounded),
-            label: const Text('Continue'),
+            onPressed: _isSubmitting ? null : () => unawaited(_submit()),
+            icon: _isSubmitting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.arrow_forward_rounded),
+            label: Text(_isSubmitting ? 'Connecting' : 'Continue'),
           ),
         ],
       ),
@@ -92,7 +111,6 @@ class OnboardingPage extends StatefulWidget {
 
 class _OnboardingPageState extends State<OnboardingPage> {
   late final TextEditingController _nameController;
-  late final TextEditingController _emailController;
   final TextEditingController _degreeController = TextEditingController();
   final TextEditingController _semesterController = TextEditingController();
   bool _livesInTuebingen = true;
@@ -104,15 +122,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _nameController = TextEditingController(
       text: widget.session.suggestedDisplayName,
     );
-    _emailController = TextEditingController(
-      text: widget.session.displayEmail ?? '',
-    );
+    _degreeController.text = widget.session.degreeProgram ?? '';
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _degreeController.dispose();
     _semesterController.dispose();
     super.dispose();
@@ -120,7 +135,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   void _submit() {
     final displayName = _nameController.text.trim();
-    final email = _emailController.text.trim();
     final degreeProgram = _degreeController.text.trim();
     final semesterText = _semesterController.text.trim();
     final semester = semesterText.isEmpty ? null : int.tryParse(semesterText);
@@ -138,7 +152,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       OnboardingProfile(
         displayName: displayName,
         username: widget.session.username,
-        email: email.contains('@') ? email : null,
+        email: widget.session.displayEmail,
         degreeProgram: degreeProgram,
         semester: semester,
         livesInTuebingen: _livesInTuebingen,
@@ -154,29 +168,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          _InputField(
+          StudyInputField(
             controller: _nameController,
             label: 'Name',
             icon: Icons.badge_outlined,
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: StudyOsSpacing.md),
-          _InputField(
-            controller: _emailController,
-            label: 'Email',
-            icon: Icons.alternate_email_rounded,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: StudyOsSpacing.md),
-          _InputField(
+          StudyInputField(
             controller: _degreeController,
             label: 'Degree program',
             icon: Icons.school_outlined,
             textInputAction: TextInputAction.next,
           ),
+          if (widget.session.profileWarning != null) ...<Widget>[
+            const SizedBox(height: StudyOsSpacing.sm),
+            Text(
+              widget.session.profileWarning!,
+              style: const TextStyle(color: StudyOsColors.warning),
+            ),
+          ],
           const SizedBox(height: StudyOsSpacing.md),
-          _InputField(
+          StudyInputField(
             controller: _semesterController,
             label: 'Semester',
             icon: Icons.format_list_numbered_rounded,
@@ -256,38 +269,6 @@ class _OnboardingScaffold extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _InputField extends StatelessWidget {
-  const _InputField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.obscureText = false,
-    this.keyboardType,
-    this.textInputAction,
-    this.onSubmitted,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
-  final VoidCallback? onSubmitted;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      onSubmitted: (_) => onSubmitted?.call(),
-      decoration: InputDecoration(prefixIcon: Icon(icon), labelText: label),
     );
   }
 }
