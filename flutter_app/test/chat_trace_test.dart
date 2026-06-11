@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:studyos_agent/src/chat_session_mutation.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
@@ -25,11 +26,41 @@ void main() {
     expect(decoded.single.messages.single.trace?.status, 'attached');
   });
 
+  test('tool trace updates replace the running row', () {
+    final session = ChatSession.fresh();
+    final running = upsertToolTraceInSessions(
+      sessions: <ChatSession>[session],
+      activeSessionId: session.id,
+      message: ChatMessage.toolTrace(
+        toolName: 'read_memories',
+        status: 'running',
+        summary: 'Reading local memory.',
+        callId: 'call_1',
+      ),
+    );
+    final done = upsertToolTraceInSessions(
+      sessions: running.sessions,
+      activeSessionId: running.activeSessionId,
+      message: ChatMessage.toolTrace(
+        toolName: 'read_memories',
+        status: 'done',
+        summary: 'Read local memory.',
+        callId: 'call_1',
+      ),
+    );
+
+    final traces = done.sessions.single.messages.where((item) => item.isTrace);
+    expect(traces.length, 1);
+    expect(traces.single.trace?.status, 'done');
+  });
+
   testWidgets('suggestions hide after a conversation starts', (
     WidgetTester tester,
   ) async {
     final controller = TextEditingController();
+    final scrollController = ScrollController();
     addTearDown(controller.dispose);
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
       _TestShell(
@@ -38,6 +69,7 @@ void main() {
             ChatMessage(author: 'You', text: 'Plan study block', isUser: true),
           ],
           inputController: controller,
+          messageScrollController: scrollController,
           isSending: false,
           compactMessages: false,
           onSuggestionSelected: (_) {},
@@ -55,7 +87,9 @@ void main() {
     WidgetTester tester,
   ) async {
     final controller = TextEditingController();
+    final scrollController = ScrollController();
     addTearDown(controller.dispose);
+    addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
       _TestShell(
@@ -68,6 +102,7 @@ void main() {
             ),
           ],
           inputController: controller,
+          messageScrollController: scrollController,
           isSending: false,
           compactMessages: false,
           onSuggestionSelected: (_) {},
@@ -78,10 +113,7 @@ void main() {
 
     expect(find.text('get_study_context'), findsOneWidget);
     expect(find.text('done'), findsNothing);
-    expect(
-      find.text('Attached profile, memory, device state.'),
-      findsOneWidget,
-    );
+    expect(find.text('Attached profile, memory, device state.'), findsNothing);
     expect(find.byTooltip('done'), findsOneWidget);
   });
 

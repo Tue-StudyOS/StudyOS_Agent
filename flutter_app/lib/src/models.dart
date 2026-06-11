@@ -108,10 +108,16 @@ class ChatMessage {
     required String toolName,
     required String status,
     required String summary,
+    String? callId,
   }) : author = 'Tool',
        text = summary,
        isUser = false,
-       trace = ToolTrace(toolName: toolName, status: status, summary: summary);
+       trace = ToolTrace(
+         toolName: toolName,
+         status: status,
+         summary: summary,
+         callId: callId,
+       );
 
   final String author;
   final String text;

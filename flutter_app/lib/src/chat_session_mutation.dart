@@ -22,14 +22,58 @@ SessionMutation appendMessageToSessions({
     updatedAt: DateTime.now(),
     messages: nextMessages,
   );
-  final existing = sessions.any((session) => session.id == activeSession.id);
 
+  return _replaceSession(sessions, activeSession.id, nextSession);
+}
+
+SessionMutation upsertToolTraceInSessions({
+  required List<ChatSession> sessions,
+  required String? activeSessionId,
+  required ChatMessage message,
+}) {
+  final callId = message.trace?.callId;
+  if (callId == null || callId.isEmpty) {
+    return appendMessageToSessions(
+      sessions: sessions,
+      activeSessionId: activeSessionId,
+      message: message,
+    );
+  }
+
+  final activeSession = activeSessionFrom(sessions, activeSessionId);
+  var replaced = false;
+  final nextMessages = activeSession.messages.map((item) {
+    if (item.trace?.callId != callId) return item;
+    replaced = true;
+    return message;
+  }).toList();
+  if (!replaced) {
+    return appendMessageToSessions(
+      sessions: sessions,
+      activeSessionId: activeSessionId,
+      message: message,
+    );
+  }
+
+  final nextSession = activeSession.copyWith(
+    updatedAt: DateTime.now(),
+    messages: nextMessages,
+  );
+  return _replaceSession(sessions, activeSession.id, nextSession);
+}
+
+SessionMutation _replaceSession(
+  List<ChatSession> sessions,
+  String activeSessionId,
+  ChatSession nextSession,
+) {
+  final existing = sessions.any((session) => session.id == activeSessionId);
   return SessionMutation(
     sessions: existing
         ? sessions
               .map(
                 (session) =>
-                    session.id == activeSession.id ? nextSession : session,
+                    session.id == activeSessionId ? nextSession : session,
               )
               .toList()
         : <ChatSession>[nextSession, ...sessions],

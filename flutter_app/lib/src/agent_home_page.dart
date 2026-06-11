@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'agent_config_store.dart';
+import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
-import 'context_trace_summary.dart';
+import 'initial_context_trace.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'profile_context.dart';
 import 'prompt_context.dart';
+import 'send_error_message.dart';
 import 'session_store.dart';
 import 'widgets/agent_home_scaffold.dart';
 
@@ -32,6 +34,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
   final MemoryStore _memoryStore = MemoryStore();
   final CloudAgentClient _cloudClient = CloudAgentClient();
   final TextEditingController _inputController = TextEditingController();
+  final ScrollController _messageScrollController = ScrollController();
 
   StreamSubscription<NativeEvent>? _eventSubscription;
   List<ChatSession> _sessions = <ChatSession>[];
@@ -63,6 +66,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
   void dispose() {
     _eventSubscription?.cancel();
     _inputController.dispose();
+    _messageScrollController.dispose();
     super.dispose();
   }
 
@@ -96,6 +100,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       _sessions = state.sessions;
       _activeSessionId = state.activeSessionId;
     });
+    scrollChatToBottom(_messageScrollController);
   }
 
   Future<void> _loadAgentConfig() async {
@@ -153,6 +158,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       _activeSessionId = sessionId;
       _selectedView = AppView.chat;
     });
+    scrollChatToBottom(_messageScrollController);
     unawaited(_persistSessions());
   }
 
@@ -174,14 +180,10 @@ class _AgentHomePageState extends State<AgentHomePage> {
       setState(
         () => _worldState = withProfileContext(worldState, widget.profile),
       );
-    } on CloudAgentException catch (error) {
-      _addAssistantMessage(error.message);
-    } on MissingPluginException {
-      _addAssistantMessage('Native bridge is not implemented on this target.');
-    } on PlatformException catch (error) {
-      _addAssistantMessage('Native bridge error: ${error.message}');
-    } on FormatException {
-      _addAssistantMessage('Cloud response could not be read.');
+    } on Object catch (error) {
+      final message = sendErrorMessage(error);
+      if (message == null) rethrow;
+      _addAssistantMessage(message);
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -216,18 +218,13 @@ class _AgentHomePageState extends State<AgentHomePage> {
 
   void _addInitialContextTrace() {
     final activeSession = activeSessionFrom(_sessions, _activeSessionId);
-    if (hasAttachedContextTrace(activeSession)) return;
-    _addToolTrace(
-      ToolTrace(
-        toolName: 'get_study_context',
-        status: 'attached',
-        summary: contextTraceSummary(
-          profile: widget.profile,
-          memoryText: _memoryText,
-          worldState: _worldState,
-        ),
-      ),
+    final trace = initialContextTrace(
+      activeSession: activeSession,
+      profile: widget.profile,
+      memoryText: _memoryText,
+      worldState: _worldState,
     );
+    if (trace != null) _addToolTrace(trace);
   }
 
   void _addAssistantMessage(String text) {
@@ -238,19 +235,27 @@ class _AgentHomePageState extends State<AgentHomePage> {
       );
       _status = text;
     });
+    unawaited(HapticFeedback.lightImpact());
   }
 
   void _addToolTrace(ToolTrace trace) {
     if (!mounted) return;
-    setState(
-      () => _appendMessage(
-        ChatMessage.toolTrace(
+    setState(() {
+      final mutation = upsertToolTraceInSessions(
+        sessions: _sessions,
+        activeSessionId: _activeSessionId,
+        message: ChatMessage.toolTrace(
           toolName: trace.toolName,
           status: trace.status,
           summary: trace.summary,
+          callId: trace.callId,
         ),
-      ),
-    );
+      );
+      _sessions = mutation.sessions;
+      _activeSessionId = mutation.activeSessionId;
+      unawaited(_persistSessions());
+    });
+    scrollChatToBottom(_messageScrollController);
   }
 
   void _appendMessage(ChatMessage message) {
@@ -262,6 +267,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
     _sessions = mutation.sessions;
     _activeSessionId = mutation.activeSessionId;
     unawaited(_persistSessions());
+    scrollChatToBottom(_messageScrollController);
   }
 
   @override
@@ -271,6 +277,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       sessions: _sessions,
       activeSessionId: _activeSessionId,
       inputController: _inputController,
+      messageScrollController: _messageScrollController,
       isSending: _isSending,
       compactMessages: _compactMessages,
       status: _status,

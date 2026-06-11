@@ -9,6 +9,7 @@ class ChatView extends StatelessWidget {
   const ChatView({
     required this.messages,
     required this.inputController,
+    required this.messageScrollController,
     required this.isSending,
     required this.compactMessages,
     required this.onSuggestionSelected,
@@ -18,6 +19,7 @@ class ChatView extends StatelessWidget {
 
   final List<ChatMessage> messages;
   final TextEditingController inputController;
+  final ScrollController messageScrollController;
   final bool isSending;
   final bool compactMessages;
   final ValueChanged<String> onSuggestionSelected;
@@ -28,7 +30,11 @@ class ChatView extends StatelessWidget {
     return Column(
       children: <Widget>[
         Expanded(
-          child: MessageList(messages: messages, compact: compactMessages),
+          child: MessageList(
+            messages: messages,
+            compact: compactMessages,
+            controller: messageScrollController,
+          ),
         ),
         if (messages.isEmpty) SuggestionStrip(onSelected: onSuggestionSelected),
         ComposerBar(
