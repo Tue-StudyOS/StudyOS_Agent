@@ -12,12 +12,7 @@ import 'native_bridge.dart';
 import 'profile_context.dart';
 import 'prompt_context.dart';
 import 'session_store.dart';
-import 'studyos_theme.dart';
-import 'views/chat_view.dart';
-import 'views/memories_view.dart';
-import 'views/settings_view.dart';
-import 'widgets/app_drawer.dart';
-import 'widgets/study_header.dart';
+import 'widgets/agent_home_scaffold.dart';
 
 class AgentHomePage extends StatefulWidget {
   const AgentHomePage({this.profile, this.onLogout, super.key});
@@ -197,6 +192,13 @@ class _AgentHomePageState extends State<AgentHomePage> {
       memory: _memoryText,
       worldState: _worldState,
     );
+    _addToolTrace(
+      ToolTrace(
+        toolName: 'get_study_context',
+        status: 'attached',
+        summary: _contextTraceSummary(),
+      ),
+    );
     if (!_agentConfig.usesCloud) {
       return _bridge.sendMessage(text, systemPrompt: context.systemPrompt());
     }
@@ -213,7 +215,18 @@ class _AgentHomePageState extends State<AgentHomePage> {
       context: context,
       appendMemory: _appendMemory,
       readMemory: _memoryStore.read,
+      onToolTrace: _addToolTrace,
     );
+  }
+
+  String _contextTraceSummary() {
+    final parts = <String>[
+      if (widget.profile != null) 'profile',
+      if (_memoryText.trim().isNotEmpty) 'memory',
+      if (_worldState.isNotEmpty) 'device state',
+    ];
+    if (parts.isEmpty) return 'No local context available yet.';
+    return 'Attached ${parts.join(', ')} to the model request.';
   }
 
   void _addAssistantMessage(String text) {
@@ -223,6 +236,19 @@ class _AgentHomePageState extends State<AgentHomePage> {
         ChatMessage(author: 'StudyOS Agent', text: text, isUser: false),
       );
       _status = text;
+    });
+  }
+
+  void _addToolTrace(ToolTrace trace) {
+    if (!mounted) return;
+    setState(() {
+      _appendMessage(
+        ChatMessage.toolTrace(
+          toolName: trace.toolName,
+          status: trace.status,
+          summary: trace.summary,
+        ),
+      );
     });
   }
 
@@ -239,61 +265,28 @@ class _AgentHomePageState extends State<AgentHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: AppDrawer(
-        selectedView: _selectedView,
-        sessions: _sessions,
-        activeSessionId: _activeSessionId,
-        onSelectView: (view) => setState(() => _selectedView = view),
-        onSelectSession: _selectSession,
-        onCreateSession: _createSession,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: StudyOsSpacing.lg,
-              ),
-              child: Column(
-                children: <Widget>[
-                  StudyHeader(status: _status),
-                  Expanded(child: _buildSelectedView()),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+    return AgentHomeScaffold(
+      selectedView: _selectedView,
+      sessions: _sessions,
+      activeSessionId: _activeSessionId,
+      inputController: _inputController,
+      isSending: _isSending,
+      compactMessages: _compactMessages,
+      status: _status,
+      worldState: _worldState,
+      memoryText: _memoryText,
+      agentConfig: _agentConfig,
+      profile: widget.profile,
+      onSelectView: (view) => setState(() => _selectedView = view),
+      onSelectSession: _selectSession,
+      onCreateSession: _createSession,
+      onSuggestionSelected: _useSuggestion,
+      onSend: _sendMessage,
+      onLogout: widget.onLogout,
+      onSaveAgentConfig: _saveAgentConfig,
+      onCompactMessagesChanged: (value) {
+        setState(() => _compactMessages = value);
+      },
     );
-  }
-
-  Widget _buildSelectedView() {
-    return switch (_selectedView) {
-      AppView.chat => ChatView(
-        messages: activeSessionFrom(_sessions, _activeSessionId).messages,
-        inputController: _inputController,
-        isSending: _isSending,
-        compactMessages: _compactMessages,
-        onSuggestionSelected: _useSuggestion,
-        onSend: _sendMessage,
-      ),
-      AppView.memories => MemoriesView(
-        worldState: _worldState,
-        memoryText: _memoryText,
-      ),
-      AppView.settings => SettingsView(
-        config: _agentConfig,
-        profile: widget.profile,
-        status: _status,
-        compactMessages: _compactMessages,
-        onLogout: widget.onLogout,
-        onSaveAgentConfig: _saveAgentConfig,
-        onCompactMessagesChanged: (value) {
-          setState(() => _compactMessages = value);
-        },
-      ),
-    };
   }
 }

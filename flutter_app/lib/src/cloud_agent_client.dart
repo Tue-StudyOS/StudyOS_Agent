@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'cloud_tool_definitions.dart';
 import 'models.dart';
 import 'prompt_context.dart';
 
@@ -19,6 +20,7 @@ class CloudAgentClient {
     required PromptContext context,
     required Future<void> Function(String text) appendMemory,
     required Future<String> Function() readMemory,
+    void Function(ToolTrace trace)? onToolTrace,
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
     if (endpoint == null || !endpoint.hasScheme || !endpoint.hasAuthority) {
@@ -44,12 +46,22 @@ class CloudAgentClient {
     if (toolCalls.isNotEmpty) {
       final toolMessages = <Map<String, Object?>>[];
       for (final call in toolCalls) {
-        final output = await _executeTool(
-          call,
-          context: context,
-          appendMemory: appendMemory,
-          readMemory: readMemory,
-        );
+        onToolTrace?.call(_traceForCall(call, 'running'));
+        final String output;
+        try {
+          output = await _executeTool(
+            call,
+            context: context,
+            appendMemory: appendMemory,
+            readMemory: readMemory,
+          );
+        } on Object catch (error) {
+          onToolTrace?.call(
+            _traceForCall(call, 'failed', output: error.toString()),
+          );
+          rethrow;
+        }
+        onToolTrace?.call(_traceForCall(call, 'done', output: output));
         toolMessages.add(<String, Object?>{
           'role': 'tool',
           'tool_call_id': call.id,
@@ -104,14 +116,14 @@ class CloudAgentClient {
       'messages': <Map<String, Object?>>[
         <String, Object?>{'role': 'system', 'content': context.systemPrompt()},
         for (final message in historyWithoutCurrent)
-          if (message.text.trim().isNotEmpty)
+          if (!message.isTrace && message.text.trim().isNotEmpty)
             <String, Object?>{
               'role': message.isUser ? 'user' : 'assistant',
               'content': message.text,
             },
         <String, Object?>{'role': 'user', 'content': userText},
       ],
-      'tools': _toolDefinitions(),
+      'tools': cloudToolDefinitions(),
       'tool_choice': 'auto',
     };
   }
@@ -190,6 +202,23 @@ class CloudAgentClient {
     };
   }
 
+  ToolTrace _traceForCall(_ToolCall call, String status, {String? output}) {
+    final summary = switch (call.name) {
+      'append_memory' => 'Writing a durable student memory on this device.',
+      'read_memories' => 'Reading the local memory document.',
+      'get_study_context' => 'Reading profile, memory, and device context.',
+      _ => 'Requested unavailable tool.',
+    };
+    final outputSuffix = output == null
+        ? ''
+        : ' Returned ${output.length} chars.';
+    return ToolTrace(
+      toolName: call.name,
+      status: status,
+      summary: '$summary$outputSuffix',
+    );
+  }
+
   Future<String> _appendMemory(
     String arguments,
     Future<void> Function(String text) appendMemory,
@@ -207,54 +236,6 @@ class CloudAgentClient {
     }
     await appendMemory(text);
     return 'Memory saved.';
-  }
-
-  List<Map<String, Object?>> _toolDefinitions() {
-    return <Map<String, Object?>>[
-      _tool(
-        name: 'append_memory',
-        description: 'Append a durable student memory to local device storage.',
-        properties: <String, Object?>{
-          'text': <String, Object?>{
-            'type': 'string',
-            'description': 'A concise memory worth keeping for future chats.',
-          },
-        },
-        required: const <String>['text'],
-      ),
-      _tool(
-        name: 'read_memories',
-        description: 'Read the local long-term memory document.',
-        properties: const <String, Object?>{},
-        required: const <String>[],
-      ),
-      _tool(
-        name: 'get_study_context',
-        description: 'Read current profile, memory, and local study context.',
-        properties: const <String, Object?>{},
-        required: const <String>[],
-      ),
-    ];
-  }
-
-  Map<String, Object?> _tool({
-    required String name,
-    required String description,
-    required Map<String, Object?> properties,
-    required List<String> required,
-  }) {
-    return <String, Object?>{
-      'type': 'function',
-      'function': <String, Object?>{
-        'name': name,
-        'description': description,
-        'parameters': <String, Object?>{
-          'type': 'object',
-          'properties': properties,
-          'required': required,
-        },
-      },
-    };
   }
 }
 

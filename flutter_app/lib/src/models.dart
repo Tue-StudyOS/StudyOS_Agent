@@ -1,5 +1,9 @@
 import 'dart:convert';
 
+import 'tool_trace.dart';
+
+export 'tool_trace.dart';
+
 class UserSession {
   const UserSession({
     required this.username,
@@ -97,21 +101,44 @@ class ChatMessage {
     required this.author,
     required this.text,
     required this.isUser,
+    this.trace,
   });
+
+  ChatMessage.toolTrace({
+    required String toolName,
+    required String status,
+    required String summary,
+  }) : author = 'Tool',
+       text = summary,
+       isUser = false,
+       trace = ToolTrace(toolName: toolName, status: status, summary: summary);
 
   final String author;
   final String text;
   final bool isUser;
+  final ToolTrace? trace;
+
+  bool get isTrace => trace != null;
 
   Map<String, Object?> toJson() {
-    return <String, Object?>{'author': author, 'text': text, 'isUser': isUser};
+    return <String, Object?>{
+      'author': author,
+      'text': text,
+      'isUser': isUser,
+      if (trace != null) 'trace': trace!.toJson(),
+    };
   }
 
   static ChatMessage fromJson(Map<String, Object?> json) {
+    final rawTrace = json['trace'];
+    final trace = rawTrace is Map
+        ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
+        : null;
     return ChatMessage(
       author: json['author']?.toString() ?? 'StudyOS Agent',
       text: json['text']?.toString() ?? '',
       isUser: json['isUser'] == true,
+      trace: trace,
     );
   }
 }
