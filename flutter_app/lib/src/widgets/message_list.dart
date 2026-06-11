@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../message_trace_compaction.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
 
@@ -18,12 +19,13 @@ class MessageList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleMessages = compactTraceMessages(messages);
     return ListView.builder(
       controller: controller,
       padding: const EdgeInsets.symmetric(vertical: StudyOsSpacing.sm),
-      itemCount: messages.length,
+      itemCount: visibleMessages.length,
       itemBuilder: (context, index) {
-        final message = messages[index];
+        final message = visibleMessages[index];
         if (message.isTrace) {
           return _ToolTraceRow(message: message, compact: compact);
         }
