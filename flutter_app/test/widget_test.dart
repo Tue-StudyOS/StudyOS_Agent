@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
+import 'package:studyos_agent/src/views/settings_view.dart';
 import 'package:studyos_agent/src/widgets/app_drawer.dart';
 
 void main() {
@@ -59,6 +61,87 @@ void main() {
     expect(find.textContaining('Active ID:'), findsOneWidget);
     expect(find.text('Capabilities'), findsNothing);
     expect(find.text('World State'), findsNothing);
+  });
+
+  testWidgets('assistant messages render markdown content', (
+    WidgetTester tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: ChatView(
+          messages: const <ChatMessage>[
+            ChatMessage(
+              author: 'StudyOS Agent',
+              text: '**Summary** with _focus_',
+              isUser: false,
+            ),
+          ],
+          inputController: controller,
+          isSending: false,
+          compactMessages: false,
+          onSuggestionSelected: (_) {},
+          onSend: () {},
+        ),
+      ),
+    );
+
+    expect(find.byType(MarkdownBody), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is MarkdownBody && widget.data == '**Summary** with _focus_',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('settings expose cloud provider and secure key fields', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    AgentConfig? savedConfig;
+    String? savedKey;
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: SettingsView(
+          config: const AgentConfig.defaults(),
+          status: 'Ready',
+          compactMessages: false,
+          onSaveAgentConfig: (config, apiKey) async {
+            savedConfig = config;
+            savedKey = apiKey;
+          },
+          onCompactMessagesChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.cloud_outlined));
+    await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Cloud endpoint'),
+      'https://api.example.com/v1/chat/completions',
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'Model'), 'studyos');
+    await tester.enterText(find.widgetWithText(TextField, 'API key'), 'secret');
+    final saveButton = find.widgetWithText(FilledButton, 'Save agent settings');
+    await tester.ensureVisible(saveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(savedConfig?.provider, AgentProvider.cloud);
+    expect(savedConfig?.cloudModel, 'studyos');
+    expect(savedKey, 'secret');
+    expect(find.text('Stored with the platform secure store.'), findsOneWidget);
   });
 }
 

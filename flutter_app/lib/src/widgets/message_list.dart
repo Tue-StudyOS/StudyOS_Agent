@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../models.dart';
 import '../studyos_theme.dart';
@@ -75,9 +76,54 @@ class _MessageBubble extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(message.text, style: Theme.of(context).textTheme.bodyLarge),
+            message.isUser
+                ? Text(
+                    message.text,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  )
+                : MarkdownBody(
+                    data: message.text,
+                    selectable: true,
+                    styleSheet: _markdownStyle(context),
+                  ),
           ],
         ),
+      ),
+    );
+  }
+
+  MarkdownStyleSheet _markdownStyle(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final base = textTheme.bodyLarge ?? const TextStyle();
+    return MarkdownStyleSheet(
+      p: base,
+      strong: base.copyWith(fontWeight: FontWeight.w700),
+      em: base.copyWith(fontStyle: FontStyle.italic),
+      code: base.copyWith(
+        color: StudyOsColors.text,
+        backgroundColor: StudyOsColors.background.withValues(alpha: 0.7),
+        fontFamily: 'monospace',
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: StudyOsColors.background.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+        border: Border.all(color: StudyOsColors.border),
+      ),
+      blockquoteDecoration: BoxDecoration(
+        border: const Border(
+          left: BorderSide(color: StudyOsColors.accent, width: 3),
+        ),
+        color: StudyOsColors.surface,
+        borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+      ),
+      blockquotePadding: const EdgeInsets.symmetric(
+        horizontal: StudyOsSpacing.md,
+        vertical: StudyOsSpacing.sm,
+      ),
+      listBullet: base.copyWith(color: StudyOsColors.text),
+      a: base.copyWith(
+        color: StudyOsColors.accent,
+        decoration: TextDecoration.underline,
       ),
     );
   }
