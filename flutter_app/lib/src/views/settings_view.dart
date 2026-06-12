@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/feedback_settings_card.dart';
 import '../widgets/profile_row.dart';
 
 class SettingsView extends StatefulWidget {
@@ -153,6 +154,8 @@ class _SettingsViewState extends State<SettingsView> {
             ),
           ],
         ),
+        const SizedBox(height: StudyOsSpacing.lg),
+        FeedbackSettingsCard(status: widget.status),
         const SizedBox(height: StudyOsSpacing.lg),
         _SettingsCard(
           children: <Widget>[

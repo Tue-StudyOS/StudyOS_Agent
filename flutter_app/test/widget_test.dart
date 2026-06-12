@@ -173,6 +173,7 @@ void main() {
     expect(savedConfig?.cloudModel, 'studyos');
     expect(savedKey, 'secret');
     expect(find.text('Stored with the platform secure store.'), findsOneWidget);
+    expect(find.text('Send feedback'), findsOneWidget);
   });
 
   testWidgets('login and onboarding collect student profile context', (
