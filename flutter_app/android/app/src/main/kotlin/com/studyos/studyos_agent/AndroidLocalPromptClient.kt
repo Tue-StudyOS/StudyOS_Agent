@@ -3,10 +3,6 @@ package com.studyos.studyos_agent
 import android.content.Context
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
-import com.google.mlkit.genai.prompt.GenerationConfig
-import com.google.mlkit.genai.prompt.ModelConfig
-import com.google.mlkit.genai.prompt.ModelPreference
-import com.google.mlkit.genai.prompt.ModelReleaseStage
 import com.google.mlkit.genai.prompt.java.GenerativeModelFutures
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -58,8 +54,9 @@ class AndroidLocalPromptClient(context: Context) {
         return mapOf(
             "androidLocalModelProvider" to
                 "ML Kit Prompt API, Gemini Nano through AICore",
-            "androidLocalModelStatus" to statusFor(GenerationConfig.Builder().build()),
-            "androidLocalModelVariants" to variantStatuses(),
+            "androidLocalModelStatus" to statusForDefaultModel(),
+            "androidLocalModelVariants" to
+                "ML Kit Prompt API beta2 does not expose release-stage or preference selectors.",
             "androidLocalModelListing" to
                 "AICore does not expose a general installed-model list. " +
                     "Apps initialize a desired Gemini Nano configuration and check its status.",
@@ -71,44 +68,10 @@ class AndroidLocalPromptClient(context: Context) {
         )
     }
 
-    private fun variantStatuses(): String {
-        val variants = listOf(
-            "stable_full" to modelConfig(
-                ModelReleaseStage.STABLE,
-                ModelPreference.FULL,
-            ),
-            "stable_fast" to modelConfig(
-                ModelReleaseStage.STABLE,
-                ModelPreference.FAST,
-            ),
-            "preview_full" to modelConfig(
-                ModelReleaseStage.PREVIEW,
-                ModelPreference.FULL,
-            ),
-            "preview_fast" to modelConfig(
-                ModelReleaseStage.PREVIEW,
-                ModelPreference.FAST,
-            ),
-        )
-        return variants.joinToString("; ") { (name, config) ->
-            "$name=${statusFor(config)}"
-        }
-    }
-
-    private fun modelConfig(releaseStage: Int, preference: Int): GenerationConfig {
-        val modelConfig = ModelConfig.Builder()
-            .setReleaseStage(releaseStage)
-            .setPreference(preference)
-            .build()
-        return GenerationConfig.Builder()
-            .setModelConfig(modelConfig)
-            .build()
-    }
-
-    private fun statusFor(config: GenerationConfig): String {
+    private fun statusForDefaultModel(): String {
         return runCatching {
             GenerativeModelFutures
-                .from(Generation.getClient(config))
+                .from(Generation.getClient())
                 .checkStatus()
                 .get(2, TimeUnit.SECONDS)
                 .toString()
