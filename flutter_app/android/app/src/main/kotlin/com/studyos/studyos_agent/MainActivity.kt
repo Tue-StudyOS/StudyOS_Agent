@@ -1,5 +1,9 @@
 package com.studyos.studyos_agent
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import com.example.studyOS.Memory.FileIO
@@ -19,6 +23,19 @@ class MainActivity : FlutterActivity() {
     private var eventSink: EventChannel.EventSink? = null
     private var nativeInitialized = false
     private var localPromptClient: AndroidLocalPromptClient? = null
+    private lateinit var intentBridge: AndroidIntentBridge
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        intentBridge = AndroidIntentBridge(applicationContext)
+        intentBridge.captureIntent(intent)
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intentBridge.captureIntent(intent)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -48,6 +65,12 @@ class MainActivity : FlutterActivity() {
             "initialize" -> result.success(initializeNativeLayer())
             "getWorldState" -> result.success(worldStateMap())
             "getCapabilities" -> result.success(capabilities())
+            "publishIntentSnapshot" -> result.success(
+                intentBridge.publishSnapshot(call.arguments),
+            )
+            "consumePendingIntentPrompt" -> result.success(
+                intentBridge.consumePendingPrompt(),
+            )
             "sendMessage" -> {
                 val text = call.argument<String>("text")?.trim().orEmpty()
                 if (text.isBlank()) {
@@ -74,11 +97,18 @@ class MainActivity : FlutterActivity() {
             RuntimeEnvironment.init(applicationContext)
             FileIO.init(applicationContext)
             ReminderManager.get().init(applicationContext)
-            WorldStateProvider.init(applicationContext, 5_000)
+            if (hasLocationPermission()) {
+                WorldStateProvider.init(applicationContext, 5_000)
+            }
             nativeInitialized = true
-            emitStatus("Native Android bridge initialized.")
+            val status = if (hasLocationPermission()) {
+                "Native Android bridge initialized."
+            } else {
+                "Native Android bridge initialized without location access."
+            }
+            emitStatus(status)
             mapOf(
-                "status" to "Native Android bridge initialized.",
+                "status" to status,
                 "mode" to RuntimeEnvironment.getInstance().mode.name,
             )
         } catch (error: Throwable) {
@@ -159,6 +189,16 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun worldStateMap(): Map<String, Any?> {
+        if (!hasLocationPermission()) {
+            return mapOf(
+                "status" to "Location access is not enabled.",
+                "platform" to "android",
+                "date" to SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date()),
+                "time" to SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date()),
+                "weekday" to SimpleDateFormat("EEEE", Locale.getDefault()).format(Date()),
+            )
+        }
+
         val worldState = runCatching {
             if (!nativeInitialized) initializeNativeLayer()
             WorldStateProvider.getInstance().worldState
@@ -187,17 +227,30 @@ class MainActivity : FlutterActivity() {
         return mapOf(
             "platform" to "android",
             "canUseAlwaysListeningService" to true,
-            "canUseBackgroundLocation" to true,
+            "canUseLocationWorldState" to hasLocationPermission(),
+            "canUseBackgroundLocation" to hasPermission(
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            ),
             "canCreateExactAlarm" to true,
             "canOpenInstalledApps" to true,
-            "canReadCalendar" to true,
+            "canReadCalendar" to hasPermission(Manifest.permission.READ_CALENDAR),
             "canUseOfflineLiteRtModel" to true,
             "canUseAndroidGeminiNanoPrompt" to true,
             "canControlFlashlight" to true,
-            "canStartPhoneCall" to true,
+            "canStartPhoneCall" to hasPermission(Manifest.permission.CALL_PHONE),
+            "androidAssistantSnapshot" to intentBridge.snapshotStatus(),
             "iosParity" to "limited by iOS background execution and app-control policies",
             "webDesktopParity" to "limited shell only until adapters are implemented",
         ) + localPromptClient().capabilities()
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+            hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+
+    private fun hasPermission(permission: String): Boolean {
+        return checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun emitStatus(message: String) {

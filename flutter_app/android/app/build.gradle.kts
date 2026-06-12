@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.studyos.studyos_agent"
-        minSdk = 35
+        minSdk = 31
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -47,14 +47,14 @@ flutter {
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.13.0")
+    implementation("com.google.android.material:material:1.14.0")
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.drawerlayout:drawerlayout:1.2.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.11.0")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
+    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    implementation("com.google.code.gson:gson:2.14.0")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.13.1")
     implementation("com.google.ai.edge.litert:litert-api:1.4.2")
     implementation("com.google.ai.edge.litert:litert-gpu:1.4.2")
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
