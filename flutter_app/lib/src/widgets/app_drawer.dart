@@ -8,6 +8,7 @@ class AppDrawer extends StatelessWidget {
     required this.sessions,
     required this.activeSessionId,
     required this.onSelectSession,
+    required this.onSelectHome,
     required this.onCreateSession,
     required this.onDeleteSession,
     super.key,
@@ -16,6 +17,7 @@ class AppDrawer extends StatelessWidget {
   final List<ChatSession> sessions;
   final String? activeSessionId;
   final ValueChanged<String> onSelectSession;
+  final VoidCallback onSelectHome;
   final VoidCallback onCreateSession;
   final ValueChanged<String> onDeleteSession;
 
@@ -31,6 +33,15 @@ class AppDrawer extends StatelessWidget {
             children: <Widget>[
               Text('Chats', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: StudyOsSpacing.lg),
+              OutlinedButton.icon(
+                onPressed: () {
+                  onSelectHome();
+                  Navigator.of(context).pop();
+                },
+                icon: const Icon(Icons.home_outlined),
+                label: const Text('Back to home'),
+              ),
+              const SizedBox(height: StudyOsSpacing.sm),
               FilledButton.icon(
                 onPressed: () {
                   onCreateSession();

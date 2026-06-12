@@ -54,6 +54,7 @@ void main() {
           sessions: <ChatSession>[session],
           activeSessionId: session.id,
           onSelectSession: (_) {},
+          onSelectHome: () {},
           onCreateSession: () {},
           onDeleteSession: (value) => deletedSessionId = value,
         ),
@@ -63,6 +64,7 @@ void main() {
     expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsNothing);
     expect(find.byIcon(Icons.psychology_alt_outlined), findsNothing);
     expect(find.byIcon(Icons.settings_outlined), findsNothing);
+    expect(find.text('Back to home'), findsOneWidget);
     expect(find.text('New chat'), findsOneWidget);
     expect(find.text(session.title), findsOneWidget);
     expect(find.textContaining('Active ID:'), findsOneWidget);

@@ -43,6 +43,23 @@
    for schedule/tasks/deadlines so responses stay grounded and traceable.
 6. Port high-signal app surfaces after schedule/tasks are stable: campus seats,
    mensa, mail inbox summary, credits/progress, and live lecture reminders.
+7. Add native surfaces after the data layer is reliable: a Today home-screen
+   widget, a lecture Live Activity, and deadline notifications. Prefer schedule
+   and deadline alerts over room-change alerts unless a reliable source appears;
+   rooms are more likely to change through email than through ALMA.
+8. Expose only high-value native action tools to the agent: create calendar
+   events, create reminders/notifications, open maps, and draft email. Avoid
+   low-value tools such as `refresh_schedule` or `open_course` unless real usage
+   shows they save meaningful work.
+9. Consider opt-in location-aware campus nudges once mensa/campus data is
+   cached locally: when the user is near a Mensa, surface today's meal details or
+   favorite dishes; when near campus facilities, surface relevant capacity or
+   opening-hour context. These should be quiet, thresholded, and permission-gated
+   so they provide value without feeling like tracking or spam.
+10. Add campus credential quick access such as scanning/storing a KuF card. Keep
+    setup in Settings with secure local storage and expose only a compact Home
+    shortcut once configured, so the card is useful without taking over the main
+    app navigation.
 
 ## UX Shape
 
@@ -52,3 +69,8 @@
   refresh state.
 - Tasks should show ILIAS tasks plus Moodle deadlines together.
 - Settings should own credentials, provider settings, and sync status.
+- The Chat view should feel dedicated: no bottom navigation while chatting, a
+  burger menu for sessions, a drawer action back to Home, and a header action for
+  starting a new empty chat.
+- Campus credentials such as KuF card access should live in Settings first, then
+  appear as compact Home quick actions after setup.

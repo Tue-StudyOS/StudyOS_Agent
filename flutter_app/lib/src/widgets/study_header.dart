@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../studyos_theme.dart';
 
 class StudyHeader extends StatelessWidget {
-  const StudyHeader({required this.status, super.key});
+  const StudyHeader({required this.status, this.onCreateSession, super.key});
 
   final String status;
+  final VoidCallback? onCreateSession;
 
   bool get _isReady {
     final lower = status.toLowerCase();
@@ -29,7 +30,14 @@ class StudyHeader extends StatelessWidget {
           ),
           const Spacer(),
           const SizedBox(width: StudyOsSpacing.md),
-          _StatusChip(label: _isReady ? 'Ready' : status, isReady: _isReady),
+          if (onCreateSession == null)
+            _StatusChip(label: _isReady ? 'Ready' : status, isReady: _isReady)
+          else
+            _HeaderIconButton(
+              tooltip: 'New chat',
+              icon: Icons.add_comment_outlined,
+              onPressed: onCreateSession!,
+            ),
         ],
       ),
     );

@@ -198,6 +198,28 @@ void main() {
     expect(find.text('StudyOS Agent'), findsNothing);
     expect(find.text('Study companion'), findsNothing);
   });
+
+  testWidgets('chat header shows new chat action instead of status', (
+    WidgetTester tester,
+  ) async {
+    var created = false;
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: StudyHeader(
+          status: 'Ready',
+          onCreateSession: () => created = true,
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.add_comment_outlined), findsOneWidget);
+    expect(find.text('Ready'), findsNothing);
+
+    await tester.tap(find.byTooltip('New chat'));
+    expect(created, isTrue);
+  });
 }
 
 class _TestShell extends StatelessWidget {

@@ -64,40 +64,44 @@ class AgentHomeScaffold extends StatelessWidget {
         sessions: sessions,
         activeSessionId: activeSessionId,
         onSelectSession: onSelectSession,
+        onSelectHome: () => onSelectView(AppView.home),
         onCreateSession: onCreateSession,
         onDeleteSession: onDeleteSession,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _navigationViews.indexOf(selectedView),
-        onDestinationSelected: (index) => onSelectView(_navigationViews[index]),
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            selectedIcon: Icon(Icons.home_rounded),
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.chat_bubble_rounded),
-            icon: Icon(Icons.chat_bubble_outline_rounded),
-            label: 'Chat',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.calendar_month_rounded),
-            icon: Icon(Icons.calendar_month_outlined),
-            label: 'Schedule',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.psychology_alt_rounded),
-            icon: Icon(Icons.psychology_alt_outlined),
-            label: 'Memories',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.settings_rounded),
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
-        ],
-      ),
+      bottomNavigationBar: selectedView == AppView.chat
+          ? null
+          : NavigationBar(
+              selectedIndex: _navigationViews.indexOf(selectedView),
+              onDestinationSelected: (index) =>
+                  onSelectView(_navigationViews[index]),
+              destinations: const <NavigationDestination>[
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.home_rounded),
+                  icon: Icon(Icons.home_outlined),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.chat_bubble_rounded),
+                  icon: Icon(Icons.chat_bubble_outline_rounded),
+                  label: 'Chat',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.calendar_month_rounded),
+                  icon: Icon(Icons.calendar_month_outlined),
+                  label: 'Schedule',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.psychology_alt_rounded),
+                  icon: Icon(Icons.psychology_alt_outlined),
+                  label: 'Memories',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.settings_rounded),
+                  icon: Icon(Icons.settings_outlined),
+                  label: 'Settings',
+                ),
+              ],
+            ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -108,7 +112,12 @@ class AgentHomeScaffold extends StatelessWidget {
               ),
               child: Column(
                 children: <Widget>[
-                  StudyHeader(status: status),
+                  StudyHeader(
+                    status: status,
+                    onCreateSession: selectedView == AppView.chat
+                        ? onCreateSession
+                        : null,
+                  ),
                   Expanded(
                     child: AgentSelectedView(
                       selectedView: selectedView,

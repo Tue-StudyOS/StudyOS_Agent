@@ -63,5 +63,12 @@ void main() {
 
     expect(selectedView, AppView.schedule);
     expect(find.text('No timetable synced yet'), findsOneWidget);
+
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+
+    expect(selectedView, AppView.chat);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byTooltip('New chat'), findsOneWidget);
   });
 }
