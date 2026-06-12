@@ -59,6 +59,10 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       result(worldState())
     case "getCapabilities":
       result(capabilities())
+    case "publishIntentSnapshot":
+      publishIntentSnapshot(call: call, result: result)
+    case "consumePendingIntentPrompt":
+      consumePendingIntentPrompt(result: result)
     case "sendMessage":
       guard
         let args = call.arguments as? [String: Any],
@@ -82,6 +86,31 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       speak(call: call, result: result)
     default:
       result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func publishIntentSnapshot(call: FlutterMethodCall, result: FlutterResult) {
+    do {
+      try StudyOSIntentSnapshotStore.shared.writeSnapshot(from: call.arguments)
+      result("iOS intent snapshot published.")
+    } catch {
+      result(FlutterError(
+        code: "intent_snapshot_write_failed",
+        message: error.localizedDescription,
+        details: nil
+      ))
+    }
+  }
+
+  private func consumePendingIntentPrompt(result: FlutterResult) {
+    do {
+      result(try StudyOSIntentSnapshotStore.shared.consumePendingPrompt())
+    } catch {
+      result(FlutterError(
+        code: "intent_prompt_read_failed",
+        message: error.localizedDescription,
+        details: nil
+      ))
     }
   }
 
@@ -216,7 +245,8 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       "canStartPhoneCall": true,
       "canUseSpeechRecognition": SFSpeechRecognizer(locale: Locale.current)?.isAvailable ?? false,
       "canUseTextToSpeech": true,
-      "canCreateLocalNotificationReminder": true
+      "canCreateLocalNotificationReminder": true,
+      "canUseAppIntents": canUseAppIntents()
     ]
 
     #if canImport(FoundationModels)
@@ -232,6 +262,15 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     #endif
 
     return values
+  }
+
+  private func canUseAppIntents() -> Bool {
+    #if canImport(AppIntents)
+    if #available(iOS 16.0, *) {
+      return true
+    }
+    #endif
+    return false
   }
 
   private func emitToolTrace(toolName: String, status: String, summary: String, callId: String) {

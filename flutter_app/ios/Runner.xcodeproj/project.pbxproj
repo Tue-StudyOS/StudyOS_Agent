@@ -16,6 +16,8 @@
 		A10000000000000000000001 /* StudyOSNativeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* StudyOSNativeBridge.swift */; };
 		A10000000000000000000003 /* StudyOSFoundationResponder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* StudyOSFoundationResponder.swift */; };
 		A10000000000000000000005 /* StudyOSFoundationTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* StudyOSFoundationTools.swift */; };
+		A10000000000000000000007 /* StudyOSIntentSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* StudyOSIntentSnapshotStore.swift */; };
+		A10000000000000000000009 /* StudyOSAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* StudyOSAppIntents.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -56,6 +58,8 @@
 		A10000000000000000000002 /* StudyOSNativeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSNativeBridge.swift; sourceTree = "<group>"; };
 		A10000000000000000000004 /* StudyOSFoundationResponder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSFoundationResponder.swift; sourceTree = "<group>"; };
 		A10000000000000000000006 /* StudyOSFoundationTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSFoundationTools.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* StudyOSIntentSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSIntentSnapshotStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000000A /* StudyOSAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSAppIntents.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
@@ -132,6 +136,8 @@
 				A10000000000000000000002 /* StudyOSNativeBridge.swift */,
 				A10000000000000000000004 /* StudyOSFoundationResponder.swift */,
 				A10000000000000000000006 /* StudyOSFoundationTools.swift */,
+				A10000000000000000000008 /* StudyOSIntentSnapshotStore.swift */,
+				A1000000000000000000000A /* StudyOSAppIntents.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -296,6 +302,8 @@
 				A10000000000000000000001 /* StudyOSNativeBridge.swift in Sources */,
 				A10000000000000000000003 /* StudyOSFoundationResponder.swift in Sources */,
 				A10000000000000000000005 /* StudyOSFoundationTools.swift in Sources */,
+				A10000000000000000000007 /* StudyOSIntentSnapshotStore.swift in Sources */,
+				A10000000000000000000009 /* StudyOSAppIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

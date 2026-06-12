@@ -121,6 +121,8 @@ class _AgentHomePageState extends State<AgentHomePage>
           timetable: _timetable,
         );
       });
+      await _publishIntentSnapshot();
+      await _loadPendingIntentPrompt();
     } on MissingPluginException {
       setState(() => _status = 'Bridge missing');
     } on PlatformException catch (error) {
@@ -150,6 +152,7 @@ class _AgentHomePageState extends State<AgentHomePage>
     final memory = await _memoryStore.read();
     if (!mounted) return;
     setState(() => _memoryText = memory);
+    unawaited(_publishIntentSnapshot());
   }
 
   Future<void> _appendMemory(String text) async {
@@ -160,6 +163,39 @@ class _AgentHomePageState extends State<AgentHomePage>
   Future<void> _saveMemory(String text) async {
     await _memoryStore.writeDocument(text);
     await _loadMemory();
+  }
+
+  @override
+  Future<void> _publishIntentSnapshot() async {
+    try {
+      await _bridge.publishIntentSnapshot(
+        timetable: _timetable,
+        memoryText: _memoryText,
+      );
+    } on MissingPluginException {
+      // Non-iOS platforms do not expose App Intents.
+    } on PlatformException catch (error) {
+      debugPrint('Intent snapshot publish failed: ${error.message}');
+    }
+  }
+
+  Future<void> _loadPendingIntentPrompt() async {
+    try {
+      final prompt = await _bridge.consumePendingIntentPrompt();
+      final text = prompt?.trim();
+      if (!mounted || text == null || text.isEmpty) return;
+      setState(() {
+        _inputController.text = text;
+        _inputController.selection = TextSelection.collapsed(
+          offset: text.length,
+        );
+        _selectedView = AppView.chat;
+      });
+    } on MissingPluginException {
+      // Non-iOS platforms do not expose App Intents.
+    } on PlatformException catch (error) {
+      debugPrint('Pending intent prompt read failed: ${error.message}');
+    }
   }
 
   Future<void> _saveAgentConfig(AgentConfig config, String? apiKey) async {
