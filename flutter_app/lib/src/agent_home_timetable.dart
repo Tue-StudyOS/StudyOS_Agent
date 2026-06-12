@@ -14,6 +14,7 @@ mixin _AgentHomeTimetable on State<AgentHomePage> {
     final snapshot = await _timetableRepository.load();
     if (!mounted) return;
     setState(() => _timetable = snapshot);
+    unawaited(_publishIntentSnapshot());
     if (snapshot == null || snapshot.isStale) {
       await _refreshTimetable();
     }
@@ -45,6 +46,7 @@ mixin _AgentHomeTimetable on State<AgentHomePage> {
           timetable: snapshot,
         );
       });
+      unawaited(_publishIntentSnapshot());
     } on Object catch (error) {
       if (mounted) setState(() => _timetableError = error.toString());
     } finally {
@@ -61,4 +63,6 @@ mixin _AgentHomeTimetable on State<AgentHomePage> {
     return snapshot?.compactSummary(limit: 12) ??
         'No timetable has been synced yet.';
   }
+
+  Future<void> _publishIntentSnapshot();
 }

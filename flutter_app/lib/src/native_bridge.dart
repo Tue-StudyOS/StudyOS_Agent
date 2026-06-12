@@ -35,6 +35,26 @@ class NativeBridge {
     return result ?? const {};
   }
 
+  Future<String?> consumePendingIntentPrompt() {
+    return _methods.invokeMethod<String>('consumePendingIntentPrompt');
+  }
+
+  Future<void> publishIntentSnapshot({
+    required TimetableSnapshot? timetable,
+    required String memoryText,
+  }) async {
+    await _methods.invokeMethod<String>(
+      'publishIntentSnapshot',
+      <String, Object?>{
+        'updatedAt': DateTime.now().toIso8601String(),
+        'memoryPreview': _memoryPreview(memoryText),
+        'lectures':
+            timetable?.events.map((event) => event.toJson()).toList() ??
+            const <Map<String, Object?>>[],
+      },
+    );
+  }
+
   Future<String> sendMessage(
     String text, {
     String? systemPrompt,
@@ -49,5 +69,12 @@ class NativeBridge {
       },
     );
     return result ?? 'The assistant did not return a response.';
+  }
+
+  String _memoryPreview(String value) {
+    const maxCharacters = 4000;
+    final cleaned = value.trim();
+    if (cleaned.length <= maxCharacters) return cleaned;
+    return cleaned.substring(cleaned.length - maxCharacters);
   }
 }
