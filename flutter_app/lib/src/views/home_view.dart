@@ -62,7 +62,7 @@ class HomeView extends StatelessWidget {
         _HomeCard(
           icon: Icons.restaurant_outlined,
           title: 'Campus',
-          body: 'Mensa, rooms, and campus shortcuts will appear here.',
+          body: _campusLine(profile),
         ),
       ],
     );
@@ -76,6 +76,17 @@ class HomeView extends StatelessWidget {
       if (profile.livesInTuebingen) 'Tübingen',
     ];
     return parts.join(' · ');
+  }
+
+  String _campusLine(OnboardingProfile? profile) {
+    if (profile?.interests.contains(StudyInterest.mensa) == true) {
+      final preference = profile!.foodPreference;
+      if (preference == FoodPreference.noPreference) {
+        return 'Mensa meals will appear here when campus data is connected.';
+      }
+      return '${preference.label} Mensa options will appear here.';
+    }
+    return 'Mensa, rooms, and campus shortcuts will appear here.';
   }
 }
 

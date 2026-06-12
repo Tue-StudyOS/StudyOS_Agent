@@ -14,5 +14,13 @@ Map<String, Object?> withProfileContext(
     'degreeProgram': profile.degreeProgram,
     if (profile.semester != null) 'semester': profile.semester,
     'livesInTuebingen': profile.livesInTuebingen,
+    if (profile.interests.isNotEmpty)
+      'interests': profile.interests.map((interest) => interest.label).toList(),
+    if (profile.foodPreference != FoodPreference.noPreference)
+      'foodPreference': profile.foodPreference.label,
+    if (profile.notificationPreferences.isNotEmpty)
+      'notificationPreferences': profile.notificationPreferences
+          .map((preference) => preference.label)
+          .toList(),
   };
 }

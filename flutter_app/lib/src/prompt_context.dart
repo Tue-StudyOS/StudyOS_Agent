@@ -59,6 +59,12 @@ class PromptContext {
       '- Degree program: ${profile.degreeProgram}',
       if (profile.semester != null) '- Semester: ${profile.semester}',
       '- Lives in Tübingen: ${profile.livesInTuebingen ? 'yes' : 'no'}',
+      if (profile.interests.isNotEmpty)
+        '- Interests: ${profile.interests.map((interest) => interest.label).join(', ')}',
+      if (profile.foodPreference != FoodPreference.noPreference)
+        '- Mensa preference: ${profile.foodPreference.label}',
+      if (profile.notificationPreferences.isNotEmpty)
+        '- Notification preferences: ${profile.notificationPreferences.map((preference) => preference.label).join(', ')}',
     ];
     return lines.join('\n');
   }

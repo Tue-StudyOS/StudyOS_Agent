@@ -216,12 +216,32 @@ void main() {
       ),
     );
 
-    expect(find.text('Set up profile'), findsOneWidget);
-    expect(find.text('zxabc12'), findsOneWidget);
+    expect(find.text('Confirm profile'), findsOneWidget);
+    expect(find.text('Personalize StudyOS'), findsOneWidget);
     expect(find.text('Email'), findsNothing);
+    expect(find.text('What should StudyOS help with?'), findsOneWidget);
+    expect(find.text('Mensa preference'), findsNothing);
 
     await tester.enterText(find.byType(EditableText).at(1), 'M.Sc. AI');
     await tester.enterText(find.byType(EditableText).at(2), '4');
+    await tester.tap(find.text('Mensa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mensa preference'), findsOneWidget);
+    await tester.ensureVisible(find.text('Vegetarian'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Vegetarian'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Notifications'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notifications'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deadline reminders'), findsOneWidget);
+    await tester.ensureVisible(find.text('Next lecture'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next lecture'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Start StudyOS'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Start StudyOS'));
     await tester.pumpAndSettle();
 
@@ -229,6 +249,13 @@ void main() {
     expect(profile?.email, isNull);
     expect(profile?.degreeProgram, 'M.Sc. AI');
     expect(profile?.semester, 4);
+    expect(profile?.interests, contains(StudyInterest.mensa));
+    expect(profile?.interests, contains(StudyInterest.notifications));
+    expect(profile?.foodPreference, FoodPreference.vegetarian);
+    expect(
+      profile?.notificationPreferences,
+      contains(NotificationPreference.nextLecture),
+    );
   });
 
   testWidgets('onboarding uses profile prefill from login', (
@@ -253,7 +280,10 @@ void main() {
     expect(find.text('Sebastian Böhler'), findsOneWidget);
     expect(find.text('Master Informatik / Computer Science'), findsOneWidget);
     expect(find.text('Could not load email from ALMA.'), findsOneWidget);
+    expect(find.text('What should StudyOS help with?'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Start StudyOS'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Start StudyOS'));
     await tester.pumpAndSettle();
 
@@ -271,6 +301,11 @@ void main() {
         degreeProgram: 'M.Sc. AI',
         semester: 2,
         livesInTuebingen: true,
+        interests: <StudyInterest>{StudyInterest.mensa},
+        foodPreference: FoodPreference.vegan,
+        notificationPreferences: <NotificationPreference>{
+          NotificationPreference.deadlineReminders,
+        },
       ),
       memory: '- Prefers morning study blocks.',
       worldState: <String, Object?>{'weekday': 'Thursday'},
@@ -281,6 +316,9 @@ void main() {
     expect(prompt, contains('Ada'));
     expect(prompt, contains('ada@example.edu'));
     expect(prompt, contains('M.Sc. AI'));
+    expect(prompt, contains('Mensa'));
+    expect(prompt, contains('Vegan'));
+    expect(prompt, contains('Deadline reminders'));
     expect(prompt, contains('Prefers morning study blocks'));
     expect(prompt, contains('Thursday'));
     expect(prompt, contains('call append_memory'));
