@@ -211,13 +211,12 @@ class _CookieClient {
   }
 }
 
-bool _isRedirect(int statusCode) {
-  return statusCode == 301 ||
-      statusCode == 302 ||
-      statusCode == 303 ||
-      statusCode == 307 ||
-      statusCode == 308;
-}
+bool _isRedirect(int statusCode) =>
+    statusCode == 301 ||
+    statusCode == 302 ||
+    statusCode == 303 ||
+    statusCode == 307 ||
+    statusCode == 308;
 
 bool _redirectsToGet(int statusCode, String method) {
   return statusCode == 303 ||
@@ -275,14 +274,14 @@ String? _parseStudyServiceName(String html) {
 
 String? _degreeFromPlannerTitle(String html) {
   final document = html_parser.parse(html);
-  final title = _emptyToNull(
-    _clean(document.querySelector('title')?.text ?? ''),
-  );
+  var title = _emptyToNull(_clean(document.querySelector('title')?.text ?? ''));
   if (title == null) return null;
+  title = title.split(RegExp(r'\s+-\s+Eberhard Karls Universität')).first;
   final match = RegExp(
-    r'^Studienplaner mit Modulplan\s+(.+?)(?:\s+\([^)]+\))?$',
+    r'^Studienplaner(?:\s+mit\s+Modulplan)?\s+(.+?)(?:\s+\([^)]+\))?$',
+    caseSensitive: false,
   ).firstMatch(title);
-  return _emptyToNull(match?.group(1) ?? title);
+  return _emptyToNull(match?.group(1));
 }
 
 String _clean(String value) => value.split(RegExp(r'\s+')).join(' ').trim();

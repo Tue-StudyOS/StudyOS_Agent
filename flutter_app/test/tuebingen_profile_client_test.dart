@@ -45,7 +45,7 @@ void main() {
           <html>
             <head>
               <title>
-                Studienplaner mit Modulplan Master Informatik / Computer Science (H-2021-7)
+                Studienplaner Master Informatik / Computer Science (H-2021-7) - Eberhard Karls Universität Tübingen
               </title>
             </head>
           </html>
