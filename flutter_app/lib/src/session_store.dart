@@ -14,11 +14,14 @@ class SessionStore {
   Future<SessionState> load() async {
     final encodedSessions = await _preferences.getString(_sessionsKey);
     final activeSessionId = await _preferences.getString(_activeSessionKey);
-    final sessions = ChatSession.decodeList(encodedSessions);
+    final sessions = ChatSession.decodeList(
+      encodedSessions,
+    ).where((session) => session.hasTurns).toList();
 
     if (sessions.isEmpty) {
+      await _preferences.remove(_sessionsKey);
+      await _preferences.remove(_activeSessionKey);
       final fresh = ChatSession.fresh();
-      await save(sessions: <ChatSession>[fresh], activeSessionId: fresh.id);
       return SessionState(
         sessions: <ChatSession>[fresh],
         activeSessionId: fresh.id,
@@ -27,6 +30,10 @@ class SessionStore {
 
     final activeExists = sessions.any(
       (session) => session.id == activeSessionId,
+    );
+    await save(
+      sessions: sessions,
+      activeSessionId: activeExists ? activeSessionId! : sessions.first.id,
     );
     return SessionState(
       sessions: sessions,
@@ -38,11 +45,22 @@ class SessionStore {
     required List<ChatSession> sessions,
     required String activeSessionId,
   }) async {
+    final persistedSessions = sessions.where((session) => session.hasTurns);
+    if (persistedSessions.isEmpty) {
+      await _preferences.remove(_sessionsKey);
+      await _preferences.remove(_activeSessionKey);
+      return;
+    }
+    final nextSessions = persistedSessions.toList();
+    final nextActiveId =
+        nextSessions.any((session) => session.id == activeSessionId)
+        ? activeSessionId
+        : nextSessions.first.id;
     await _preferences.setString(
       _sessionsKey,
-      ChatSession.encodeList(sessions),
+      ChatSession.encodeList(nextSessions),
     );
-    await _preferences.setString(_activeSessionKey, activeSessionId);
+    await _preferences.setString(_activeSessionKey, nextActiveId);
   }
 }
 

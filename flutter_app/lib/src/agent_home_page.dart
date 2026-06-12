@@ -149,13 +149,15 @@ class _AgentHomePageState extends State<AgentHomePage> {
   }
 
   void _createSession() {
-    final session = ChatSession.fresh();
+    final activeSession = activeSessionFrom(_sessions, _activeSessionId);
+    final hasTurns = activeSession.hasTurns;
+    final session = hasTurns ? ChatSession.fresh() : activeSession;
     setState(() {
-      _sessions = <ChatSession>[session, ..._sessions];
+      if (hasTurns) _sessions = <ChatSession>[session, ..._sessions];
       _activeSessionId = session.id;
       _selectedView = AppView.chat;
     });
-    _persistSessions();
+    if (!hasTurns) scrollChatToBottom(_messageScrollController);
   }
 
   void _selectSession(String sessionId) {

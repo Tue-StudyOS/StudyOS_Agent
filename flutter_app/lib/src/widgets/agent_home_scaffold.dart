@@ -61,7 +61,7 @@ class AgentHomeScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: AppDrawer(
-        sessions: sessions,
+        sessions: sessions.where((session) => session.hasTurns).toList(),
         activeSessionId: activeSessionId,
         onSelectSession: onSelectSession,
         onSelectHome: () => onSelectView(AppView.home),

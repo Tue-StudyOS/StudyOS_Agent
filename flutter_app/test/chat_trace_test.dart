@@ -55,6 +55,28 @@ void main() {
     expect(traces.single.trace?.status, 'done');
   });
 
+  test('chat sessions are persisted only after a turn starts', () {
+    final empty = ChatSession.fresh();
+    final withTrace = ChatSession.fresh().copyWith(
+      messages: <ChatMessage>[
+        ChatMessage.toolTrace(
+          toolName: 'model:apple_foundation',
+          status: 'running',
+          summary: 'Using local model.',
+        ),
+      ],
+    );
+    final withUserTurn = ChatSession.fresh().copyWith(
+      messages: const <ChatMessage>[
+        ChatMessage(author: 'You', text: 'Hello', isUser: true),
+      ],
+    );
+
+    expect(empty.hasTurns, isFalse);
+    expect(withTrace.hasTurns, isFalse);
+    expect(withUserTurn.hasTurns, isTrue);
+  });
+
   test('deleting sessions keeps a valid active chat', () {
     final first = ChatSession(
       id: 'chat-1',

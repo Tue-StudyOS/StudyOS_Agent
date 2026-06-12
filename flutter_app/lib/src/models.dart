@@ -213,7 +213,7 @@ class ChatSession {
   final List<ChatMessage> messages;
 
   String get shortId => id.length > 10 ? id.substring(id.length - 10) : id;
-
+  bool get hasTurns => messages.any((message) => !message.isTrace);
   ChatSession copyWith({
     String? title,
     DateTime? updatedAt,
