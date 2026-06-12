@@ -31,6 +31,15 @@ class MemoryStore {
     await _writeTrimmed(lines);
   }
 
+  Future<void> writeDocument(String text) async {
+    final lines = text
+        .split('\n')
+        .map((line) => line.trimRight())
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    await _writeTrimmed(lines);
+  }
+
   Future<void> _writeTrimmed(List<String> lines) async {
     var next = lines.length > maxLines
         ? lines.sublist(lines.length - maxLines)

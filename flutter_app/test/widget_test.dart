@@ -6,6 +6,7 @@ import 'package:studyos_agent/src/onboarding_flow.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
+import 'package:studyos_agent/src/views/memories_view.dart';
 import 'package:studyos_agent/src/views/settings_view.dart';
 import 'package:studyos_agent/src/widgets/app_drawer.dart';
 
@@ -275,6 +276,34 @@ void main() {
     expect(prompt, contains('M.Sc. AI'));
     expect(prompt, contains('Prefers morning study blocks'));
     expect(prompt, contains('Thursday'));
+    expect(prompt, contains('call append_memory'));
+  });
+
+  testWidgets('memories view edits the memory document', (
+    WidgetTester tester,
+  ) async {
+    String? savedText;
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: MemoriesView(
+          worldState: const <String, Object?>{'platform': 'ios'},
+          memoryText: '- Favorite food: lasagne',
+          onSaveMemory: (value) async => savedText = value,
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byType(TextField),
+      '- Favorite food: lasagne\n- Prefers focused mornings',
+    );
+    await tester.tap(find.text('Save memories'));
+    await tester.pumpAndSettle();
+
+    expect(savedText, contains('Favorite food: lasagne'));
+    expect(savedText, contains('Prefers focused mornings'));
+    expect(find.text('Memories saved.'), findsOneWidget);
   });
 }
 

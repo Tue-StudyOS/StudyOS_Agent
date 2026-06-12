@@ -120,9 +120,12 @@ class _AgentHomePageState extends State<AgentHomePage> {
 
   Future<void> _appendMemory(String text) async {
     await _memoryStore.append(text);
-    final memory = await _memoryStore.read();
-    if (!mounted) return;
-    setState(() => _memoryText = memory);
+    await _loadMemory();
+  }
+
+  Future<void> _saveMemory(String text) async {
+    await _memoryStore.writeDocument(text);
+    await _loadMemory();
   }
 
   Future<void> _saveAgentConfig(AgentConfig config, String? apiKey) async {
@@ -201,6 +204,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
         onToolTrace: _addToolTrace,
       );
       _addAssistantMessage(response);
+      await _loadMemory();
       final worldState = await _bridge.getWorldState();
       if (!mounted) return;
       setState(
@@ -286,6 +290,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       onSend: _sendMessage,
       onLogout: widget.onLogout,
       onSaveAgentConfig: _saveAgentConfig,
+      onSaveMemory: _saveMemory,
       onCompactMessagesChanged: (value) =>
           setState(() => _compactMessages = value),
     );

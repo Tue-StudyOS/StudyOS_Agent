@@ -2,20 +2,61 @@ import 'package:flutter/material.dart';
 
 import '../studyos_theme.dart';
 
-class MemoriesView extends StatelessWidget {
+class MemoriesView extends StatefulWidget {
   const MemoriesView({
     required this.worldState,
     required this.memoryText,
+    required this.onSaveMemory,
     super.key,
   });
 
   final Map<String, Object?> worldState;
   final String memoryText;
+  final Future<void> Function(String text) onSaveMemory;
+
+  @override
+  State<MemoriesView> createState() => _MemoriesViewState();
+}
+
+class _MemoriesViewState extends State<MemoriesView> {
+  late final TextEditingController _controller;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.memoryText.trim());
+  }
+
+  @override
+  void didUpdateWidget(MemoriesView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.memoryText == widget.memoryText) return;
+    _controller.text = widget.memoryText.trim();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    try {
+      await widget.onSaveMemory(_controller.text);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Memories saved.')));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasWorldState = worldState.isNotEmpty;
-    final hasMemory = memoryText.trim().isNotEmpty;
+    final hasWorldState = widget.worldState.isNotEmpty;
 
     return ListView(
       padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
@@ -25,11 +66,15 @@ class MemoriesView extends StatelessWidget {
           description: 'Saved, personalized study context will appear here.',
         ),
         const SizedBox(height: StudyOsSpacing.lg),
-        _MemoryCard(hasMemory: hasMemory, memoryText: memoryText),
+        _MemoryEditor(
+          controller: _controller,
+          isSaving: _isSaving,
+          onSave: _save,
+        ),
         const SizedBox(height: StudyOsSpacing.lg),
         _ContextPreviewCard(
           hasWorldState: hasWorldState,
-          worldState: worldState,
+          worldState: widget.worldState,
         ),
       ],
     );
@@ -55,11 +100,16 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _MemoryCard extends StatelessWidget {
-  const _MemoryCard({required this.hasMemory, required this.memoryText});
+class _MemoryEditor extends StatelessWidget {
+  const _MemoryEditor({
+    required this.controller,
+    required this.isSaving,
+    required this.onSave,
+  });
 
-  final bool hasMemory;
-  final String memoryText;
+  final TextEditingController controller;
+  final bool isSaving;
+  final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -73,22 +123,35 @@ class _MemoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(
-            Icons.psychology_alt_outlined,
-            color: StudyOsColors.accent,
-            size: 30,
-          ),
-          const SizedBox(height: StudyOsSpacing.lg),
           Text(
-            hasMemory ? 'Saved memory document' : 'No saved memories yet',
+            'Memory document',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: StudyOsSpacing.sm),
-          Text(
-            hasMemory
-                ? memoryText.trim()
-                : 'The agent can append durable study preferences, habits, and context here.',
-            style: Theme.of(context).textTheme.bodyMedium,
+          TextField(
+            controller: controller,
+            minLines: 10,
+            maxLines: 18,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText:
+                  '- Favorite food: lasagne\n- Prefers morning study blocks',
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: StudyOsSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: isSaving ? null : onSave,
+              icon: isSaving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: const Text('Save memories'),
+            ),
           ),
         ],
       ),

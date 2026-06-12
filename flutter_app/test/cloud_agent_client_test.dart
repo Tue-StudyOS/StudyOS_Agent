@@ -4,10 +4,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:studyos_agent/src/cloud_agent_client.dart';
+import 'package:studyos_agent/src/cloud_tool_definitions.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
 
 void main() {
+  test('cloud tools are built from the StudyOS catalog', () {
+    final toolNames = cloudToolDefinitions()
+        .map((tool) => tool['function'])
+        .whereType<Map>()
+        .map((function) => function['name'])
+        .toList();
+
+    expect(
+      toolNames,
+      containsAll(<String>[
+        'append_memory',
+        'read_memories',
+        'get_study_context',
+      ]),
+    );
+  });
+
   test('emits traces for cloud tool calls', () async {
     var requestCount = 0;
     final bodies = <Map<String, Object?>>[];

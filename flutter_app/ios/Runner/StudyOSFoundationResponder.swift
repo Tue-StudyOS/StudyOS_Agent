@@ -19,9 +19,15 @@ enum StudyOSFoundationResponder {
         let context = systemPrompt ?? "No StudyOS context was provided."
         let memoryText = memory?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let recorder = LocalToolCallRecorder()
+        let memoryStore = LocalMemoryDocumentStore()
         let tools: [any Tool] = [
           StudyContextTool(context: context, recorder: recorder, emit: emitToolTrace),
-          ReadMemoriesTool(memory: memoryText, recorder: recorder, emit: emitToolTrace)
+          ReadMemoriesTool(memory: memoryText, recorder: recorder, emit: emitToolTrace),
+          AppendMemoryTool(
+            store: memoryStore,
+            recorder: recorder,
+            emit: emitToolTrace
+          )
         ]
         let session = LanguageModelSession(
           tools: tools,

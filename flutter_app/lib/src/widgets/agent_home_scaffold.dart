@@ -28,6 +28,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.onSend,
     required this.onLogout,
     required this.onSaveAgentConfig,
+    required this.onSaveMemory,
     required this.onCompactMessagesChanged,
     super.key,
   });
@@ -53,6 +54,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final VoidCallback? onLogout;
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
+  final Future<void> Function(String text) onSaveMemory;
   final ValueChanged<bool> onCompactMessagesChanged;
 
   @override
@@ -96,6 +98,7 @@ class AgentHomeScaffold extends StatelessWidget {
                       status: status,
                       onLogout: onLogout,
                       onSaveAgentConfig: onSaveAgentConfig,
+                      onSaveMemory: onSaveMemory,
                       onCompactMessagesChanged: onCompactMessagesChanged,
                     ),
                   ),

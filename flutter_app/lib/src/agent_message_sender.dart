@@ -1,7 +1,5 @@
 import 'agent_config_store.dart';
 import 'agent_request_runner.dart';
-import 'chat_session_mutation.dart';
-import 'initial_context_trace.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
@@ -26,13 +24,6 @@ Future<String> sendAgentMessage({
     memory: memoryText,
     worldState: worldState,
   );
-  final trace = initialContextTrace(
-    activeSession: activeSessionFrom(sessions, activeSessionId),
-    profile: profile,
-    memoryText: memoryText,
-    worldState: worldState,
-  );
-  if (trace != null) onToolTrace(trace);
   return AgentRequestRunner(
     bridge: bridge,
     configStore: configStore,

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'cloud_tool_definitions.dart';
 import 'models.dart';
 import 'prompt_context.dart';
+import 'studyos_tool_catalog.dart';
 
 class CloudAgentClient {
   CloudAgentClient({http.Client? httpClient})
@@ -204,12 +205,9 @@ class CloudAgentClient {
   }
 
   ToolTrace _traceForCall(_ToolCall call, String status, {String? output}) {
-    final summary = switch (call.name) {
-      'append_memory' => 'Writing a durable student memory on this device.',
-      'read_memories' => 'Reading the local memory document.',
-      'get_study_context' => 'Reading profile, memory, and device context.',
-      _ => 'Requested unavailable tool.',
-    };
+    final summary =
+        studyOsToolByName(call.name)?.traceSummary ??
+        'Requested unavailable tool.';
     final outputSuffix = output == null
         ? ''
         : ' Returned ${output.length} chars.';

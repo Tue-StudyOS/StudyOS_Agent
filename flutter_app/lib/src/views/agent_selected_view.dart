@@ -24,6 +24,7 @@ class AgentSelectedView extends StatelessWidget {
     required this.status,
     required this.onLogout,
     required this.onSaveAgentConfig,
+    required this.onSaveMemory,
     required this.onCompactMessagesChanged,
     super.key,
   });
@@ -45,6 +46,7 @@ class AgentSelectedView extends StatelessWidget {
   final VoidCallback? onLogout;
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
+  final Future<void> Function(String text) onSaveMemory;
   final ValueChanged<bool> onCompactMessagesChanged;
 
   @override
@@ -62,6 +64,7 @@ class AgentSelectedView extends StatelessWidget {
       AppView.memories => MemoriesView(
         worldState: worldState,
         memoryText: memoryText,
+        onSaveMemory: onSaveMemory,
       ),
       AppView.settings => SettingsView(
         config: agentConfig,

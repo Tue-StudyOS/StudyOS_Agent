@@ -20,6 +20,9 @@ class PromptContext {
         'Ground every factual study answer in tool results or provided context.',
       )
       ..writeln(
+        'When the user asks you to remember, save, or update a durable preference or fact, call append_memory with a concise memory.',
+      )
+      ..writeln(
         'If required data is unavailable, say what is missing instead of guessing.',
       )
       ..writeln('Do not expose secrets or credentials.');
