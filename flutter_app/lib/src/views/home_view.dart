@@ -9,12 +9,14 @@ class HomeView extends StatelessWidget {
     required this.profile,
     required this.config,
     required this.memoryText,
+    required this.onOpenCampus,
     super.key,
   });
 
   final OnboardingProfile? profile;
   final AgentConfig config;
   final String memoryText;
+  final VoidCallback onOpenCampus;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +65,7 @@ class HomeView extends StatelessWidget {
           icon: Icons.restaurant_outlined,
           title: 'Campus',
           body: _campusLine(profile),
+          onTap: onOpenCampus,
         ),
       ],
     );
@@ -129,40 +132,48 @@ class _HomeCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.body,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String body;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(StudyOsSpacing.lg),
-      decoration: BoxDecoration(
-        color: StudyOsColors.surface,
-        border: Border.all(color: StudyOsColors.border),
+    return Material(
+      color: StudyOsColors.surface,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: StudyOsColors.border),
         borderRadius: BorderRadius.circular(StudyOsRadii.md),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          Icon(icon, color: StudyOsColors.accent),
-          Column(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
+        child: Padding(
+          padding: const EdgeInsets.all(StudyOsSpacing.lg),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              Text(title, style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: StudyOsSpacing.xs),
-              Text(
-                body,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
+              Icon(icon, color: StudyOsColors.accent),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title, style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: StudyOsSpacing.xs),
+                  Text(
+                    body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

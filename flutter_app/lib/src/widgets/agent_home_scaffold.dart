@@ -91,6 +91,11 @@ class AgentHomeScaffold extends StatelessWidget {
                   label: 'Schedule',
                 ),
                 NavigationDestination(
+                  selectedIcon: Icon(Icons.restaurant_rounded),
+                  icon: Icon(Icons.restaurant_outlined),
+                  label: 'Campus',
+                ),
+                NavigationDestination(
                   selectedIcon: Icon(Icons.psychology_alt_rounded),
                   icon: Icon(Icons.psychology_alt_outlined),
                   label: 'Notes',
@@ -129,6 +134,7 @@ class AgentHomeScaffold extends StatelessWidget {
                       compactMessages: compactMessages,
                       onSuggestionSelected: onSuggestionSelected,
                       onSend: onSend,
+                      onSelectView: onSelectView,
                       worldState: worldState,
                       memoryText: memoryText,
                       agentConfig: agentConfig,
@@ -154,6 +160,7 @@ const List<AppView> _navigationViews = <AppView>[
   AppView.home,
   AppView.chat,
   AppView.schedule,
+  AppView.campus,
   AppView.memories,
   AppView.settings,
 ];

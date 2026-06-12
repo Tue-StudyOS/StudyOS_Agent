@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
+import 'package:studyos_agent/src/views/home_view.dart';
 import 'package:studyos_agent/src/widgets/agent_home_scaffold.dart';
 
 void main() {
@@ -56,7 +57,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byIcon(Icons.home_rounded), findsOneWidget);
     expect(find.text('Schedule'), findsOneWidget);
-    expect(find.text('Campus'), findsOneWidget);
+    expect(find.text('Campus'), findsWidgets);
 
     await tester.tap(find.text('Schedule'));
     await tester.pumpAndSettle();
@@ -70,5 +71,38 @@ void main() {
     expect(selectedView, AppView.chat);
     expect(find.byType(NavigationBar), findsNothing);
     expect(find.byTooltip('New chat'), findsOneWidget);
+  });
+
+  testWidgets('home campus card opens campus view', (
+    WidgetTester tester,
+  ) async {
+    var selectedView = AppView.home;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: const OnboardingProfile(
+              displayName: 'Ada',
+              username: 'ada42',
+              email: null,
+              degreeProgram: 'M.Sc. AI',
+              semester: 2,
+              livesInTuebingen: true,
+              interests: <StudyInterest>{StudyInterest.mensa},
+              foodPreference: FoodPreference.vegan,
+            ),
+            config: const AgentConfig.defaults(),
+            memoryText: '',
+            onOpenCampus: () => selectedView = AppView.campus,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Campus'));
+
+    expect(selectedView, AppView.campus);
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../chat_session_mutation.dart';
 import '../models.dart';
+import 'campus_view.dart';
 import 'chat_view.dart';
 import 'home_view.dart';
 import 'memories_view.dart';
@@ -19,6 +20,7 @@ class AgentSelectedView extends StatelessWidget {
     required this.compactMessages,
     required this.onSuggestionSelected,
     required this.onSend,
+    required this.onSelectView,
     required this.worldState,
     required this.memoryText,
     required this.agentConfig,
@@ -40,6 +42,7 @@ class AgentSelectedView extends StatelessWidget {
   final bool compactMessages;
   final ValueChanged<String> onSuggestionSelected;
   final VoidCallback onSend;
+  final ValueChanged<AppView> onSelectView;
   final Map<String, Object?> worldState;
   final String memoryText;
   final AgentConfig agentConfig;
@@ -58,6 +61,7 @@ class AgentSelectedView extends StatelessWidget {
         profile: profile,
         config: agentConfig,
         memoryText: memoryText,
+        onOpenCampus: () => onSelectView(AppView.campus),
       ),
       AppView.chat => ChatView(
         messages: activeSessionFrom(sessions, activeSessionId).messages,
@@ -69,6 +73,7 @@ class AgentSelectedView extends StatelessWidget {
         onSend: onSend,
       ),
       AppView.schedule => ScheduleView(profile: profile),
+      AppView.campus => CampusView(profile: profile),
       AppView.memories => MemoriesView(
         worldState: worldState,
         memoryText: memoryText,
