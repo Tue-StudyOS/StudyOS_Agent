@@ -5,11 +5,13 @@ class PromptContext {
     required this.profile,
     required this.memory,
     required this.worldState,
+    this.timetable,
   });
 
   final OnboardingProfile? profile;
   final String memory;
   final Map<String, Object?> worldState;
+  final TimetableSnapshot? timetable;
 
   String systemPrompt() {
     final buffer = StringBuffer()
@@ -38,6 +40,13 @@ class PromptContext {
         ..writeln()
         ..writeln('Long-term memory:')
         ..writeln(memory.trim());
+    }
+    final timetableBlock = timetable?.compactSummary(limit: 5);
+    if (timetableBlock != null && timetableBlock.trim().isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('Cached timetable summary:')
+        ..writeln(timetableBlock.trim());
     }
     if (worldState.isNotEmpty) {
       buffer

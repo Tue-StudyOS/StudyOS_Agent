@@ -39,6 +39,10 @@ class ProfileStore {
     }
   }
 
+  Future<String?> readPassword() {
+    return _secureStorage.read(key: _passwordKey);
+  }
+
   Future<void> clear() async {
     await _preferences.remove(_profileKey);
     await _secureStorage.delete(key: _passwordKey);

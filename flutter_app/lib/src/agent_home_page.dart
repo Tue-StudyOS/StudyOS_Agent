@@ -13,7 +13,11 @@ import 'native_bridge.dart';
 import 'profile_context.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
+import 'timetable_repository.dart';
 import 'widgets/agent_home_scaffold.dart';
+
+part 'agent_home_sessions.dart';
+part 'agent_home_timetable.dart';
 
 class AgentHomePage extends StatefulWidget {
   const AgentHomePage({this.profile, this.onLogout, super.key});
@@ -25,24 +29,40 @@ class AgentHomePage extends StatefulWidget {
   State<AgentHomePage> createState() => _AgentHomePageState();
 }
 
-class _AgentHomePageState extends State<AgentHomePage> {
+class _AgentHomePageState extends State<AgentHomePage>
+    with _AgentHomeSessions, _AgentHomeTimetable {
+  @override
   final NativeBridge _bridge = NativeBridge();
+  @override
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
   final MemoryStore _memoryStore = MemoryStore();
+  @override
+  final TimetableRepository _timetableRepository = TimetableRepository();
   final TextEditingController _inputController = TextEditingController();
+  @override
   final ScrollController _messageScrollController = ScrollController();
 
   StreamSubscription<NativeEvent>? _eventSubscription;
+  @override
   List<ChatSession> _sessions = <ChatSession>[];
+  @override
   String? _activeSessionId;
   AgentConfig _agentConfig = const AgentConfig.defaults();
   String _memoryText = '';
+  @override
+  TimetableSnapshot? _timetable;
+  @override
+  String? _timetableError;
+  @override
   Map<String, Object?> _worldState = const {};
+  @override
   AppView _selectedView = AppView.home;
   String _status = 'Starting';
   bool _isSending = false;
   bool _compactMessages = false;
+  @override
+  bool _isRefreshingTimetable = false;
 
   @override
   void initState() {
@@ -56,6 +76,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
     unawaited(_loadSessions());
     unawaited(_loadAgentConfig());
     unawaited(_loadMemory());
+    unawaited(_loadTimetable());
     unawaited(_initializeNativeLayer());
   }
 
@@ -75,7 +96,11 @@ class _AgentHomePageState extends State<AgentHomePage> {
 
       setState(() {
         _status = init['status']?.toString() ?? 'Ready';
-        _worldState = withProfileContext(worldState, widget.profile);
+        _worldState = withProfileContext(
+          worldState,
+          widget.profile,
+          timetable: _timetable,
+        );
       });
     } on MissingPluginException {
       setState(() => _status = 'Bridge missing');
@@ -94,16 +119,6 @@ class _AgentHomePageState extends State<AgentHomePage> {
     }
     if (event.message.isEmpty) return;
     setState(() => _status = event.message);
-  }
-
-  Future<void> _loadSessions() async {
-    final state = await _sessionStore.load();
-    if (!mounted) return;
-    setState(() {
-      _sessions = state.sessions;
-      _activeSessionId = state.activeSessionId;
-    });
-    scrollChatToBottom(_messageScrollController);
   }
 
   Future<void> _loadAgentConfig() async {
@@ -135,49 +150,9 @@ class _AgentHomePageState extends State<AgentHomePage> {
     setState(() => _agentConfig = savedConfig);
   }
 
-  void _persistSessions() {
-    final activeSessionId = _activeSessionId;
-    if (activeSessionId == null || _sessions.isEmpty) return;
-    unawaited(
-      _sessionStore.save(sessions: _sessions, activeSessionId: activeSessionId),
-    );
-  }
-
   void _useSuggestion(String text) {
     _inputController.text = text;
     _inputController.selection = TextSelection.collapsed(offset: text.length);
-  }
-
-  void _createSession() {
-    final activeSession = activeSessionFrom(_sessions, _activeSessionId);
-    final hasTurns = activeSession.hasTurns;
-    final session = hasTurns ? ChatSession.fresh() : activeSession;
-    setState(() {
-      if (hasTurns) _sessions = <ChatSession>[session, ..._sessions];
-      _activeSessionId = session.id;
-      _selectedView = AppView.chat;
-    });
-    if (!hasTurns) scrollChatToBottom(_messageScrollController);
-  }
-
-  void _selectSession(String sessionId) {
-    setState(() {
-      _activeSessionId = sessionId;
-      _selectedView = AppView.chat;
-    });
-    scrollChatToBottom(_messageScrollController);
-    _persistSessions();
-  }
-
-  void _deleteSession(String sessionId) {
-    _applySessionMutation(
-      deleteSessionFromSessions(
-        sessions: _sessions,
-        activeSessionId: _activeSessionId,
-        sessionId: sessionId,
-      ),
-      selectChat: true,
-    );
   }
 
   Future<void> _sendMessage() async {
@@ -200,9 +175,11 @@ class _AgentHomePageState extends State<AgentHomePage> {
         sessions: _sessions,
         activeSessionId: _activeSessionId,
         memoryText: _memoryText,
+        timetable: _timetable,
         worldState: _worldState,
         userText: text,
         appendMemory: _appendMemory,
+        readSchedule: _readScheduleForAgent,
         onToolTrace: _addToolTrace,
       );
       _addAssistantMessage(response);
@@ -210,7 +187,11 @@ class _AgentHomePageState extends State<AgentHomePage> {
       final worldState = await _bridge.getWorldState();
       if (!mounted) return;
       setState(
-        () => _worldState = withProfileContext(worldState, widget.profile),
+        () => _worldState = withProfileContext(
+          worldState,
+          widget.profile,
+          timetable: _timetable,
+        ),
       );
     } on Object catch (error) {
       final message = sendErrorMessage(error);
@@ -230,45 +211,6 @@ class _AgentHomePageState extends State<AgentHomePage> {
     unawaited(HapticFeedback.lightImpact());
   }
 
-  void _addToolTrace(ToolTrace trace) {
-    _applySessionMutation(
-      upsertToolTraceInSessions(
-        sessions: _sessions,
-        activeSessionId: _activeSessionId,
-        message: ChatMessage.toolTrace(
-          toolName: trace.toolName,
-          status: trace.status,
-          summary: trace.summary,
-          callId: trace.callId,
-        ),
-      ),
-    );
-  }
-
-  void _appendMessage(ChatMessage message) {
-    _applySessionMutation(
-      appendMessageToSessions(
-        sessions: _sessions,
-        activeSessionId: _activeSessionId,
-        message: message,
-      ),
-    );
-  }
-
-  void _applySessionMutation(
-    SessionMutation mutation, {
-    bool selectChat = false,
-  }) {
-    if (!mounted) return;
-    setState(() {
-      _sessions = mutation.sessions;
-      _activeSessionId = mutation.activeSessionId;
-      if (selectChat) _selectedView = AppView.chat;
-    });
-    _persistSessions();
-    scrollChatToBottom(_messageScrollController);
-  }
-
   @override
   Widget build(BuildContext context) {
     return AgentHomeScaffold(
@@ -282,6 +224,9 @@ class _AgentHomePageState extends State<AgentHomePage> {
       status: _status,
       worldState: _worldState,
       memoryText: _memoryText,
+      timetable: _timetable,
+      timetableError: _timetableError,
+      isRefreshingTimetable: _isRefreshingTimetable,
       agentConfig: _agentConfig,
       profile: widget.profile,
       onSelectView: (view) => setState(() => _selectedView = view),
@@ -293,6 +238,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
       onLogout: widget.onLogout,
       onSaveAgentConfig: _saveAgentConfig,
       onSaveMemory: _saveMemory,
+      onRefreshTimetable: _refreshTimetable,
       onCompactMessagesChanged: (value) =>
           setState(() => _compactMessages = value),
     );

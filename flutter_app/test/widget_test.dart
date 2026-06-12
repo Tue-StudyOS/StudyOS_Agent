@@ -293,8 +293,8 @@ void main() {
   });
 
   test('prompt context injects profile and memory', () {
-    const context = PromptContext(
-      profile: OnboardingProfile(
+    final context = PromptContext(
+      profile: const OnboardingProfile(
         displayName: 'Ada',
         username: 'ada42',
         email: 'ada@example.edu',
@@ -309,6 +309,19 @@ void main() {
       ),
       memory: '- Prefers morning study blocks.',
       worldState: <String, Object?>{'weekday': 'Thursday'},
+      timetable: TimetableSnapshot(
+        refreshedAt: DateTime(2026, 6, 12, 10),
+        sourceTerm: 'Sommer 2026',
+        events: <LectureEvent>[
+          LectureEvent(
+            id: 'lecture-1',
+            title: 'Algorithms',
+            start: DateTime(2026, 6, 13, 10),
+            end: DateTime(2026, 6, 13, 12),
+            location: 'Room 101',
+          ),
+        ],
+      ),
     );
 
     final prompt = context.systemPrompt();
@@ -319,6 +332,8 @@ void main() {
     expect(prompt, contains('Mensa'));
     expect(prompt, contains('Vegan'));
     expect(prompt, contains('Deadline reminders'));
+    expect(prompt, contains('Cached timetable summary'));
+    expect(prompt, contains('Algorithms'));
     expect(prompt, contains('Prefers morning study blocks'));
     expect(prompt, contains('Thursday'));
     expect(prompt, contains('call append_memory'));

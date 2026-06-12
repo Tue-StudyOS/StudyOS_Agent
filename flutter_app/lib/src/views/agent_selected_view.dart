@@ -23,12 +23,16 @@ class AgentSelectedView extends StatelessWidget {
     required this.onSelectView,
     required this.worldState,
     required this.memoryText,
+    required this.timetable,
+    required this.timetableError,
+    required this.isRefreshingTimetable,
     required this.agentConfig,
     required this.profile,
     required this.status,
     required this.onLogout,
     required this.onSaveAgentConfig,
     required this.onSaveMemory,
+    required this.onRefreshTimetable,
     required this.onCompactMessagesChanged,
     super.key,
   });
@@ -45,6 +49,9 @@ class AgentSelectedView extends StatelessWidget {
   final ValueChanged<AppView> onSelectView;
   final Map<String, Object?> worldState;
   final String memoryText;
+  final TimetableSnapshot? timetable;
+  final String? timetableError;
+  final bool isRefreshingTimetable;
   final AgentConfig agentConfig;
   final OnboardingProfile? profile;
   final String status;
@@ -52,6 +59,7 @@ class AgentSelectedView extends StatelessWidget {
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
   final Future<void> Function(String text) onSaveMemory;
+  final Future<void> Function() onRefreshTimetable;
   final ValueChanged<bool> onCompactMessagesChanged;
 
   @override
@@ -61,7 +69,9 @@ class AgentSelectedView extends StatelessWidget {
         profile: profile,
         config: agentConfig,
         memoryText: memoryText,
+        timetable: timetable,
         onOpenCampus: () => onSelectView(AppView.campus),
+        onOpenSchedule: () => onSelectView(AppView.schedule),
       ),
       AppView.chat => ChatView(
         messages: activeSessionFrom(sessions, activeSessionId).messages,
@@ -72,7 +82,13 @@ class AgentSelectedView extends StatelessWidget {
         onSuggestionSelected: onSuggestionSelected,
         onSend: onSend,
       ),
-      AppView.schedule => ScheduleView(profile: profile),
+      AppView.schedule => ScheduleView(
+        profile: profile,
+        snapshot: timetable,
+        error: timetableError,
+        isRefreshing: isRefreshingTimetable,
+        onRefresh: onRefreshTimetable,
+      ),
       AppView.campus => CampusView(profile: profile),
       AppView.memories => MemoriesView(
         worldState: worldState,

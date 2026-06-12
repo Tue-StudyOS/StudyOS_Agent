@@ -18,6 +18,9 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.status,
     required this.worldState,
     required this.memoryText,
+    required this.timetable,
+    required this.timetableError,
+    required this.isRefreshingTimetable,
     required this.agentConfig,
     required this.profile,
     required this.onSelectView,
@@ -29,6 +32,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.onLogout,
     required this.onSaveAgentConfig,
     required this.onSaveMemory,
+    required this.onRefreshTimetable,
     required this.onCompactMessagesChanged,
     super.key,
   });
@@ -43,6 +47,9 @@ class AgentHomeScaffold extends StatelessWidget {
   final String status;
   final Map<String, Object?> worldState;
   final String memoryText;
+  final TimetableSnapshot? timetable;
+  final String? timetableError;
+  final bool isRefreshingTimetable;
   final AgentConfig agentConfig;
   final OnboardingProfile? profile;
   final ValueChanged<AppView> onSelectView;
@@ -55,6 +62,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
   final Future<void> Function(String text) onSaveMemory;
+  final Future<void> Function() onRefreshTimetable;
   final ValueChanged<bool> onCompactMessagesChanged;
 
   @override
@@ -137,12 +145,16 @@ class AgentHomeScaffold extends StatelessWidget {
                       onSelectView: onSelectView,
                       worldState: worldState,
                       memoryText: memoryText,
+                      timetable: timetable,
+                      timetableError: timetableError,
+                      isRefreshingTimetable: isRefreshingTimetable,
                       agentConfig: agentConfig,
                       profile: profile,
                       status: status,
                       onLogout: onLogout,
                       onSaveAgentConfig: onSaveAgentConfig,
                       onSaveMemory: onSaveMemory,
+                      onRefreshTimetable: onRefreshTimetable,
                       onCompactMessagesChanged: onCompactMessagesChanged,
                     ),
                   ),

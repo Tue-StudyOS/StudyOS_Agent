@@ -9,14 +9,18 @@ class HomeView extends StatelessWidget {
     required this.profile,
     required this.config,
     required this.memoryText,
+    required this.timetable,
     required this.onOpenCampus,
+    required this.onOpenSchedule,
     super.key,
   });
 
   final OnboardingProfile? profile;
   final AgentConfig config;
   final String memoryText;
+  final TimetableSnapshot? timetable;
   final VoidCallback onOpenCampus;
+  final VoidCallback onOpenSchedule;
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +60,18 @@ class HomeView extends StatelessWidget {
             _HomeStatusItem(
               icon: Icons.calendar_month_outlined,
               label: 'Timetable',
-              value: 'Not synced yet',
+              value: _timetableStatus,
             ),
           ],
         ),
         const SizedBox(height: StudyOsSpacing.lg),
+        _HomeCard(
+          icon: Icons.event_available_outlined,
+          title: 'Next lecture',
+          body: _nextLectureLine(),
+          onTap: onOpenSchedule,
+        ),
+        const SizedBox(height: StudyOsSpacing.md),
         _HomeCard(
           icon: Icons.restaurant_outlined,
           title: 'Campus',
@@ -69,6 +80,19 @@ class HomeView extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String get _timetableStatus {
+    final snapshot = timetable;
+    if (snapshot == null) return 'Not synced yet';
+    return snapshot.isStale ? 'Refresh due' : 'Synced';
+  }
+
+  String _nextLectureLine() {
+    final next = timetable?.nextLecture;
+    if (next == null) return 'Refresh your timetable to see upcoming lectures.';
+    final location = next.location == null ? '' : ' · ${next.location}';
+    return '${next.dayLabel} · ${next.timeRangeText}$location';
   }
 
   String _profileLine(OnboardingProfile profile) {

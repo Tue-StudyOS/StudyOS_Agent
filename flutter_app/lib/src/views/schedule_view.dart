@@ -2,67 +2,140 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/schedule_components.dart';
 
-class ScheduleView extends StatelessWidget {
-  const ScheduleView({required this.profile, super.key});
+class ScheduleView extends StatefulWidget {
+  const ScheduleView({
+    required this.profile,
+    required this.snapshot,
+    required this.error,
+    required this.isRefreshing,
+    required this.onRefresh,
+    super.key,
+  });
 
   final OnboardingProfile? profile;
+  final TimetableSnapshot? snapshot;
+  final String? error;
+  final bool isRefreshing;
+  final Future<void> Function() onRefresh;
+
+  @override
+  State<ScheduleView> createState() => _ScheduleViewState();
+}
+
+class _ScheduleViewState extends State<ScheduleView> {
+  DateTime? _selectedDay;
 
   @override
   Widget build(BuildContext context) {
+    final snapshot = widget.snapshot;
+    final days = snapshot?.days ?? const <DateTime>[];
+    final selectedDay = _visibleDay(days);
+    final events = selectedDay == null
+        ? const <LectureEvent>[]
+        : snapshot!.eventsOn(selectedDay);
     return ListView(
       padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
       children: <Widget>[
-        Text('Schedule', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: StudyOsSpacing.xs),
-        Text(
-          profile == null ? 'No student profile connected.' : _profileLine(),
-          style: Theme.of(context).textTheme.bodyMedium,
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Schedule',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: StudyOsSpacing.xs),
+                  Text(
+                    _subtitle(snapshot),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Refresh timetable',
+              onPressed: widget.isRefreshing ? null : widget.onRefresh,
+              icon: widget.isRefreshing
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
+            ),
+          ],
         ),
+        if (widget.error != null) ...<Widget>[
+          const SizedBox(height: StudyOsSpacing.md),
+          ScheduleMessageCard(
+            icon: Icons.warning_amber_rounded,
+            title: 'Could not refresh timetable',
+            body: widget.error!,
+          ),
+        ],
         const SizedBox(height: StudyOsSpacing.lg),
-        Container(
-          padding: const EdgeInsets.all(StudyOsSpacing.xl),
-          decoration: BoxDecoration(
-            color: StudyOsColors.surface,
-            border: Border.all(color: StudyOsColors.border),
-            borderRadius: BorderRadius.circular(StudyOsRadii.md),
+        if (snapshot == null || snapshot.events.isEmpty)
+          const ScheduleMessageCard(
+            icon: Icons.calendar_month_outlined,
+            title: 'No timetable synced yet',
+            body: 'Refresh ALMA to load your upcoming lectures and rooms.',
+          )
+        else ...<Widget>[
+          ScheduleDayStrip(
+            days: days,
+            selectedDay: selectedDay ?? days.first,
+            eventsFor: snapshot.eventsOn,
+            onSelected: (day) => setState(() => _selectedDay = day),
           ),
-          child: Column(
-            children: <Widget>[
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: StudyOsColors.accent.withValues(alpha: 0.14),
-                child: const Icon(
-                  Icons.calendar_month_outlined,
-                  color: StudyOsColors.accent,
-                ),
-              ),
-              const SizedBox(height: StudyOsSpacing.lg),
-              Text(
-                'No timetable synced yet',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: StudyOsSpacing.sm),
-              Text(
-                'Upcoming lectures and rooms will appear here once a live timetable source is connected.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
+          const SizedBox(height: StudyOsSpacing.lg),
+          ScheduleDayHeader(
+            day: selectedDay ?? days.first,
+            count: events.length,
           ),
-        ),
+          const SizedBox(height: StudyOsSpacing.md),
+          if (events.isEmpty)
+            const ScheduleMessageCard(
+              icon: Icons.calendar_today_outlined,
+              title: 'No lectures this day',
+              body: 'Pick another day from the strip above.',
+            )
+          else
+            for (var index = 0; index < events.length; index++)
+              ScheduleLectureCard(
+                event: events[index],
+                isFirst: index == 0,
+                color: scheduleColorFor(events[index].title),
+              ),
+        ],
       ],
     );
   }
 
-  String _profileLine() {
-    final profile = this.profile;
-    if (profile == null) return '';
-    final parts = <String>[
-      profile.degreeProgram,
-      if (profile.semester != null) 'Semester ${profile.semester}',
-      if (profile.livesInTuebingen) 'Tübingen',
+  DateTime? _visibleDay(List<DateTime> days) {
+    if (days.isEmpty) return null;
+    final selected = _selectedDay;
+    if (selected != null && days.any((day) => scheduleSameDay(day, selected))) {
+      return days.firstWhere((day) => scheduleSameDay(day, selected));
+    }
+    final today = DateTime.now();
+    return days.firstWhere(
+      (day) => !day.isBefore(DateTime(today.year, today.month, today.day)),
+      orElse: () => days.first,
+    );
+  }
+
+  String _subtitle(TimetableSnapshot? snapshot) {
+    final profile = widget.profile;
+    final details = <String>[
+      if (snapshot != null) snapshot.sourceTerm,
+      if (profile != null) profile.degreeProgram,
+      if (snapshot != null) '${snapshot.events.length} entries',
     ];
-    return parts.join(' · ');
+    return details.isEmpty
+        ? 'Upcoming lectures from ALMA.'
+        : details.join(' · ');
   }
 }

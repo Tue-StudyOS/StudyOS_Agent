@@ -31,6 +31,7 @@ class AgentRequestRunner {
     required String userText,
     required PromptContext context,
     required String memoryText,
+    required Future<String> Function() readSchedule,
   }) async {
     final traceId = 'model-${DateTime.now().microsecondsSinceEpoch}';
     onToolTrace(
@@ -49,6 +50,7 @@ class AgentRequestRunner {
               activeSessionId,
               userText,
               context,
+              readSchedule,
             )
           : await bridge.sendMessage(
               userText,
@@ -83,6 +85,7 @@ class AgentRequestRunner {
     String? activeSessionId,
     String userText,
     PromptContext context,
+    Future<String> Function() readSchedule,
   ) async {
     final apiKey = await configStore.readApiKey();
     if (apiKey == null || apiKey.isEmpty) {
@@ -96,6 +99,7 @@ class AgentRequestRunner {
       context: context,
       appendMemory: appendMemory,
       readMemory: memoryStore.read,
+      readSchedule: readSchedule,
       onToolTrace: onToolTrace,
     );
   }

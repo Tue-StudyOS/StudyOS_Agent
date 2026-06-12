@@ -22,6 +22,7 @@ void main() {
         'append_memory',
         'read_memories',
         'get_study_context',
+        'get_schedule',
       ]),
     );
   });
@@ -101,6 +102,7 @@ void main() {
       ),
       appendMemory: (_) async {},
       readMemory: () async => '- Prefers morning study blocks.',
+      readSchedule: () async => 'No timetable has been synced yet.',
       onToolTrace: traces.add,
     );
 
@@ -150,8 +152,81 @@ void main() {
         ),
         appendMemory: (_) async {},
         readMemory: () async => '',
+        readSchedule: () async => 'No timetable has been synced yet.',
       ),
       throwsA(isA<CloudAgentException>()),
     );
+  });
+
+  test('executes get_schedule tool calls', () async {
+    var requestCount = 0;
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) async {
+        requestCount += 1;
+        if (requestCount == 1) {
+          return http.Response(
+            jsonEncode(<String, Object?>{
+              'choices': <Object?>[
+                <String, Object?>{
+                  'message': <String, Object?>{
+                    'role': 'assistant',
+                    'content': null,
+                    'tool_calls': <Object?>[
+                      <String, Object?>{
+                        'id': 'call_schedule',
+                        'type': 'function',
+                        'function': <String, Object?>{
+                          'name': 'get_schedule',
+                          'arguments': '{}',
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+            request: request,
+          );
+        }
+        expect(request.body, contains('Algorithms 10:00'));
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'choices': <Object?>[
+              <String, Object?>{
+                'message': <String, Object?>{
+                  'role': 'assistant',
+                  'content': 'Your next lecture is Algorithms.',
+                },
+              },
+            ],
+          }),
+          200,
+          request: request,
+        );
+      }),
+    );
+
+    final response = await client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+      ),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'What is my next lecture?',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => '',
+      readSchedule: () async => 'Algorithms 10:00',
+    );
+
+    expect(response, 'Your next lecture is Algorithms.');
   });
 }

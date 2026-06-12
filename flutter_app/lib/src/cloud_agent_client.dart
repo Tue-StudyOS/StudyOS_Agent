@@ -21,6 +21,7 @@ class CloudAgentClient {
     required PromptContext context,
     required Future<void> Function(String text) appendMemory,
     required Future<String> Function() readMemory,
+    required Future<String> Function() readSchedule,
     void Function(ToolTrace trace)? onToolTrace,
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
@@ -60,6 +61,7 @@ class CloudAgentClient {
           context: context,
           appendMemory: appendMemory,
           readMemory: readMemory,
+          readSchedule: readSchedule,
         );
       } on Object catch (error) {
         onToolTrace?.call(
@@ -195,11 +197,13 @@ class CloudAgentClient {
     required PromptContext context,
     required Future<void> Function(String text) appendMemory,
     required Future<String> Function() readMemory,
+    required Future<String> Function() readSchedule,
   }) async {
     return switch (call.name) {
       'append_memory' => _appendMemory(call.arguments, appendMemory),
       'read_memories' => readMemory(),
       'get_study_context' => context.systemPrompt(),
+      'get_schedule' => readSchedule(),
       _ => 'Tool is not available: ${call.name}',
     };
   }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'tool_trace.dart';
 
 export 'student_profile.dart';
+export 'timetable_models.dart';
 export 'tool_trace.dart';
 
 class ChatMessage {

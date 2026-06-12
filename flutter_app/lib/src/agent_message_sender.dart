@@ -14,15 +14,18 @@ Future<String> sendAgentMessage({
   required List<ChatSession> sessions,
   required String? activeSessionId,
   required String memoryText,
+  required TimetableSnapshot? timetable,
   required Map<String, Object?> worldState,
   required String userText,
   required Future<void> Function(String text) appendMemory,
+  required Future<String> Function() readSchedule,
   required void Function(ToolTrace trace) onToolTrace,
 }) {
   final context = PromptContext(
     profile: profile,
     memory: memoryText,
     worldState: worldState,
+    timetable: timetable,
   );
   return AgentRequestRunner(
     bridge: bridge,
@@ -37,5 +40,6 @@ Future<String> sendAgentMessage({
     userText: userText,
     context: context,
     memoryText: memoryText,
+    readSchedule: readSchedule,
   );
 }

@@ -43,10 +43,19 @@ const getStudyContextTool = StudyOsToolSpec(
   required: <String>[],
 );
 
+const getScheduleTool = StudyOsToolSpec(
+  name: 'get_schedule',
+  description: 'Read the locally cached ALMA timetable and upcoming lectures.',
+  traceSummary: 'Reading the cached ALMA timetable.',
+  properties: <String, Object?>{},
+  required: <String>[],
+);
+
 const studyOsTools = <StudyOsToolSpec>[
   appendMemoryTool,
   readMemoriesTool,
   getStudyContextTool,
+  getScheduleTool,
 ];
 
 StudyOsToolSpec? studyOsToolByName(String name) {
