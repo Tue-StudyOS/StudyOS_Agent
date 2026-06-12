@@ -60,6 +60,10 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
   }
 
   Future<void> _handleOnboardingComplete(OnboardingProfile profile) async {
+    await _saveProfile(profile);
+  }
+
+  Future<void> _saveProfile(OnboardingProfile profile) async {
     await _profileStore.saveProfile(profile);
     if (!mounted) return;
     setState(() => _profile = profile);
@@ -95,7 +99,11 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
     final session = _session;
     final profile = _profile;
     if (profile != null) {
-      return AgentHomePage(profile: profile, onLogout: _handleLogout);
+      return AgentHomePage(
+        profile: profile,
+        onLogout: _handleLogout,
+        onSaveProfile: _saveProfile,
+      );
     }
     if (session == null) {
       return LoginPage(onLogin: _handleLogin);

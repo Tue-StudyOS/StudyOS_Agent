@@ -30,6 +30,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.onSuggestionSelected,
     required this.onSend,
     required this.onLogout,
+    required this.onSaveProfile,
     required this.onSaveAgentConfig,
     required this.onSaveMemory,
     required this.onRefreshTimetable,
@@ -59,6 +60,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final ValueChanged<String> onSuggestionSelected;
   final VoidCallback onSend;
   final VoidCallback? onLogout;
+  final Future<void> Function(OnboardingProfile profile)? onSaveProfile;
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
   final Future<void> Function(String text) onSaveMemory;
@@ -152,6 +154,7 @@ class AgentHomeScaffold extends StatelessWidget {
                       profile: profile,
                       status: status,
                       onLogout: onLogout,
+                      onSaveProfile: onSaveProfile,
                       onSaveAgentConfig: onSaveAgentConfig,
                       onSaveMemory: onSaveMemory,
                       onRefreshTimetable: onRefreshTimetable,

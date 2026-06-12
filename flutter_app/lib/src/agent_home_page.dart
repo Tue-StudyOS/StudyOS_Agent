@@ -20,10 +20,16 @@ part 'agent_home_sessions.dart';
 part 'agent_home_timetable.dart';
 
 class AgentHomePage extends StatefulWidget {
-  const AgentHomePage({this.profile, this.onLogout, super.key});
+  const AgentHomePage({
+    this.profile,
+    this.onLogout,
+    this.onSaveProfile,
+    super.key,
+  });
 
   final OnboardingProfile? profile;
   final VoidCallback? onLogout;
+  final Future<void> Function(OnboardingProfile profile)? onSaveProfile;
 
   @override
   State<AgentHomePage> createState() => _AgentHomePageState();
@@ -86,6 +92,19 @@ class _AgentHomePageState extends State<AgentHomePage>
     _inputController.dispose();
     _messageScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(AgentHomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile == widget.profile) return;
+    setState(
+      () => _worldState = withProfileContext(
+        _worldState,
+        widget.profile,
+        timetable: _timetable,
+      ),
+    );
   }
 
   Future<void> _initializeNativeLayer() async {
@@ -236,6 +255,7 @@ class _AgentHomePageState extends State<AgentHomePage>
       onSuggestionSelected: _useSuggestion,
       onSend: _sendMessage,
       onLogout: widget.onLogout,
+      onSaveProfile: widget.onSaveProfile,
       onSaveAgentConfig: _saveAgentConfig,
       onSaveMemory: _saveMemory,
       onRefreshTimetable: _refreshTimetable,

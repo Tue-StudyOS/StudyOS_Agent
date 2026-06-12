@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/assistant_status_card.dart';
 import '../widgets/feedback_settings_card.dart';
 import '../widgets/profile_row.dart';
+import '../widgets/settings_card.dart';
+import 'profile_edit_view.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({
@@ -14,6 +16,7 @@ class SettingsView extends StatefulWidget {
     required this.compactMessages,
     required this.onLogout,
     required this.onSaveAgentConfig,
+    required this.onSaveProfile,
     required this.onCompactMessagesChanged,
     super.key,
   });
@@ -25,6 +28,7 @@ class SettingsView extends StatefulWidget {
   final VoidCallback? onLogout;
   final Future<void> Function(AgentConfig config, String? apiKey)
   onSaveAgentConfig;
+  final Future<void> Function(OnboardingProfile profile) onSaveProfile;
   final ValueChanged<bool> onCompactMessagesChanged;
 
   @override
@@ -105,6 +109,19 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
+  Future<void> _editProfile() async {
+    final profile = widget.profile;
+    if (profile == null) return;
+    final updated = await Navigator.of(context).push<OnboardingProfile>(
+      MaterialPageRoute<OnboardingProfile>(
+        builder: (_) => ProfileEditView(profile: profile),
+      ),
+    );
+    if (updated == null) return;
+    await widget.onSaveProfile(updated);
+    _showMessage('Profile saved.');
+  }
+
   void _showMessage(String text) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
@@ -123,9 +140,9 @@ class _SettingsViewState extends State<SettingsView> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: StudyOsSpacing.lg),
-        _SettingsCard(
+        SettingsCard(
           children: <Widget>[
-            ProfileRow(profile: widget.profile),
+            ProfileRow(profile: widget.profile, onEdit: _editProfile),
             const Divider(color: StudyOsColors.border),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -142,7 +159,7 @@ class _SettingsViewState extends State<SettingsView> {
           ],
         ),
         const SizedBox(height: StudyOsSpacing.lg),
-        _SettingsCard(
+        SettingsCard(
           children: <Widget>[
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -158,9 +175,9 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(height: StudyOsSpacing.lg),
         FeedbackSettingsCard(status: widget.status),
         const SizedBox(height: StudyOsSpacing.lg),
-        _AssistantStatusCard(status: widget.status, config: widget.config),
+        AssistantStatusCard(status: widget.status, config: widget.config),
         const SizedBox(height: StudyOsSpacing.lg),
-        _SettingsCard(
+        SettingsCard(
           children: <Widget>[
             Align(
               alignment: Alignment.centerLeft,
@@ -239,53 +256,6 @@ class _SettingsViewState extends State<SettingsView> {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _AssistantStatusCard extends StatelessWidget {
-  const _AssistantStatusCard({required this.status, required this.config});
-
-  final String status;
-  final AgentConfig config;
-
-  @override
-  Widget build(BuildContext context) {
-    final ready = assistantIsReady(status);
-    final color = ready ? StudyOsColors.success : StudyOsColors.warning;
-    return _SettingsCard(
-      children: <Widget>[
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.auto_awesome_outlined, color: color),
-          title: const Text('Assistant'),
-          subtitle: Text(
-            '${assistantStatusLabel(status)} · ${assistantSetupLabel(config)}',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.lg),
-        child: Column(children: children),
-      ),
     );
   }
 }
