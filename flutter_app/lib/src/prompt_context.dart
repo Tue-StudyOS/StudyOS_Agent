@@ -14,8 +14,10 @@ class PromptContext {
   final TimetableSnapshot? timetable;
 
   String systemPrompt() {
+    final now = DateTime.now().toLocal();
     final buffer = StringBuffer()
       ..writeln('You are StudyOS Agent, a tool-grounded study agent.')
+      ..writeln('Current local timestamp: ${now.toIso8601String()}.')
       ..writeln('Use Markdown when formatting helps readability.')
       ..writeln('Call at least one available StudyOS tool before answering.')
       ..writeln(

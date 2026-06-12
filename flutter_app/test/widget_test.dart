@@ -388,6 +388,7 @@ void main() {
 
     final prompt = context.systemPrompt();
 
+    expect(prompt, contains('Current local timestamp:'));
     expect(prompt, contains('Ada'));
     expect(prompt, contains('ada@example.edu'));
     expect(prompt, contains('M.Sc. AI'));
