@@ -61,13 +61,42 @@ class AgentHomeScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: AppDrawer(
-        selectedView: selectedView,
         sessions: sessions,
         activeSessionId: activeSessionId,
-        onSelectView: onSelectView,
         onSelectSession: onSelectSession,
         onCreateSession: onCreateSession,
         onDeleteSession: onDeleteSession,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _navigationViews.indexOf(selectedView),
+        onDestinationSelected: (index) => onSelectView(_navigationViews[index]),
+        destinations: const <NavigationDestination>[
+          NavigationDestination(
+            selectedIcon: Icon(Icons.home_rounded),
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(Icons.chat_bubble_rounded),
+            icon: Icon(Icons.chat_bubble_outline_rounded),
+            label: 'Chat',
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            icon: Icon(Icons.calendar_month_outlined),
+            label: 'Schedule',
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(Icons.psychology_alt_rounded),
+            icon: Icon(Icons.psychology_alt_outlined),
+            label: 'Memories',
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(Icons.settings_rounded),
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -111,3 +140,11 @@ class AgentHomeScaffold extends StatelessWidget {
     );
   }
 }
+
+const List<AppView> _navigationViews = <AppView>[
+  AppView.home,
+  AppView.chat,
+  AppView.schedule,
+  AppView.memories,
+  AppView.settings,
+];

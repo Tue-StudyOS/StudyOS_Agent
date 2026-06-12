@@ -149,7 +149,7 @@ class ChatMessage {
   }
 }
 
-enum AppView { chat, memories, settings }
+enum AppView { home, chat, schedule, memories, settings }
 
 enum AgentProvider { local, cloud }
 

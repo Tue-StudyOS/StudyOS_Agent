@@ -42,7 +42,7 @@ void main() {
     expect(find.textContaining('Ask about lectures'), findsNothing);
   });
 
-  testWidgets('drawer exposes view icons and persisted chat sessions', (
+  testWidgets('drawer exposes persisted chat sessions', (
     WidgetTester tester,
   ) async {
     final session = ChatSession.fresh().copyWith(title: 'Algorithms review');
@@ -51,10 +51,8 @@ void main() {
     await tester.pumpWidget(
       _TestShell(
         child: AppDrawer(
-          selectedView: AppView.chat,
           sessions: <ChatSession>[session],
           activeSessionId: session.id,
-          onSelectView: (_) {},
           onSelectSession: (_) {},
           onCreateSession: () {},
           onDeleteSession: (value) => deletedSessionId = value,
@@ -62,9 +60,9 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.psychology_alt_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsNothing);
+    expect(find.byIcon(Icons.psychology_alt_outlined), findsNothing);
+    expect(find.byIcon(Icons.settings_outlined), findsNothing);
     expect(find.text('New chat'), findsOneWidget);
     expect(find.text(session.title), findsOneWidget);
     expect(find.textContaining('Active ID:'), findsOneWidget);

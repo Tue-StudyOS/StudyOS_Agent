@@ -39,7 +39,7 @@ class _AgentHomePageState extends State<AgentHomePage> {
   AgentConfig _agentConfig = const AgentConfig.defaults();
   String _memoryText = '';
   Map<String, Object?> _worldState = const {};
-  AppView _selectedView = AppView.chat;
+  AppView _selectedView = AppView.home;
   String _status = 'Starting';
   bool _isSending = false;
   bool _compactMessages = false;

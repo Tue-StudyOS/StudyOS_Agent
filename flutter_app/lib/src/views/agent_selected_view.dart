@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../chat_session_mutation.dart';
 import '../models.dart';
 import 'chat_view.dart';
+import 'home_view.dart';
 import 'memories_view.dart';
+import 'schedule_view.dart';
 import 'settings_view.dart';
 
 class AgentSelectedView extends StatelessWidget {
@@ -52,6 +54,12 @@ class AgentSelectedView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (selectedView) {
+      AppView.home => HomeView(
+        profile: profile,
+        config: agentConfig,
+        memoryText: memoryText,
+        status: status,
+      ),
       AppView.chat => ChatView(
         messages: activeSessionFrom(sessions, activeSessionId).messages,
         inputController: inputController,
@@ -61,6 +69,7 @@ class AgentSelectedView extends StatelessWidget {
         onSuggestionSelected: onSuggestionSelected,
         onSend: onSend,
       ),
+      AppView.schedule => ScheduleView(profile: profile),
       AppView.memories => MemoriesView(
         worldState: worldState,
         memoryText: memoryText,
