@@ -22,7 +22,7 @@ class TuebingenProfileClient {
     http.Client? httpClient,
     this.baseUrl = 'https://alma.uni-tuebingen.de',
     this.timeout = const Duration(seconds: 18),
-    this.optionalTimeout = const Duration(seconds: 10),
+    this.optionalTimeout = const Duration(seconds: 30),
   }) : _http = _CookieClient(httpClient ?? http.Client());
 
   final _CookieClient _http;

@@ -48,6 +48,7 @@ void main() {
               onSuggestionSelected: (_) {},
               onSend: () {},
               onLogout: null,
+              onSaveProfile: (_) async {},
               onSaveAgentConfig: (_, _) async {},
               onSaveMemory: (_) async {},
               onRefreshTimetable: () async {},

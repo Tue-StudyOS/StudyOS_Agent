@@ -146,6 +146,7 @@ void main() {
           status: 'Ready',
           compactMessages: false,
           onLogout: null,
+          onSaveProfile: (_) async {},
           onSaveAgentConfig: (config, apiKey) async {
             savedConfig = config;
             savedKey = apiKey;
@@ -180,6 +181,67 @@ void main() {
     expect(savedKey, 'secret');
     expect(find.text('Stored securely on this device.'), findsOneWidget);
     expect(find.text('Send feedback'), findsOneWidget);
+  });
+
+  testWidgets('settings profile editor updates onboarding preferences', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    OnboardingProfile? savedProfile;
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: 'ada@example.edu',
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+      interests: <StudyInterest>{StudyInterest.schedule},
+    );
+
+    await tester.pumpWidget(
+      _TestShell(
+        child: SettingsView(
+          config: const AgentConfig.defaults(),
+          profile: profile,
+          status: 'Ready',
+          compactMessages: false,
+          onLogout: null,
+          onSaveProfile: (value) async => savedProfile = value,
+          onSaveAgentConfig: (_, _) async {},
+          onCompactMessagesChanged: (_) {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Edit profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit profile'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Ada L.');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Degree program'),
+      'M.Sc. Computer Science',
+    );
+    await tester.ensureVisible(find.text('Mensa'));
+    await tester.tap(find.text('Mensa'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Vegan'));
+    await tester.tap(find.text('Vegan'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(savedProfile?.displayName, 'Ada L.');
+    expect(savedProfile?.email, 'ada@example.edu');
+    expect(savedProfile?.degreeProgram, 'M.Sc. Computer Science');
+    expect(savedProfile?.interests, contains(StudyInterest.mensa));
+    expect(savedProfile?.foodPreference, FoodPreference.vegan);
+    expect(find.text('Profile saved.'), findsOneWidget);
   });
 
   testWidgets('login and onboarding collect student profile context', (
@@ -326,6 +388,7 @@ void main() {
 
     final prompt = context.systemPrompt();
 
+    expect(prompt, contains('Current local timestamp:'));
     expect(prompt, contains('Ada'));
     expect(prompt, contains('ada@example.edu'));
     expect(prompt, contains('M.Sc. AI'));

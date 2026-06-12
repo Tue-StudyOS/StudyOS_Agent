@@ -2,7 +2,6 @@ import 'agent_config_store.dart';
 import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
 import 'memory_store.dart';
-import 'model_request_trace.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'prompt_context.dart';
@@ -33,50 +32,20 @@ class AgentRequestRunner {
     required String memoryText,
     required Future<String> Function() readSchedule,
   }) async {
-    final traceId = 'model-${DateTime.now().microsecondsSinceEpoch}';
-    onToolTrace(
-      modelRequestTrace(
-        config,
-        status: 'running',
-        callId: traceId,
-        localModelName: _localModelName(context.worldState),
-      ),
-    );
-    try {
-      final response = config.usesCloud
-          ? await _sendCloud(
-              config,
-              sessions,
-              activeSessionId,
-              userText,
-              context,
-              readSchedule,
-            )
-          : await bridge.sendMessage(
-              userText,
-              systemPrompt: context.systemPrompt(),
-              memory: memoryText,
-            );
-      onToolTrace(
-        modelRequestTrace(
-          config,
-          status: 'done',
-          callId: traceId,
-          localModelName: _localModelName(context.worldState),
-        ),
-      );
-      return response;
-    } on Object {
-      onToolTrace(
-        modelRequestTrace(
-          config,
-          status: 'failed',
-          callId: traceId,
-          localModelName: _localModelName(context.worldState),
-        ),
-      );
-      rethrow;
-    }
+    return config.usesCloud
+        ? _sendCloud(
+            config,
+            sessions,
+            activeSessionId,
+            userText,
+            context,
+            readSchedule,
+          )
+        : bridge.sendMessage(
+            userText,
+            systemPrompt: context.systemPrompt(),
+            memory: memoryText,
+          );
   }
 
   Future<String> _sendCloud(
@@ -102,13 +71,5 @@ class AgentRequestRunner {
       readSchedule: readSchedule,
       onToolTrace: onToolTrace,
     );
-  }
-
-  String? _localModelName(Map<String, Object?> worldState) {
-    return switch (worldState['platform']?.toString()) {
-      'ios' => 'apple_foundation',
-      'android' => 'gemini_nano',
-      _ => null,
-    };
   }
 }

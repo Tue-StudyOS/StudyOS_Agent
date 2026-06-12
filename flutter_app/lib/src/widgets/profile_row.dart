@@ -4,9 +4,10 @@ import '../models.dart';
 import '../studyos_theme.dart';
 
 class ProfileRow extends StatelessWidget {
-  const ProfileRow({required this.profile, super.key});
+  const ProfileRow({required this.profile, this.onEdit, super.key});
 
   final OnboardingProfile? profile;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +24,14 @@ class ProfileRow extends StatelessWidget {
             ? 'Sign in to personalize StudyOS.'
             : _profileSubtitle(profile),
       ),
+      trailing: profile == null
+          ? null
+          : IconButton(
+              tooltip: 'Edit profile',
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+            ),
+      onTap: profile == null ? null : onEdit,
     );
   }
 
