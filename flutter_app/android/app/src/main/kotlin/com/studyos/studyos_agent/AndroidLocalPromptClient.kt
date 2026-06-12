@@ -4,10 +4,11 @@ import android.content.Context
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerationConfig
-import com.google.mlkit.genai.prompt.ModelConfig
 import com.google.mlkit.genai.prompt.ModelPreference
 import com.google.mlkit.genai.prompt.ModelReleaseStage
+import com.google.mlkit.genai.prompt.generationConfig
 import com.google.mlkit.genai.prompt.java.GenerativeModelFutures
+import com.google.mlkit.genai.prompt.modelConfig
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -96,12 +97,12 @@ class AndroidLocalPromptClient(context: Context) {
     }
 
     private fun modelConfig(releaseStage: Int, preference: Int): GenerationConfig {
-        val modelConfigBuilder = ModelConfig.Builder()
-        modelConfigBuilder.setReleaseStage(releaseStage)
-        modelConfigBuilder.setPreference(preference)
-        val generationConfigBuilder = GenerationConfig.Builder()
-        generationConfigBuilder.setModelConfig(modelConfigBuilder.build())
-        return generationConfigBuilder.build()
+        return generationConfig {
+            modelConfig = modelConfig {
+                this.releaseStage = releaseStage
+                this.preference = preference
+            }
+        }
     }
 
     private fun statusFor(config: GenerationConfig): String {
