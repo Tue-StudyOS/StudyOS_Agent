@@ -159,7 +159,12 @@ void main() {
       _TestShell(
         child: ChatView(
           messages: <ChatMessage>[
-            ChatMessage(author: 'You', text: 'Plan study block', isUser: true),
+            ChatMessage(
+              author: 'You',
+              text:
+                  'Plan a focused study block around my timetable and open tasks.',
+              isUser: true,
+            ),
           ],
           inputController: controller,
           messageScrollController: scrollController,
@@ -171,9 +176,22 @@ void main() {
       ),
     );
 
-    expect(find.text('Summarize today'), findsNothing);
-    expect(find.text('Find next lecture'), findsNothing);
-    expect(find.text('Plan study block'), findsOneWidget);
+    expect(
+      find.text('Summarize my day and tell me what still needs attention.'),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        'Find my next lecture, including the room and when I should leave.',
+      ),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        'Plan a focused study block around my timetable and open tasks.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('tool traces render with visual status styling', (

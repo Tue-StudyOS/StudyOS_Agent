@@ -8,35 +8,30 @@ class SuggestionStrip extends StatelessWidget {
   final ValueChanged<String> onSelected;
 
   static const List<String> _suggestions = <String>[
-    'Summarize today',
-    'Find next lecture',
-    'Plan study block',
+    'Summarize my day and tell me what still needs attention.',
+    'Find my next lecture, including the room and when I should leave.',
+    'Plan a focused study block around my timetable and open tasks.',
   ];
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: StudyOsSpacing.sm),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 560;
-          return Wrap(
-            spacing: StudyOsSpacing.sm,
-            runSpacing: StudyOsSpacing.sm,
-            children: <Widget>[
-              for (final suggestion in _suggestions)
-                SizedBox(
-                  width: isWide
-                      ? (constraints.maxWidth - StudyOsSpacing.sm * 2) / 3
-                      : null,
-                  child: _SuggestionButton(
-                    label: suggestion,
-                    onPressed: () => onSelected(suggestion),
-                  ),
-                ),
-            ],
-          );
-        },
+      padding: const EdgeInsets.fromLTRB(
+        StudyOsSpacing.md,
+        0,
+        StudyOsSpacing.md,
+        StudyOsSpacing.sm,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: StudyOsSpacing.xs,
+        children: <Widget>[
+          for (final suggestion in _suggestions)
+            _SuggestionButton(
+              label: suggestion,
+              onPressed: () => onSelected(suggestion),
+            ),
+        ],
       ),
     );
   }
@@ -50,14 +45,29 @@ class _SuggestionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label),
-      backgroundColor: StudyOsColors.surfaceRaised,
-      side: const BorderSide(color: StudyOsColors.border),
-      labelStyle: Theme.of(
-        context,
-      ).textTheme.labelLarge?.copyWith(color: StudyOsColors.text, fontSize: 13),
-      onPressed: onPressed,
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: StudyOsColors.text, height: 1.28);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
+        onTap: onPressed,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: StudyOsSpacing.md,
+            vertical: StudyOsSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: StudyOsColors.surfaceRaised.withValues(alpha: 0.68),
+            border: Border.all(color: StudyOsColors.border),
+            borderRadius: BorderRadius.circular(StudyOsRadii.md),
+          ),
+          child: Text(label, style: textStyle),
+        ),
+      ),
     );
   }
 }

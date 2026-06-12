@@ -33,9 +33,22 @@ void main() {
       ),
     );
 
-    expect(find.text('Summarize today'), findsOneWidget);
-    expect(find.text('Find next lecture'), findsOneWidget);
-    expect(find.text('Plan study block'), findsOneWidget);
+    expect(
+      find.text('Summarize my day and tell me what still needs attention.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Find my next lecture, including the room and when I should leave.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Plan a focused study block around my timetable and open tasks.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Message StudyOS...'), findsOneWidget);
     expect(find.byIcon(Icons.auto_awesome_rounded), findsNothing);
     expect(find.text('Native'), findsNothing);
