@@ -96,13 +96,12 @@ class AndroidLocalPromptClient(context: Context) {
     }
 
     private fun modelConfig(releaseStage: Int, preference: Int): GenerationConfig {
-        val modelConfig = ModelConfig.Builder()
-            .setReleaseStage(releaseStage)
-            .setPreference(preference)
-            .build()
-        return GenerationConfig.Builder()
-            .setModelConfig(modelConfig)
-            .build()
+        val modelConfigBuilder = ModelConfig.Builder()
+        modelConfigBuilder.setReleaseStage(releaseStage)
+        modelConfigBuilder.setPreference(preference)
+        val generationConfigBuilder = GenerationConfig.Builder()
+        generationConfigBuilder.setModelConfig(modelConfigBuilder.build())
+        return generationConfigBuilder.build()
     }
 
     private fun statusFor(config: GenerationConfig): String {
