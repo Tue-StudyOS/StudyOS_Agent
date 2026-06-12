@@ -20,7 +20,7 @@ class ProfileRow extends StatelessWidget {
       title: Text(profile?.displayName ?? 'Profile not connected'),
       subtitle: Text(
         profile == null
-            ? 'Sign in to attach student context.'
+            ? 'Sign in to personalize StudyOS.'
             : _profileSubtitle(profile),
       ),
     );

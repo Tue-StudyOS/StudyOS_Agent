@@ -6,8 +6,9 @@ String? sendErrorMessage(Object error) {
   return switch (error) {
     CloudAgentException(:final message) => message,
     MissingPluginException() =>
-      'Native bridge is not implemented on this target.',
-    PlatformException(:final message) => 'Native bridge error: $message',
+      'This device cannot use the built-in assistant yet.',
+    PlatformException(:final message) =>
+      message ?? 'The assistant could not complete this request.',
     FormatException() => 'Cloud response could not be read.',
     _ => null,
   };

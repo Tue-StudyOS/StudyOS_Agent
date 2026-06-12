@@ -45,7 +45,7 @@ class ComposerBar extends StatelessWidget {
                   onSubmitted: (_) => onSend(),
                   style: Theme.of(context).textTheme.bodyLarge,
                   decoration: InputDecoration(
-                    hintText: 'Nachricht an Jarvis...',
+                    hintText: 'Message StudyOS...',
                     hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: StudyOsColors.textMuted,
                     ),

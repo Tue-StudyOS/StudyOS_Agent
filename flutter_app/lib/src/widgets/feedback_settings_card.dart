@@ -4,16 +4,10 @@ import '../feedback_client.dart';
 import '../studyos_theme.dart';
 
 class FeedbackSettingsCard extends StatefulWidget {
-  const FeedbackSettingsCard({
-    required this.status,
-    this.client,
-    this.credentialStore,
-    super.key,
-  });
+  const FeedbackSettingsCard({required this.status, this.client, super.key});
 
   final String status;
   final FeedbackClient? client;
-  final FeedbackCredentialStore? credentialStore;
 
   @override
   State<FeedbackSettingsCard> createState() => _FeedbackSettingsCardState();
@@ -21,39 +15,29 @@ class FeedbackSettingsCard extends StatefulWidget {
 
 class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
   late final TextEditingController _controller;
-  late final TextEditingController _tokenController;
   bool _isSending = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
-    _tokenController = TextEditingController();
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _tokenController.dispose();
     super.dispose();
   }
 
   Future<void> _send() async {
     setState(() => _isSending = true);
     try {
-      final store = widget.credentialStore ?? FeedbackCredentialStore();
-      final providedToken = _tokenController.text.trim();
-      if (providedToken.isNotEmpty) await store.saveToken(providedToken);
-      final token = providedToken.isEmpty
-          ? (await store.readToken() ?? '')
-          : providedToken;
       await (widget.client ?? FeedbackClient()).submit(
-        token: token,
+        token: studyOsFeedbackToken,
         message: _controller.text,
         status: widget.status,
       );
       _controller.clear();
-      _tokenController.clear();
       _showMessage('Feedback sent.');
     } on FeedbackException catch (error) {
       _showMessage(error.message);
@@ -84,18 +68,8 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
             Text('Feedback', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: StudyOsSpacing.sm),
             Text(
-              'Create a StudyOS GitHub issue directly from this device. The issue token is stored in secure storage.',
+              'Send feedback to the StudyOS team.',
               style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            TextField(
-              controller: _tokenController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'GitHub issue token',
-                hintText: 'Fine-grained token with Issues write',
-                prefixIcon: Icon(Icons.key_rounded),
-              ),
             ),
             const SizedBox(height: StudyOsSpacing.md),
             TextField(

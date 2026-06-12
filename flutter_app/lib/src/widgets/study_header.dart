@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assistant_copy.dart';
 import '../studyos_theme.dart';
 
 class StudyHeader extends StatelessWidget {
@@ -8,13 +9,9 @@ class StudyHeader extends StatelessWidget {
   final String status;
   final VoidCallback? onCreateSession;
 
-  bool get _isReady {
-    final lower = status.toLowerCase();
-    return lower.contains('ready') || lower.contains('initialized');
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isReady = assistantIsReady(status);
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, StudyOsSpacing.lg, 0, 10),
       child: Row(
@@ -22,7 +19,7 @@ class StudyHeader extends StatelessWidget {
           Builder(
             builder: (context) {
               return _HeaderIconButton(
-                tooltip: 'Open study context',
+                tooltip: 'Open chats',
                 icon: Icons.menu_rounded,
                 onPressed: Scaffold.of(context).openDrawer,
               );
@@ -31,7 +28,7 @@ class StudyHeader extends StatelessWidget {
           const Spacer(),
           const SizedBox(width: StudyOsSpacing.md),
           if (onCreateSession == null)
-            _StatusChip(label: _isReady ? 'Ready' : status, isReady: _isReady)
+            _StatusChip(label: assistantStatusLabel(status), isReady: isReady)
           else
             _HeaderIconButton(
               tooltip: 'New chat',
@@ -87,7 +84,7 @@ class _StatusChip extends StatelessWidget {
     final color = isReady ? StudyOsColors.success : StudyOsColors.warning;
 
     return Semantics(
-      label: 'Native bridge status: $label',
+      label: 'App status: $label',
       child: Container(
         constraints: const BoxConstraints(maxWidth: 180),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

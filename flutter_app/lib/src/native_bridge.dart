@@ -48,6 +48,6 @@ class NativeBridge {
         'memory': memory,
       },
     );
-    return result ?? 'Native bridge returned no status.';
+    return result ?? 'The assistant did not return a response.';
   }
 }

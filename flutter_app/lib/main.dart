@@ -82,7 +82,7 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'StudyOS Agent',
+      title: 'StudyOS',
       theme: buildStudyOsTheme(),
       home: _buildHome(),
     );

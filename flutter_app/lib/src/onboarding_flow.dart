@@ -55,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return _OnboardingScaffold(
-      title: 'StudyOS Agent',
+      title: 'StudyOS',
       subtitle: 'Connect your student workspace',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

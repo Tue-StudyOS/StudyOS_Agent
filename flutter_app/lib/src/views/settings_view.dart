@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
 import '../widgets/feedback_settings_card.dart';
@@ -73,11 +74,11 @@ class _SettingsViewState extends State<SettingsView> {
     if (_provider == AgentProvider.cloud) {
       final uri = Uri.tryParse(endpoint);
       if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-        _showMessage('Enter a valid cloud endpoint URL.');
+        _showMessage('Enter a valid custom AI server URL.');
         return;
       }
       if (model.isEmpty) {
-        _showMessage('Enter a cloud model name.');
+        _showMessage('Enter a model name.');
         return;
       }
       if (!widget.config.hasApiKey && apiKey.isEmpty) {
@@ -98,7 +99,7 @@ class _SettingsViewState extends State<SettingsView> {
         apiKey.isEmpty ? null : apiKey,
       );
       _apiKeyController.clear();
-      _showMessage('Agent settings saved.');
+      _showMessage('Assistant setup saved.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -118,7 +119,7 @@ class _SettingsViewState extends State<SettingsView> {
         Text('Settings', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: StudyOsSpacing.xs),
         Text(
-          'Profile, session, and app-wide preferences.',
+          'Profile, assistant, feedback, and app preferences.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: StudyOsSpacing.lg),
@@ -157,12 +158,14 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(height: StudyOsSpacing.lg),
         FeedbackSettingsCard(status: widget.status),
         const SizedBox(height: StudyOsSpacing.lg),
+        _AssistantStatusCard(status: widget.status, config: widget.config),
+        const SizedBox(height: StudyOsSpacing.lg),
         _SettingsCard(
           children: <Widget>[
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Agent provider',
+                'Assistant setup',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -172,12 +175,12 @@ class _SettingsViewState extends State<SettingsView> {
                 ButtonSegment<AgentProvider>(
                   value: AgentProvider.local,
                   icon: Icon(Icons.memory_rounded),
-                  label: Text('Local'),
+                  label: Text('Built-in'),
                 ),
                 ButtonSegment<AgentProvider>(
                   value: AgentProvider.cloud,
                   icon: Icon(Icons.cloud_outlined),
-                  label: Text('Cloud'),
+                  label: Text('Custom'),
                 ),
               ],
               selected: <AgentProvider>{_provider},
@@ -191,7 +194,7 @@ class _SettingsViewState extends State<SettingsView> {
               enabled: isCloud,
               keyboardType: TextInputType.url,
               decoration: const InputDecoration(
-                labelText: 'Cloud endpoint',
+                labelText: 'Custom AI server',
                 hintText: 'https://api.example.com/v1/chat/completions',
                 prefixIcon: Icon(Icons.link_rounded),
               ),
@@ -201,7 +204,7 @@ class _SettingsViewState extends State<SettingsView> {
               controller: _modelController,
               enabled: isCloud,
               decoration: const InputDecoration(
-                labelText: 'Model',
+                labelText: 'Model name',
                 hintText: 'gpt-4.1-mini',
                 prefixIcon: Icon(Icons.tune_rounded),
               ),
@@ -214,8 +217,8 @@ class _SettingsViewState extends State<SettingsView> {
               decoration: InputDecoration(
                 labelText: 'API key',
                 helperText: widget.config.hasApiKey
-                    ? 'A key is saved in secure storage.'
-                    : 'Stored with the platform secure store.',
+                    ? 'Saved securely on this device.'
+                    : 'Stored securely on this device.',
                 prefixIcon: const Icon(Icons.key_rounded),
               ),
             ),
@@ -230,38 +233,35 @@ class _SettingsViewState extends State<SettingsView> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check_rounded),
-                label: const Text('Save agent settings'),
+                label: const Text('Save assistant setup'),
               ),
             ),
           ],
         ),
-        const SizedBox(height: StudyOsSpacing.lg),
-        _SettingsCard(
-          children: <Widget>[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Local model availability',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            const SizedBox(height: StudyOsSpacing.sm),
-            Text(
-              'iOS local mode uses Apple Foundation Models through SystemLanguageModel.default with StudyOS tools registered in the session. Android local mode uses ML Kit Prompt API / Gemini Nano through AICore. AICore does not list every installed model up front, so Android checks desired Gemini Nano variants by status. Google AI Edge or LiteRT-LM is a separate bundled-model path for native function calling.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-        const SizedBox(height: StudyOsSpacing.lg),
-        _SettingsCard(
-          children: <Widget>[
-            Text(
-              'Device bridge',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: StudyOsSpacing.sm),
-            Text(widget.status, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+      ],
+    );
+  }
+}
+
+class _AssistantStatusCard extends StatelessWidget {
+  const _AssistantStatusCard({required this.status, required this.config});
+
+  final String status;
+  final AgentConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = assistantIsReady(status);
+    final color = ready ? StudyOsColors.success : StudyOsColors.warning;
+    return _SettingsCard(
+      children: <Widget>[
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.auto_awesome_outlined, color: color),
+          title: const Text('Assistant'),
+          subtitle: Text(
+            '${assistantStatusLabel(status)} · ${assistantSetupLabel(config)}',
+          ),
         ),
       ],
     );

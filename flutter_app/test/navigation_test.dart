@@ -56,7 +56,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byIcon(Icons.home_rounded), findsOneWidget);
     expect(find.text('Schedule'), findsOneWidget);
-    expect(find.text('No timetable synced yet.'), findsOneWidget);
+    expect(find.text('Campus'), findsOneWidget);
 
     await tester.tap(find.text('Schedule'));
     await tester.pumpAndSettle();

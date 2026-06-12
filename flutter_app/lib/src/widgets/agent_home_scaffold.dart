@@ -93,7 +93,7 @@ class AgentHomeScaffold extends StatelessWidget {
                 NavigationDestination(
                   selectedIcon: Icon(Icons.psychology_alt_rounded),
                   icon: Icon(Icons.psychology_alt_outlined),
-                  label: 'Memories',
+                  label: 'Notes',
                 ),
                 NavigationDestination(
                   selectedIcon: Icon(Icons.settings_rounded),

@@ -48,7 +48,7 @@ class _MemoriesViewState extends State<MemoriesView> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Memories saved.')));
+      ).showSnackBar(const SnackBar(content: Text('Notes saved.')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -56,25 +56,18 @@ class _MemoriesViewState extends State<MemoriesView> {
 
   @override
   Widget build(BuildContext context) {
-    final hasWorldState = widget.worldState.isNotEmpty;
-
     return ListView(
       padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
       children: <Widget>[
         _SectionHeader(
-          title: 'Memories',
-          description: 'Saved, personalized study context will appear here.',
+          title: 'Personal notes',
+          description: 'Things StudyOS can remember for future chats.',
         ),
         const SizedBox(height: StudyOsSpacing.lg),
         _MemoryEditor(
           controller: _controller,
           isSaving: _isSaving,
           onSave: _save,
-        ),
-        const SizedBox(height: StudyOsSpacing.lg),
-        _ContextPreviewCard(
-          hasWorldState: hasWorldState,
-          worldState: widget.worldState,
         ),
       ],
     );
@@ -123,10 +116,7 @@ class _MemoryEditor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            'Memory document',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Saved notes', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: StudyOsSpacing.sm),
           TextField(
             controller: controller,
@@ -134,8 +124,7 @@ class _MemoryEditor extends StatelessWidget {
             maxLines: 18,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
-              hintText:
-                  '- Favorite food: lasagne\n- Prefers morning study blocks',
+              hintText: '- Favorite food: lasagne\n- Studies best in mornings',
               alignLabelWithHint: true,
             ),
           ),
@@ -150,46 +139,8 @@ class _MemoryEditor extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_outlined),
-              label: const Text('Save memories'),
+              label: const Text('Save notes'),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ContextPreviewCard extends StatelessWidget {
-  const _ContextPreviewCard({
-    required this.hasWorldState,
-    required this.worldState,
-  });
-
-  final bool hasWorldState;
-  final Map<String, Object?> worldState;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(StudyOsSpacing.lg),
-      decoration: BoxDecoration(
-        color: StudyOsColors.surfaceRaised,
-        border: Border.all(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Current context',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: StudyOsSpacing.sm),
-          Text(
-            hasWorldState
-                ? 'Live local signals are available for this session.'
-                : 'No live local context has been received yet.',
-            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ),

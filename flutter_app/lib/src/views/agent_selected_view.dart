@@ -58,7 +58,6 @@ class AgentSelectedView extends StatelessWidget {
         profile: profile,
         config: agentConfig,
         memoryText: memoryText,
-        status: status,
       ),
       AppView.chat => ChatView(
         messages: activeSessionFrom(sessions, activeSessionId).messages,

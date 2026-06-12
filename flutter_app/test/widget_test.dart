@@ -36,7 +36,7 @@ void main() {
     expect(find.text('Summarize today'), findsOneWidget);
     expect(find.text('Find next lecture'), findsOneWidget);
     expect(find.text('Plan study block'), findsOneWidget);
-    expect(find.text('Nachricht an Jarvis...'), findsOneWidget);
+    expect(find.text('Message StudyOS...'), findsOneWidget);
     expect(find.byIcon(Icons.auto_awesome_rounded), findsNothing);
     expect(find.text('Native'), findsNothing);
     expect(find.textContaining('Ask about lectures'), findsNothing);
@@ -158,12 +158,18 @@ void main() {
     await tester.tap(find.byIcon(Icons.cloud_outlined));
     await tester.pump();
     await tester.enterText(
-      find.widgetWithText(TextField, 'Cloud endpoint'),
+      find.widgetWithText(TextField, 'Custom AI server'),
       'https://api.example.com/v1/chat/completions',
     );
-    await tester.enterText(find.widgetWithText(TextField, 'Model'), 'studyos');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Model name'),
+      'studyos',
+    );
     await tester.enterText(find.widgetWithText(TextField, 'API key'), 'secret');
-    final saveButton = find.widgetWithText(FilledButton, 'Save agent settings');
+    final saveButton = find.widgetWithText(
+      FilledButton,
+      'Save assistant setup',
+    );
     await tester.ensureVisible(saveButton);
     await tester.pumpAndSettle();
     await tester.tap(saveButton);
@@ -172,7 +178,7 @@ void main() {
     expect(savedConfig?.provider, AgentProvider.cloud);
     expect(savedConfig?.cloudModel, 'studyos');
     expect(savedKey, 'secret');
-    expect(find.text('Stored with the platform secure store.'), findsOneWidget);
+    expect(find.text('Stored securely on this device.'), findsOneWidget);
     expect(find.text('Send feedback'), findsOneWidget);
   });
 
@@ -299,12 +305,13 @@ void main() {
       find.byType(TextField),
       '- Favorite food: lasagne\n- Prefers focused mornings',
     );
-    await tester.tap(find.text('Save memories'));
+    await tester.tap(find.text('Save notes'));
     await tester.pumpAndSettle();
 
     expect(savedText, contains('Favorite food: lasagne'));
     expect(savedText, contains('Prefers focused mornings'));
-    expect(find.text('Memories saved.'), findsOneWidget);
+    expect(find.text('Notes saved.'), findsOneWidget);
+    expect(find.text('Personal notes'), findsOneWidget);
   });
 }
 

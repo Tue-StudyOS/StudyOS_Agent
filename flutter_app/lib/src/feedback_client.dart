@@ -1,28 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 const studyOsFeedbackRepository = 'Tue-StudyOS/StudyOS_Agent';
-
-class FeedbackCredentialStore {
-  FeedbackCredentialStore({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage();
-
-  static const _tokenKey = 'studyos.feedback.githubToken.v1';
-
-  final FlutterSecureStorage _secureStorage;
-
-  Future<String?> readToken() {
-    return _secureStorage.read(key: _tokenKey);
-  }
-
-  Future<void> saveToken(String token) async {
-    final trimmed = token.trim();
-    if (trimmed.isEmpty) return;
-    await _secureStorage.write(key: _tokenKey, value: trimmed);
-  }
-}
+const studyOsFeedbackToken = String.fromEnvironment('STUDYOS_FEEDBACK_TOKEN');
 
 class FeedbackClient {
   FeedbackClient({http.Client? httpClient})
@@ -42,7 +23,7 @@ class FeedbackClient {
     }
     final trimmedToken = token.trim();
     if (trimmedToken.isEmpty) {
-      throw const FeedbackException('Add a GitHub issue token first.');
+      throw const FeedbackException('Feedback is not set up yet.');
     }
     if (!repository.contains('/')) {
       throw const FeedbackException('Feedback repository is invalid.');

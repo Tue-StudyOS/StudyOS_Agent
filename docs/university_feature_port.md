@@ -61,9 +61,10 @@
     shortcut once configured, so the card is useful without taking over the main
     app navigation.
 11. Add feedback without a database or GitHub account requirement for students.
-    The app creates GitHub issues directly with a user-provided fine-grained
-    token for `Tue-StudyOS/StudyOS_Agent` with `Issues: write`; store that token
-    in platform secure storage and never hardcode it in the mobile binary.
+    The app creates GitHub issues directly with a developer-provided build
+    credential for `Tue-StudyOS/StudyOS_Agent` with `Issues: write`, for example
+    through `--dart-define=STUDYOS_FEEDBACK_TOKEN=...`. Do not expose this token
+    in the user-facing app.
 
 ## UX Shape
 

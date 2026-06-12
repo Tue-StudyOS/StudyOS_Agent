@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
 
@@ -8,14 +9,12 @@ class HomeView extends StatelessWidget {
     required this.profile,
     required this.config,
     required this.memoryText,
-    required this.status,
     super.key,
   });
 
   final OnboardingProfile? profile;
   final AgentConfig config;
   final String memoryText;
-  final String status;
 
   @override
   Widget build(BuildContext context) {
@@ -44,26 +43,26 @@ class HomeView extends StatelessWidget {
             ),
             _HomeStatusItem(
               icon: Icons.auto_awesome_outlined,
-              label: 'Agent',
-              value: config.usesCloud ? config.cloudModel : 'Local',
+              label: 'Assistant',
+              value: assistantSetupLabel(config),
             ),
             _HomeStatusItem(
               icon: Icons.psychology_alt_outlined,
-              label: 'Memories',
-              value: memoryText.trim().isEmpty ? 'Empty' : 'Saved',
+              label: 'Notes',
+              value: memoryText.trim().isEmpty ? 'Not yet' : 'Saved',
             ),
             _HomeStatusItem(
-              icon: Icons.sync_rounded,
-              label: 'Status',
-              value: status,
+              icon: Icons.calendar_month_outlined,
+              label: 'Timetable',
+              value: 'Not synced yet',
             ),
           ],
         ),
         const SizedBox(height: StudyOsSpacing.lg),
         _HomeCard(
-          icon: Icons.calendar_month_outlined,
-          title: 'Timetable',
-          body: 'No timetable synced yet.',
+          icon: Icons.restaurant_outlined,
+          title: 'Campus',
+          body: 'Mensa, rooms, and campus shortcuts will appear here.',
         ),
       ],
     );

@@ -25,13 +25,13 @@ class CloudAgentClient {
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
     if (endpoint == null || !endpoint.hasScheme || !endpoint.hasAuthority) {
-      throw const CloudAgentException('Cloud endpoint is not a valid URL.');
+      throw const CloudAgentException('Custom AI server URL is not valid.');
     }
     if (config.cloudModel.trim().isEmpty) {
-      throw const CloudAgentException('Cloud model is required.');
+      throw const CloudAgentException('Model name is required.');
     }
     if (apiKey.trim().isEmpty) {
-      throw const CloudAgentException('Cloud API key is required.');
+      throw const CloudAgentException('API key is required.');
     }
 
     final request = _requestBody(
@@ -46,7 +46,7 @@ class CloudAgentClient {
     final toolCalls = _toolCalls(message);
     if (toolCalls.isEmpty) {
       throw const CloudAgentException(
-        'The selected model did not call a StudyOS tool. Choose a tool-capable cloud model.',
+        'The selected model could not use StudyOS tools. Choose a compatible model.',
       );
     }
 
@@ -133,7 +133,7 @@ class CloudAgentClient {
   Map<String, Object?> _decodeResponse(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw CloudAgentException(
-        'Cloud provider returned HTTP ${response.statusCode}.',
+        'Custom AI service returned HTTP ${response.statusCode}.',
       );
     }
 
