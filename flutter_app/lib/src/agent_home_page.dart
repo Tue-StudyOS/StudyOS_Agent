@@ -146,6 +146,7 @@ class _AgentHomePageState extends State<AgentHomePage>
     await _loadMemory();
   }
 
+  @override
   Future<void> _publishIntentSnapshot() async {
     try {
       await _bridge.publishIntentSnapshot(

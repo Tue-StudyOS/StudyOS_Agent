@@ -43,16 +43,14 @@ class NativeBridge {
     required TimetableSnapshot? timetable,
     required String memoryText,
   }) async {
-    await _methods.invokeMethod<String>(
-      'publishIntentSnapshot',
-      <String, Object?>{
-        'updatedAt': DateTime.now().toIso8601String(),
-        'memoryPreview': _memoryPreview(memoryText),
-        'lectures':
-            timetable?.events.map((event) => event.toJson()).toList() ??
-            const <Map<String, Object?>>[],
-      },
-    );
+    await _methods
+        .invokeMethod<String>('publishIntentSnapshot', <String, Object?>{
+          'updatedAt': DateTime.now().toIso8601String(),
+          'memoryPreview': _memoryPreview(memoryText),
+          'lectures':
+              timetable?.events.map((event) => event.toJson()).toList() ??
+              const <Map<String, Object?>>[],
+        });
   }
 
   Future<String> sendMessage(
