@@ -244,7 +244,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
             const SizedBox(height: StudyOsSpacing.sm),
             Text(
-              'iOS local mode uses Apple Foundation Models through SystemLanguageModel.default and registers StudyOS tools with the session. Android local mode uses ML Kit Prompt API / Gemini Nano through AICore where available. ML Kit Prompt does not expose native function calling, so full tool-call parity needs Google AI Edge or LiteRT-LM function calling on a physical device.',
+              'iOS local mode uses Apple Foundation Models through SystemLanguageModel.default with StudyOS tools registered in the session. Android local mode uses ML Kit Prompt API / Gemini Nano through AICore. AICore does not list every installed model up front, so Android checks desired Gemini Nano variants by status. Google AI Edge or LiteRT-LM is a separate bundled-model path for native function calling.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
