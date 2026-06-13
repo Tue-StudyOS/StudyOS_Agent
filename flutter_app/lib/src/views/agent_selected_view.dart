@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../chat_session_mutation.dart';
 import '../models.dart';
+import '../native_bridge.dart';
 import 'campus_view.dart';
 import 'chat_view.dart';
 import 'home_view.dart';
@@ -27,6 +28,7 @@ class AgentSelectedView extends StatelessWidget {
     required this.timetableError,
     required this.isRefreshingTimetable,
     required this.agentConfig,
+    required this.nativeBridge,
     required this.profile,
     required this.status,
     required this.onLogout,
@@ -54,6 +56,7 @@ class AgentSelectedView extends StatelessWidget {
   final String? timetableError;
   final bool isRefreshingTimetable;
   final AgentConfig agentConfig;
+  final NativeBridge nativeBridge;
   final OnboardingProfile? profile;
   final String status;
   final VoidCallback? onLogout;
@@ -106,6 +109,7 @@ class AgentSelectedView extends StatelessWidget {
         onSaveProfile: onSaveProfile ?? (_) async {},
         onSaveAgentConfig: onSaveAgentConfig,
         onCompactMessagesChanged: onCompactMessagesChanged,
+        nativeBridge: nativeBridge,
       ),
     };
   }

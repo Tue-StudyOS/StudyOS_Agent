@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../native_bridge.dart';
 import '../studyos_theme.dart';
 import '../views/agent_selected_view.dart';
 import 'app_drawer.dart';
@@ -22,6 +23,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.timetableError,
     required this.isRefreshingTimetable,
     required this.agentConfig,
+    required this.nativeBridge,
     required this.profile,
     required this.onSelectView,
     required this.onSelectSession,
@@ -52,6 +54,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final String? timetableError;
   final bool isRefreshingTimetable;
   final AgentConfig agentConfig;
+  final NativeBridge nativeBridge;
   final OnboardingProfile? profile;
   final ValueChanged<AppView> onSelectView;
   final ValueChanged<String> onSelectSession;
@@ -151,6 +154,7 @@ class AgentHomeScaffold extends StatelessWidget {
                       timetableError: timetableError,
                       isRefreshingTimetable: isRefreshingTimetable,
                       agentConfig: agentConfig,
+                      nativeBridge: nativeBridge,
                       profile: profile,
                       status: status,
                       onLogout: onLogout,

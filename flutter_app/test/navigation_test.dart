@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
+import 'package:studyos_agent/src/native_bridge.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/home_view.dart';
 import 'package:studyos_agent/src/widgets/agent_home_scaffold.dart';
@@ -40,6 +41,7 @@ void main() {
               timetableError: null,
               isRefreshingTimetable: false,
               agentConfig: const AgentConfig.defaults(),
+              nativeBridge: NativeBridge(),
               profile: null,
               onSelectView: (value) => setState(() => selectedView = value),
               onSelectSession: (_) {},

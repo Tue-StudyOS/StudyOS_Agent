@@ -69,18 +69,24 @@ class AgentConfig {
     required this.cloudEndpoint,
     required this.cloudModel,
     required this.hasApiKey,
+    required this.localModelId,
+    required this.localModelPath,
   });
 
   const AgentConfig.defaults()
     : provider = AgentProvider.local,
       cloudEndpoint = '',
       cloudModel = '',
-      hasApiKey = false;
+      hasApiKey = false,
+      localModelId = 'gemma-4-e2b-it',
+      localModelPath = '';
 
   final AgentProvider provider;
   final String cloudEndpoint;
   final String cloudModel;
   final bool hasApiKey;
+  final String localModelId;
+  final String localModelPath;
 
   bool get usesCloud => provider == AgentProvider.cloud;
 
@@ -89,12 +95,16 @@ class AgentConfig {
     String? cloudEndpoint,
     String? cloudModel,
     bool? hasApiKey,
+    String? localModelId,
+    String? localModelPath,
   }) {
     return AgentConfig(
       provider: provider ?? this.provider,
       cloudEndpoint: cloudEndpoint ?? this.cloudEndpoint,
       cloudModel: cloudModel ?? this.cloudModel,
       hasApiKey: hasApiKey ?? this.hasApiKey,
+      localModelId: localModelId ?? this.localModelId,
+      localModelPath: localModelPath ?? this.localModelPath,
     );
   }
 }
@@ -187,6 +197,10 @@ class NativeEvent {
     required this.type,
     required this.message,
     required this.timestamp,
+    this.modelId,
+    this.progress,
+    this.bytesReceived,
+    this.totalBytes,
     this.trace,
   });
 
@@ -196,6 +210,10 @@ class NativeEvent {
       type: map['type']?.toString() ?? 'status',
       message: map['message']?.toString() ?? '',
       timestamp: map['timestamp']?.toString() ?? '',
+      modelId: map['modelId']?.toString(),
+      progress: _toDouble(map['progress']),
+      bytesReceived: _toInt(map['bytesReceived']),
+      totalBytes: _toInt(map['totalBytes']),
       trace: rawTrace is Map
           ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
           : null,
@@ -205,5 +223,27 @@ class NativeEvent {
   final String type;
   final String message;
   final String timestamp;
+  final String? modelId;
+  final double? progress;
+  final int? bytesReceived;
+  final int? totalBytes;
   final ToolTrace? trace;
+
+  static double? _toDouble(Object? value) {
+    return switch (value) {
+      double amount => amount,
+      int amount => amount.toDouble(),
+      String text => double.tryParse(text),
+      _ => null,
+    };
+  }
+
+  static int? _toInt(Object? value) {
+    return switch (value) {
+      int amount => amount,
+      double amount => amount.round(),
+      String text => int.tryParse(text),
+      _ => null,
+    };
+  }
 }

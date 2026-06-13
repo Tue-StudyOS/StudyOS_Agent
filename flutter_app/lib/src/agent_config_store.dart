@@ -13,6 +13,8 @@ class AgentConfigStore {
   static const String _providerKey = 'studyos.agent.provider.v1';
   static const String _endpointKey = 'studyos.agent.cloudEndpoint.v1';
   static const String _modelKey = 'studyos.agent.cloudModel.v1';
+  static const String _localModelIdKey = 'studyos.agent.localModelId.v1';
+  static const String _localModelPathKey = 'studyos.agent.localModelPath.v1';
   static const String _apiKeyKey = 'studyos.agent.cloudApiKey.v1';
 
   final SharedPreferencesAsync _preferences;
@@ -22,6 +24,8 @@ class AgentConfigStore {
     final providerName = await _preferences.getString(_providerKey);
     final endpoint = await _preferences.getString(_endpointKey);
     final model = await _preferences.getString(_modelKey);
+    final localModelId = await _preferences.getString(_localModelIdKey);
+    final localModelPath = await _preferences.getString(_localModelPathKey);
     final apiKey = await _secureStorage.read(key: _apiKeyKey);
 
     return AgentConfig(
@@ -31,6 +35,8 @@ class AgentConfigStore {
       cloudEndpoint: endpoint ?? '',
       cloudModel: model ?? '',
       hasApiKey: apiKey != null && apiKey.isNotEmpty,
+      localModelId: localModelId ?? const AgentConfig.defaults().localModelId,
+      localModelPath: localModelPath ?? '',
     );
   }
 
@@ -45,6 +51,11 @@ class AgentConfigStore {
     await _preferences.setString(_providerKey, config.provider.name);
     await _preferences.setString(_endpointKey, config.cloudEndpoint.trim());
     await _preferences.setString(_modelKey, config.cloudModel.trim());
+    await _preferences.setString(_localModelIdKey, config.localModelId.trim());
+    await _preferences.setString(
+      _localModelPathKey,
+      config.localModelPath.trim(),
+    );
 
     if (apiKey != null) {
       final trimmed = apiKey.trim();

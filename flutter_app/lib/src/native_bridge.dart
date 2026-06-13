@@ -35,6 +35,44 @@ class NativeBridge {
     return result ?? const {};
   }
 
+  Future<List<Map<String, Object?>>> listLocalModels() async {
+    final result = await _methods.invokeListMethod<Object?>('listLocalModels');
+    return (result ?? const <Object?>[])
+        .whereType<Map<Object?, Object?>>()
+        .map(
+          (item) => item.map((key, value) => MapEntry(key.toString(), value)),
+        )
+        .toList();
+  }
+
+  Future<Map<String, Object?>> downloadLocalModel({
+    required String id,
+    required String label,
+    required String fileName,
+    required String url,
+  }) async {
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'downloadLocalModel',
+      <String, Object?>{
+        'id': id,
+        'label': label,
+        'fileName': fileName,
+        'url': url,
+      },
+    );
+    return result ?? const {};
+  }
+
+  Future<void> cancelLocalModelDownload() async {
+    await _methods.invokeMethod<String>('cancelLocalModelDownload');
+  }
+
+  Future<void> deleteLocalModel(String id) async {
+    await _methods.invokeMethod<String>('deleteLocalModel', <String, Object?>{
+      'id': id,
+    });
+  }
+
   Future<String?> consumePendingIntentPrompt() {
     return _methods.invokeMethod<String>('consumePendingIntentPrompt');
   }
@@ -57,15 +95,15 @@ class NativeBridge {
     String text, {
     String? systemPrompt,
     String? memory,
+    String? localModelPath,
   }) async {
-    final result = await _methods.invokeMethod<String>(
-      'sendMessage',
-      <String, Object?>{
-        'text': text,
-        'systemPrompt': systemPrompt,
-        'memory': memory,
-      },
-    );
+    final result = await _methods
+        .invokeMethod<String>('sendMessage', <String, Object?>{
+          'text': text,
+          'systemPrompt': systemPrompt,
+          'memory': memory,
+          'localModelPath': localModelPath,
+        });
     return result ?? 'The assistant did not return a response.';
   }
 
