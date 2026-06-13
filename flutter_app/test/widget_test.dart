@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
+import 'package:studyos_agent/src/native_bridge.dart';
 import 'package:studyos_agent/src/onboarding_flow.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
@@ -165,6 +166,7 @@ void main() {
             savedKey = apiKey;
           },
           onCompactMessagesChanged: (_) {},
+          nativeBridge: NativeBridge(),
         ),
       ),
     );
@@ -226,6 +228,7 @@ void main() {
           onSaveProfile: (value) async => savedProfile = value,
           onSaveAgentConfig: (_, _) async {},
           onCompactMessagesChanged: (_) {},
+          nativeBridge: NativeBridge(),
         ),
       ),
     );
@@ -368,6 +371,7 @@ void main() {
   });
 
   test('prompt context injects profile and memory', () {
+    final now = DateTime.now();
     final context = PromptContext(
       profile: const OnboardingProfile(
         displayName: 'Ada',
@@ -385,14 +389,14 @@ void main() {
       memory: '- Prefers morning study blocks.',
       worldState: <String, Object?>{'weekday': 'Thursday'},
       timetable: TimetableSnapshot(
-        refreshedAt: DateTime(2026, 6, 12, 10),
+        refreshedAt: now.subtract(const Duration(hours: 1)),
         sourceTerm: 'Sommer 2026',
         events: <LectureEvent>[
           LectureEvent(
             id: 'lecture-1',
             title: 'Algorithms',
-            start: DateTime(2026, 6, 13, 10),
-            end: DateTime(2026, 6, 13, 12),
+            start: now.add(const Duration(hours: 1)),
+            end: now.add(const Duration(hours: 3)),
             location: 'Room 101',
           ),
         ],

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
+import '../native_bridge.dart';
 import '../studyos_theme.dart';
 import '../widgets/assistant_status_card.dart';
 import '../widgets/feedback_settings_card.dart';
+import '../widgets/local_model_settings_card.dart';
 import '../widgets/profile_row.dart';
 import '../widgets/settings_card.dart';
 import 'profile_edit_view.dart';
@@ -18,6 +20,7 @@ class SettingsView extends StatefulWidget {
     required this.onSaveAgentConfig,
     required this.onSaveProfile,
     required this.onCompactMessagesChanged,
+    required this.nativeBridge,
     super.key,
   });
 
@@ -30,6 +33,7 @@ class SettingsView extends StatefulWidget {
   onSaveAgentConfig;
   final Future<void> Function(OnboardingProfile profile) onSaveProfile;
   final ValueChanged<bool> onCompactMessagesChanged;
+  final NativeBridge nativeBridge;
 
   @override
   State<SettingsView> createState() => _SettingsViewState();
@@ -99,6 +103,8 @@ class _SettingsViewState extends State<SettingsView> {
           cloudEndpoint: endpoint,
           cloudModel: model,
           hasApiKey: widget.config.hasApiKey || apiKey.isNotEmpty,
+          localModelId: widget.config.localModelId,
+          localModelPath: widget.config.localModelPath,
         ),
         apiKey.isEmpty ? null : apiKey,
       );
@@ -206,6 +212,14 @@ class _SettingsViewState extends State<SettingsView> {
               },
             ),
             const SizedBox(height: StudyOsSpacing.md),
+            if (!isCloud) ...<Widget>[
+              LocalModelSettingsCard(
+                config: widget.config,
+                nativeBridge: widget.nativeBridge,
+                onSaveAgentConfig: widget.onSaveAgentConfig,
+              ),
+              const SizedBox(height: StudyOsSpacing.lg),
+            ],
             TextField(
               controller: _endpointController,
               enabled: isCloud,

@@ -18,5 +18,8 @@ String assistantSetupLabel(AgentConfig config) {
     final model = config.cloudModel.trim();
     return model.isEmpty ? 'Custom AI' : model;
   }
-  return 'Built-in AI';
+  if (config.localModelPath.trim().isNotEmpty) {
+    return 'Downloaded local model';
+  }
+  return 'Built-in Android AI';
 }

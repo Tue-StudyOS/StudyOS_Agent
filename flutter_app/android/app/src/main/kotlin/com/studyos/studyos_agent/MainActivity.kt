@@ -23,6 +23,7 @@ class MainActivity : FlutterActivity() {
     private var eventSink: EventChannel.EventSink? = null
     private var nativeInitialized = false
     private var localPromptClient: AndroidLocalPromptClient? = null
+    private var localModelStore: AndroidLocalModelStore? = null
     private lateinit var intentBridge: AndroidIntentBridge
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +66,13 @@ class MainActivity : FlutterActivity() {
             "initialize" -> result.success(initializeNativeLayer())
             "getWorldState" -> result.success(worldStateMap())
             "getCapabilities" -> result.success(capabilities())
+            "listLocalModels" -> result.success(localModelStore().listModels())
+            "downloadLocalModel" -> downloadLocalModel(call, result)
+            "cancelLocalModelDownload" -> {
+                localModelStore().cancelDownload()
+                result.success(null)
+            }
+            "deleteLocalModel" -> deleteLocalModel(call, result)
             "publishIntentSnapshot" -> result.success(
                 intentBridge.publishSnapshot(call.arguments),
             )
@@ -81,6 +89,7 @@ class MainActivity : FlutterActivity() {
                     text = text,
                     systemPrompt = call.argument<String>("systemPrompt").orEmpty(),
                     memory = call.argument<String>("memory").orEmpty(),
+                    localModelPath = call.argument<String>("localModelPath").orEmpty(),
                     result = result,
                 )
             }
@@ -123,6 +132,7 @@ class MainActivity : FlutterActivity() {
         text: String,
         systemPrompt: String,
         memory: String,
+        localModelPath: String,
         result: MethodChannel.Result,
     ) {
         if (!nativeInitialized) {
@@ -132,8 +142,15 @@ class MainActivity : FlutterActivity() {
         try {
             localPromptClient().generate(
                 prompt = localPrompt(systemPrompt, memory, text),
+                modelPath = localModelPath,
                 onSuccess = { response ->
-                    emitStatus("Android Gemini Nano response received.")
+                    emitStatus(
+                        if (localModelPath.isBlank()) {
+                            "Android Gemini Nano response received."
+                        } else {
+                            "LiteRT-LM local model response received."
+                        },
+                    )
                     Handler(Looper.getMainLooper()).post {
                         result.success(response)
                     }
@@ -188,6 +205,63 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun localModelStore(): AndroidLocalModelStore {
+        val existing = localModelStore
+        if (existing != null) return existing
+        return AndroidLocalModelStore(applicationContext).also {
+            localModelStore = it
+        }
+    }
+
+    private fun downloadLocalModel(call: MethodCall, result: MethodChannel.Result) {
+        val id = call.argument<String>("id").orEmpty()
+        val label = call.argument<String>("label").orEmpty()
+        val fileName = call.argument<String>("fileName").orEmpty()
+        val url = call.argument<String>("url").orEmpty()
+        Thread {
+            try {
+                val model = localModelStore().downloadModel(
+                    id = id,
+                    label = label,
+                    fileName = fileName,
+                    url = url,
+                    onProgress = { receivedBytes, totalBytes ->
+                        emitDownloadProgress(id, label, receivedBytes, totalBytes)
+                    },
+                )
+                emitStatus("Downloaded local model: $label.")
+                Handler(Looper.getMainLooper()).post {
+                    result.success(model)
+                }
+            } catch (error: Throwable) {
+                val message = "Local model download failed: ${error.message}"
+                emitStatus(message)
+                Handler(Looper.getMainLooper()).post {
+                    result.error("local_model_download_failed", message, null)
+                }
+            }
+        }.start()
+    }
+
+    private fun deleteLocalModel(call: MethodCall, result: MethodChannel.Result) {
+        val id = call.argument<String>("id").orEmpty()
+        Thread {
+            try {
+                val deleted = localModelStore().deleteModel(id)
+                emitStatus("Deleted local model storage for $id.")
+                Handler(Looper.getMainLooper()).post {
+                    result.success(deleted)
+                }
+            } catch (error: Throwable) {
+                val message = "Local model delete failed: ${error.message}"
+                emitStatus(message)
+                Handler(Looper.getMainLooper()).post {
+                    result.error("local_model_delete_failed", message, null)
+                }
+            }
+        }.start()
+    }
+
     private fun worldStateMap(): Map<String, Any?> {
         if (!hasLocationPermission()) {
             return mapOf(
@@ -235,6 +309,7 @@ class MainActivity : FlutterActivity() {
             "canOpenInstalledApps" to true,
             "canReadCalendar" to hasPermission(Manifest.permission.READ_CALENDAR),
             "canUseOfflineLiteRtModel" to true,
+            "canManageDownloadedLiteRtModels" to true,
             "canUseAndroidGeminiNanoPrompt" to true,
             "canControlFlashlight" to true,
             "canStartPhoneCall" to hasPermission(Manifest.permission.CALL_PHONE),
@@ -257,6 +332,34 @@ class MainActivity : FlutterActivity() {
         val payload = mapOf(
             "type" to "status",
             "message" to message,
+            "timestamp" to SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss",
+                Locale.US
+            ).format(Date()),
+        )
+
+        Handler(Looper.getMainLooper()).post {
+            eventSink?.success(payload)
+        }
+    }
+
+    private fun emitDownloadProgress(
+        id: String,
+        label: String,
+        receivedBytes: Long,
+        totalBytes: Long,
+    ) {
+        val payload = mapOf(
+            "type" to "localModelDownloadProgress",
+            "message" to "Downloading $label",
+            "modelId" to id,
+            "bytesReceived" to receivedBytes,
+            "totalBytes" to totalBytes,
+            "progress" to if (totalBytes > 0) {
+                receivedBytes.toDouble() / totalBytes.toDouble()
+            } else {
+                null
+            },
             "timestamp" to SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss",
                 Locale.US

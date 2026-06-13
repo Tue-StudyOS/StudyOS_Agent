@@ -45,6 +45,7 @@ class AgentRequestRunner {
             userText,
             systemPrompt: context.systemPrompt(),
             memory: memoryText,
+            localModelPath: config.localModelPath,
           );
   }
 

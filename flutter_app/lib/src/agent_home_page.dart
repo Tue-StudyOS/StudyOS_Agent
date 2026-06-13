@@ -283,6 +283,7 @@ class _AgentHomePageState extends State<AgentHomePage>
       timetableError: _timetableError,
       isRefreshingTimetable: _isRefreshingTimetable,
       agentConfig: _agentConfig,
+      nativeBridge: _bridge,
       profile: widget.profile,
       onSelectView: (view) => setState(() => _selectedView = view),
       onSelectSession: _selectSession,

@@ -11,18 +11,35 @@ import com.google.mlkit.genai.prompt.java.GenerativeModelFutures
 import com.google.mlkit.genai.prompt.modelConfig
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import com.example.studyOS.offline.LiteRtLocalPromptClient
 
 class AndroidLocalPromptClient(context: Context) {
     private val appContext = context.applicationContext
     private val executor = Executors.newSingleThreadExecutor()
+    private val liteRtClient = LiteRtLocalPromptClient()
 
     fun generate(
         prompt: String,
+        modelPath: String,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit,
     ) {
         executor.execute {
             try {
+                if (modelPath.isNotBlank()) {
+                    val response = liteRtClient.generate(
+                        modelPath,
+                        prompt,
+                        appContext.cacheDir.absolutePath,
+                    )
+                    if (response.isBlank()) {
+                        onError("LiteRT-LM returned an empty response.")
+                    } else {
+                        onSuccess(response)
+                    }
+                    return@execute
+                }
+
                 val model = GenerativeModelFutures.from(Generation.getClient())
                 when (val status = model.checkStatus().get(2, TimeUnit.SECONDS)) {
                     FeatureStatus.AVAILABLE -> {
