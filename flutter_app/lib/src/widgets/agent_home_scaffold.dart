@@ -104,6 +104,11 @@ class AgentHomeScaffold extends StatelessWidget {
                   label: 'Schedule',
                 ),
                 NavigationDestination(
+                  selectedIcon: Icon(Icons.mail_rounded),
+                  icon: Icon(Icons.mail_outline_rounded),
+                  label: 'Mail',
+                ),
+                NavigationDestination(
                   selectedIcon: Icon(Icons.restaurant_rounded),
                   icon: Icon(Icons.restaurant_outlined),
                   label: 'Campus',
@@ -179,6 +184,7 @@ const List<AppView> _navigationViews = <AppView>[
   AppView.home,
   AppView.chat,
   AppView.schedule,
+  AppView.mail,
   AppView.campus,
   AppView.memories,
   AppView.settings,

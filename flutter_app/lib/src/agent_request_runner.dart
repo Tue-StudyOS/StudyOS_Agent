@@ -1,6 +1,7 @@
 import 'agent_config_store.dart';
 import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
+import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
@@ -31,6 +32,7 @@ class AgentRequestRunner {
     required PromptContext context,
     required String memoryText,
     required Future<String> Function() readSchedule,
+    required MailToolRunner mailTools,
   }) async {
     return config.usesCloud
         ? _sendCloud(
@@ -40,6 +42,7 @@ class AgentRequestRunner {
             userText,
             context,
             readSchedule,
+            mailTools,
           )
         : bridge.sendMessage(
             userText,
@@ -56,6 +59,7 @@ class AgentRequestRunner {
     String userText,
     PromptContext context,
     Future<String> Function() readSchedule,
+    MailToolRunner mailTools,
   ) async {
     final apiKey = await configStore.readApiKey();
     if (apiKey == null || apiKey.isEmpty) {
@@ -70,6 +74,7 @@ class AgentRequestRunner {
       appendMemory: appendMemory,
       readMemory: memoryStore.read,
       readSchedule: readSchedule,
+      mailTools: mailTools,
       onToolTrace: onToolTrace,
     );
   }

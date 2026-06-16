@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'cloud_tool_definitions.dart';
+import 'mail_tools.dart';
 import 'models.dart';
 import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
@@ -22,6 +23,7 @@ class CloudAgentClient {
     required Future<void> Function(String text) appendMemory,
     required Future<String> Function() readMemory,
     required Future<String> Function() readSchedule,
+    required MailToolRunner mailTools,
     void Function(ToolTrace trace)? onToolTrace,
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
@@ -62,6 +64,7 @@ class CloudAgentClient {
           appendMemory: appendMemory,
           readMemory: readMemory,
           readSchedule: readSchedule,
+          mailTools: mailTools,
         );
       } on Object catch (error) {
         onToolTrace?.call(
@@ -198,12 +201,18 @@ class CloudAgentClient {
     required Future<void> Function(String text) appendMemory,
     required Future<String> Function() readMemory,
     required Future<String> Function() readSchedule,
+    required MailToolRunner mailTools,
   }) async {
     return switch (call.name) {
       'append_memory' => _appendMemory(call.arguments, appendMemory),
       'read_memories' => readMemory(),
       'get_study_context' => context.systemPrompt(),
       'get_schedule' => readSchedule(),
+      'list_mailboxes' ||
+      'get_recent_mail' ||
+      'search_mail' ||
+      'get_mail_message' ||
+      'find_mail_deadlines' => mailTools.execute(call.name, call.arguments),
       _ => 'Tool is not available: ${call.name}',
     };
   }
