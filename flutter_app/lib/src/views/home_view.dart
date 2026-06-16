@@ -10,6 +10,7 @@ class HomeView extends StatelessWidget {
     required this.config,
     required this.memoryText,
     required this.timetable,
+    required this.onOpenMail,
     required this.onOpenCampus,
     required this.onOpenSchedule,
     super.key,
@@ -19,6 +20,7 @@ class HomeView extends StatelessWidget {
   final AgentConfig config;
   final String memoryText;
   final TimetableSnapshot? timetable;
+  final VoidCallback onOpenMail;
   final VoidCallback onOpenCampus;
   final VoidCallback onOpenSchedule;
 
@@ -62,6 +64,11 @@ class HomeView extends StatelessWidget {
               label: 'Timetable',
               value: _timetableStatus,
             ),
+            _HomeStatusItem(
+              icon: Icons.mark_email_unread_outlined,
+              label: 'Mail',
+              value: profile == null ? 'Sign in needed' : 'Local tools ready',
+            ),
           ],
         ),
         const SizedBox(height: StudyOsSpacing.lg),
@@ -70,6 +77,13 @@ class HomeView extends StatelessWidget {
           title: 'Next lecture',
           body: _nextLectureLine(),
           onTap: onOpenSchedule,
+        ),
+        const SizedBox(height: StudyOsSpacing.md),
+        _HomeCard(
+          icon: Icons.mail_outline_rounded,
+          title: 'Inbox',
+          body: 'Browse folders or ask the agent to search recent mail.',
+          onTap: onOpenMail,
         ),
         const SizedBox(height: StudyOsSpacing.md),
         _HomeCard(

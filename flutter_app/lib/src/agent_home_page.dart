@@ -7,6 +7,8 @@ import 'agent_config_store.dart';
 import 'agent_message_sender.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
+import 'mail_repository.dart';
+import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
@@ -42,6 +44,7 @@ class _AgentHomePageState extends State<AgentHomePage>
   @override
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
+  final MailRepository _mailRepository = MailRepository();
   final MemoryStore _memoryStore = MemoryStore();
   @override
   final TimetableRepository _timetableRepository = TimetableRepository();
@@ -235,6 +238,10 @@ class _AgentHomePageState extends State<AgentHomePage>
         userText: text,
         appendMemory: _appendMemory,
         readSchedule: _readScheduleForAgent,
+        mailTools: MailToolRunner(
+          repository: _mailRepository,
+          profile: widget.profile,
+        ),
         onToolTrace: _addToolTrace,
       );
       _addAssistantMessage(response);

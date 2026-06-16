@@ -5,6 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:studyos_agent/src/cloud_agent_client.dart';
 import 'package:studyos_agent/src/cloud_tool_definitions.dart';
+import 'package:studyos_agent/src/mail_models.dart';
+import 'package:studyos_agent/src/mail_repository.dart';
+import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
 
@@ -23,6 +26,11 @@ void main() {
         'read_memories',
         'get_study_context',
         'get_schedule',
+        'list_mailboxes',
+        'get_recent_mail',
+        'search_mail',
+        'get_mail_message',
+        'find_mail_deadlines',
       ]),
     );
   });
@@ -105,6 +113,7 @@ void main() {
       appendMemory: (_) async {},
       readMemory: () async => '- Prefers morning study blocks.',
       readSchedule: () async => 'No timetable has been synced yet.',
+      mailTools: _fakeMailTools(),
       onToolTrace: traces.add,
     );
 
@@ -157,6 +166,7 @@ void main() {
         appendMemory: (_) async {},
         readMemory: () async => '',
         readSchedule: () async => 'No timetable has been synced yet.',
+        mailTools: _fakeMailTools(),
       ),
       throwsA(isA<CloudAgentException>()),
     );
@@ -231,8 +241,154 @@ void main() {
       appendMemory: (_) async {},
       readMemory: () async => '',
       readSchedule: () async => 'Algorithms 10:00',
+      mailTools: _fakeMailTools(),
     );
 
     expect(response, 'Your next lecture is Algorithms.');
   });
+
+  test('executes read-only mail tool calls', () async {
+    var requestCount = 0;
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) async {
+        requestCount += 1;
+        if (requestCount == 1) {
+          return http.Response(
+            jsonEncode(<String, Object?>{
+              'choices': <Object?>[
+                <String, Object?>{
+                  'message': <String, Object?>{
+                    'role': 'assistant',
+                    'content': null,
+                    'tool_calls': <Object?>[
+                      <String, Object?>{
+                        'id': 'call_mail',
+                        'type': 'function',
+                        'function': <String, Object?>{
+                          'name': 'search_mail',
+                          'arguments': '{"sender":"prof"}',
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            200,
+            request: request,
+          );
+        }
+        expect(request.body, contains('Exam response'));
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'choices': <Object?>[
+              <String, Object?>{
+                'message': <String, Object?>{
+                  'role': 'assistant',
+                  'content': 'You got a response from Prof. X.',
+                },
+              },
+            ],
+          }),
+          200,
+          request: request,
+        );
+      }),
+    );
+
+    final response = await client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+        localModelId: 'gemma-4-e2b-it',
+        localModelPath: '',
+      ),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'Did I get a response from Prof. X?',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => '',
+      readSchedule: () async => '',
+      mailTools: _fakeMailTools(),
+    );
+
+    expect(response, 'You got a response from Prof. X.');
+  });
+}
+
+MailToolRunner _fakeMailTools() {
+  return MailToolRunner(repository: _FakeMailRepository(), profile: null);
+}
+
+class _FakeMailRepository extends MailRepository {
+  @override
+  Future<List<MailboxSummary>> listMailboxes(OnboardingProfile? profile) async {
+    return const <MailboxSummary>[
+      MailboxSummary(
+        name: 'INBOX',
+        label: 'Inbox',
+        specialUse: 'inbox',
+        messageCount: 1,
+        unreadCount: 1,
+      ),
+    ];
+  }
+
+  @override
+  Future<MailInboxSummary> fetchMailboxSummary(
+    OnboardingProfile? profile, {
+    String mailbox = 'INBOX',
+    int limit = 12,
+    bool unreadOnly = false,
+    String query = '',
+    String sender = '',
+    String since = '',
+    int scanLimit = 200,
+  }) async {
+    return const MailInboxSummary(
+      account: 'ada42',
+      mailbox: 'INBOX',
+      unreadCount: 1,
+      messages: <MailMessageSummary>[
+        MailMessageSummary(
+          uid: '7',
+          subject: 'Exam response',
+          fromName: 'Prof. X',
+          fromAddress: 'prof@example.edu',
+          receivedAt: 'Tue, 16 Jun 2026 10:00:00 +0200',
+          preview: 'The exam registration is confirmed.',
+          isUnread: true,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<MailMessageDetail> fetchMessageDetail(
+    OnboardingProfile? profile, {
+    required String uid,
+    String mailbox = 'INBOX',
+  }) async {
+    return const MailMessageDetail(
+      uid: '7',
+      mailbox: 'INBOX',
+      subject: 'Exam response',
+      fromName: 'Prof. X',
+      fromAddress: 'prof@example.edu',
+      toRecipients: <String>['Ada <ada@example.edu>'],
+      ccRecipients: <String>[],
+      receivedAt: 'Tue, 16 Jun 2026 10:00:00 +0200',
+      preview: 'The exam registration is confirmed.',
+      bodyText: 'The exam registration is confirmed.',
+      attachmentNames: <String>[],
+      isUnread: true,
+    );
+  }
 }

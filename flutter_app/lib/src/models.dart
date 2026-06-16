@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'tool_trace.dart';
 
 export 'student_profile.dart';
+export 'mail_models.dart';
 export 'timetable_models.dart';
 export 'tool_trace.dart';
 
@@ -59,7 +60,7 @@ class ChatMessage {
   }
 }
 
-enum AppView { home, chat, schedule, campus, memories, settings }
+enum AppView { home, chat, schedule, mail, campus, memories, settings }
 
 enum AgentProvider { local, cloud }
 

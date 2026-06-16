@@ -64,6 +64,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byIcon(Icons.home_rounded), findsOneWidget);
     expect(find.text('Schedule'), findsOneWidget);
+    expect(find.text('Mail'), findsOneWidget);
     expect(find.text('Campus'), findsWidgets);
 
     await tester.tap(find.text('Schedule'));
@@ -103,6 +104,7 @@ void main() {
             config: const AgentConfig.defaults(),
             memoryText: '',
             timetable: null,
+            onOpenMail: () => selectedView = AppView.mail,
             onOpenCampus: () => selectedView = AppView.campus,
             onOpenSchedule: () => selectedView = AppView.schedule,
           ),
@@ -113,5 +115,30 @@ void main() {
     await tester.tap(find.text('Campus'));
 
     expect(selectedView, AppView.campus);
+  });
+
+  testWidgets('home inbox card opens mail view', (WidgetTester tester) async {
+    var selectedView = AppView.home;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: null,
+            config: const AgentConfig.defaults(),
+            memoryText: '',
+            timetable: null,
+            onOpenMail: () => selectedView = AppView.mail,
+            onOpenCampus: () => selectedView = AppView.campus,
+            onOpenSchedule: () => selectedView = AppView.schedule,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Inbox'));
+
+    expect(selectedView, AppView.mail);
   });
 }

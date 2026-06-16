@@ -1,5 +1,6 @@
 import 'agent_config_store.dart';
 import 'agent_request_runner.dart';
+import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
@@ -19,6 +20,7 @@ Future<String> sendAgentMessage({
   required String userText,
   required Future<void> Function(String text) appendMemory,
   required Future<String> Function() readSchedule,
+  required MailToolRunner mailTools,
   required void Function(ToolTrace trace) onToolTrace,
 }) {
   final context = PromptContext(
@@ -41,5 +43,6 @@ Future<String> sendAgentMessage({
     context: context,
     memoryText: memoryText,
     readSchedule: readSchedule,
+    mailTools: mailTools,
   );
 }

@@ -6,6 +6,7 @@ import '../native_bridge.dart';
 import 'campus_view.dart';
 import 'chat_view.dart';
 import 'home_view.dart';
+import 'mail_view.dart';
 import 'memories_view.dart';
 import 'schedule_view.dart';
 import 'settings_view.dart';
@@ -75,6 +76,7 @@ class AgentSelectedView extends StatelessWidget {
         config: agentConfig,
         memoryText: memoryText,
         timetable: timetable,
+        onOpenMail: () => onSelectView(AppView.mail),
         onOpenCampus: () => onSelectView(AppView.campus),
         onOpenSchedule: () => onSelectView(AppView.schedule),
       ),
@@ -94,6 +96,7 @@ class AgentSelectedView extends StatelessWidget {
         isRefreshing: isRefreshingTimetable,
         onRefresh: onRefreshTimetable,
       ),
+      AppView.mail => MailView(profile: profile),
       AppView.campus => CampusView(profile: profile),
       AppView.memories => MemoriesView(
         worldState: worldState,
