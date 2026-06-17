@@ -6,19 +6,26 @@ import '../studyos_theme.dart';
 class MapSearchBar extends StatelessWidget {
   const MapSearchBar({
     required this.controller,
+    required this.focusNode,
     required this.isSearching,
+    required this.showAssistantAction,
     required this.onSearch,
+    required this.onAskAssistant,
     super.key,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool isSearching;
+  final bool showAssistantAction;
   final VoidCallback onSearch;
+  final VoidCallback onAskAssistant;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       textInputAction: TextInputAction.search,
       onSubmitted: (_) => onSearch(),
       decoration: InputDecoration(
@@ -42,15 +49,32 @@ class MapSearchBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(28),
           borderSide: const BorderSide(color: StudyOsColors.accent),
         ),
-        suffixIcon: IconButton(
-          tooltip: 'Search destination',
-          onPressed: isSearching ? null : onSearch,
-          icon: isSearching
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.arrow_forward_rounded),
+        suffixIconConstraints: const BoxConstraints(minHeight: 48),
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(right: StudyOsSpacing.xs),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (showAssistantAction) ...<Widget>[
+                _RoundSearchIconButton(
+                  tooltip: 'Ask AI',
+                  icon: Icons.auto_awesome_rounded,
+                  onPressed: onAskAssistant,
+                ),
+                const SizedBox(width: StudyOsSpacing.xs),
+              ],
+              IconButton(
+                tooltip: 'Search destination',
+                onPressed: isSearching ? null : onSearch,
+                icon: isSearching
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.arrow_forward_rounded),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -60,11 +84,13 @@ class MapSearchBar extends StatelessWidget {
 class MapOverlay extends StatelessWidget {
   const MapOverlay({
     required this.controller,
+    required this.focusNode,
     required this.results,
     required this.selectedLocation,
     required this.isSearching,
     required this.searchError,
     required this.hasSearched,
+    required this.showAssistantAction,
     required this.onSearch,
     required this.onSelect,
     required this.onAskAssistant,
@@ -73,11 +99,13 @@ class MapOverlay extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final List<MapLocation> results;
   final MapLocation? selectedLocation;
   final bool isSearching;
   final String? searchError;
   final bool hasSearched;
+  final bool showAssistantAction;
   final VoidCallback onSearch;
   final ValueChanged<MapLocation> onSelect;
   final VoidCallback onAskAssistant;
@@ -104,12 +132,13 @@ class MapOverlay extends StatelessWidget {
             Expanded(
               child: MapSearchBar(
                 controller: controller,
+                focusNode: focusNode,
                 isSearching: isSearching,
+                showAssistantAction: showAssistantAction,
                 onSearch: onSearch,
+                onAskAssistant: onAskAssistant,
               ),
             ),
-            const SizedBox(width: StudyOsSpacing.sm),
-            _AskAssistantButton(onPressed: onAskAssistant),
           ],
         ),
       ],
@@ -199,25 +228,27 @@ class _MapResultStrip extends StatelessWidget {
   }
 }
 
-class _AskAssistantButton extends StatelessWidget {
-  const _AskAssistantButton({required this.onPressed});
+class _RoundSearchIconButton extends StatelessWidget {
+  const _RoundSearchIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
 
+  final String tooltip;
+  final IconData icon;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 58,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.auto_awesome_rounded),
-        label: const Text('Ask AI'),
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.lg),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-        ),
+    return IconButton.filled(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        minimumSize: const Size.square(40),
+        fixedSize: const Size.square(40),
+        shape: const CircleBorder(),
       ),
     );
   }

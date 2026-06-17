@@ -24,6 +24,7 @@ class _MapsViewState extends State<MapsView> {
   static const _tuebingen = LatLng(48.5216, 9.0576);
 
   late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
   late final MapController _mapController;
   late final MapSearchClient _searchClient;
   List<MapLocation> _results = const <MapLocation>[];
@@ -31,17 +32,22 @@ class _MapsViewState extends State<MapsView> {
   bool _isSearching = false;
   String? _searchError;
   bool _hasSearched = false;
+  bool _searchHasFocus = false;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
+    _searchFocusNode.addListener(_handleSearchFocusChanged);
     _mapController = MapController();
     _searchClient = widget.searchClient ?? MapSearchClient();
   }
 
   @override
   void dispose() {
+    _searchFocusNode.removeListener(_handleSearchFocusChanged);
+    _searchFocusNode.dispose();
     _searchController.dispose();
     _searchClient.close();
     super.dispose();
@@ -49,67 +55,68 @@ class _MapsViewState extends State<MapsView> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-      child: Stack(
-        children: <Widget>[
-          FlutterMap(
-            mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: _tuebingen,
-              initialZoom: 13.5,
-            ),
-            children: <Widget>[
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.studyos.studyos_agent',
-              ),
-              MarkerLayer(markers: _markers),
-            ],
-          ),
-          Positioned(
-            left: StudyOsSpacing.sm,
-            top: StudyOsSpacing.sm,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: StudyOsColors.background.withValues(alpha: 0.78),
-                borderRadius: BorderRadius.circular(StudyOsRadii.sm),
-                border: Border.all(color: StudyOsColors.border),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: StudyOsSpacing.sm,
-                  vertical: StudyOsSpacing.xs,
-                ),
-                child: Text(
-                  '© OpenStreetMap contributors',
-                  style: TextStyle(
-                    color: StudyOsColors.textMuted,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
+    return Stack(
+      children: <Widget>[
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: _tuebingen,
+            initialZoom: 13.5,
+            interactionOptions: InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              cursorKeyboardRotationOptions:
+                  CursorKeyboardRotationOptions.disabled(),
             ),
           ),
-          Positioned(
-            left: StudyOsSpacing.md,
-            right: StudyOsSpacing.md,
-            bottom: StudyOsSpacing.md,
-            child: MapOverlay(
-              controller: _searchController,
-              results: _results,
-              selectedLocation: _selectedLocation,
-              isSearching: _isSearching,
-              searchError: _searchError,
-              hasSearched: _hasSearched,
-              onSearch: _search,
-              onSelect: _selectLocation,
-              onAskAssistant: _askAssistant,
-              onOpenExternalMaps: _openExternalMaps,
+          children: <Widget>[
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.studyos.studyos_agent',
+            ),
+            MarkerLayer(markers: _markers),
+          ],
+        ),
+        Positioned(
+          left: StudyOsSpacing.sm,
+          top: StudyOsSpacing.sm,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: StudyOsColors.background.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+              border: Border.all(color: StudyOsColors.border),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: StudyOsSpacing.sm,
+                vertical: StudyOsSpacing.xs,
+              ),
+              child: Text(
+                '© OpenStreetMap contributors',
+                style: TextStyle(color: StudyOsColors.textMuted, fontSize: 11),
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+        Positioned(
+          left: StudyOsSpacing.sm,
+          right: StudyOsSpacing.sm,
+          bottom: StudyOsSpacing.md,
+          child: MapOverlay(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            results: _results,
+            selectedLocation: _selectedLocation,
+            isSearching: _isSearching,
+            searchError: _searchError,
+            hasSearched: _hasSearched,
+            showAssistantAction: _searchHasFocus,
+            onSearch: _search,
+            onSelect: _selectLocation,
+            onAskAssistant: _askAssistant,
+            onOpenExternalMaps: _openExternalMaps,
+          ),
+        ),
+      ],
     );
   }
 
@@ -161,6 +168,11 @@ class _MapsViewState extends State<MapsView> {
   void _selectLocation(MapLocation location) {
     setState(() => _selectedLocation = location);
     _moveTo(location);
+  }
+
+  void _handleSearchFocusChanged() {
+    if (!mounted) return;
+    setState(() => _searchHasFocus = _searchFocusNode.hasFocus);
   }
 
   void _moveTo(MapLocation location) {

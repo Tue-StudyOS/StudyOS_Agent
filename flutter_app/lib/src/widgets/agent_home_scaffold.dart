@@ -74,6 +74,39 @@ class AgentHomeScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final header = StudyHeader(
+      status: status,
+      onCreateSession: selectedView == AppView.chat ? onCreateSession : null,
+    );
+    final selectedContent = AgentSelectedView(
+      selectedView: selectedView,
+      sessions: sessions,
+      activeSessionId: activeSessionId,
+      inputController: inputController,
+      messageScrollController: messageScrollController,
+      isSending: isSending,
+      compactMessages: compactMessages,
+      onSuggestionSelected: onSuggestionSelected,
+      onSend: onSend,
+      onAskAssistant: onAskAssistant,
+      onSelectView: onSelectView,
+      worldState: worldState,
+      memoryText: memoryText,
+      timetable: timetable,
+      timetableError: timetableError,
+      isRefreshingTimetable: isRefreshingTimetable,
+      agentConfig: agentConfig,
+      nativeBridge: nativeBridge,
+      profile: profile,
+      status: status,
+      onLogout: onLogout,
+      onSaveProfile: onSaveProfile,
+      onSaveAgentConfig: onSaveAgentConfig,
+      onSaveMemory: onSaveMemory,
+      onRefreshTimetable: onRefreshTimetable,
+      onCompactMessagesChanged: onCompactMessagesChanged,
+    );
+
     return Scaffold(
       drawer: AppDrawer(
         sessions: sessions.where((session) => session.hasTurns).toList(),
@@ -133,55 +166,35 @@ class AgentHomeScaffold extends StatelessWidget {
               ],
             ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: StudyOsSpacing.lg,
-              ),
-              child: Column(
-                children: <Widget>[
-                  StudyHeader(
-                    status: status,
-                    onCreateSession: selectedView == AppView.chat
-                        ? onCreateSession
-                        : null,
+        child: Column(
+          children: <Widget>[
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: StudyOsSpacing.lg,
                   ),
-                  Expanded(
-                    child: AgentSelectedView(
-                      selectedView: selectedView,
-                      sessions: sessions,
-                      activeSessionId: activeSessionId,
-                      inputController: inputController,
-                      messageScrollController: messageScrollController,
-                      isSending: isSending,
-                      compactMessages: compactMessages,
-                      onSuggestionSelected: onSuggestionSelected,
-                      onSend: onSend,
-                      onAskAssistant: onAskAssistant,
-                      onSelectView: onSelectView,
-                      worldState: worldState,
-                      memoryText: memoryText,
-                      timetable: timetable,
-                      timetableError: timetableError,
-                      isRefreshingTimetable: isRefreshingTimetable,
-                      agentConfig: agentConfig,
-                      nativeBridge: nativeBridge,
-                      profile: profile,
-                      status: status,
-                      onLogout: onLogout,
-                      onSaveProfile: onSaveProfile,
-                      onSaveAgentConfig: onSaveAgentConfig,
-                      onSaveMemory: onSaveMemory,
-                      onRefreshTimetable: onRefreshTimetable,
-                      onCompactMessagesChanged: onCompactMessagesChanged,
-                    ),
-                  ),
-                ],
+                  child: header,
+                ),
               ),
             ),
-          ),
+            Expanded(
+              child: selectedView == AppView.maps
+                  ? selectedContent
+                  : Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: StudyOsSpacing.lg,
+                          ),
+                          child: selectedContent,
+                        ),
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
     );

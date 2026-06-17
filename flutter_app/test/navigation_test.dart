@@ -80,7 +80,12 @@ void main() {
 
     expect(selectedView, AppView.maps);
     expect(find.text('Where to?'), findsOneWidget);
-    expect(find.text('Ask AI'), findsOneWidget);
+    expect(find.byTooltip('Ask AI'), findsNothing);
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+
+    expect(find.byTooltip('Ask AI'), findsOneWidget);
 
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
