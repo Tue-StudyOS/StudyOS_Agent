@@ -31,6 +31,7 @@ class AgentHomeScaffold extends StatelessWidget {
     required this.onDeleteSession,
     required this.onSuggestionSelected,
     required this.onSend,
+    required this.onAskAssistant,
     required this.onLogout,
     required this.onSaveProfile,
     required this.onSaveAgentConfig,
@@ -62,6 +63,7 @@ class AgentHomeScaffold extends StatelessWidget {
   final ValueChanged<String> onDeleteSession;
   final ValueChanged<String> onSuggestionSelected;
   final VoidCallback onSend;
+  final ValueChanged<String> onAskAssistant;
   final VoidCallback? onLogout;
   final Future<void> Function(OnboardingProfile profile)? onSaveProfile;
   final Future<void> Function(AgentConfig config, String? apiKey)
@@ -109,6 +111,11 @@ class AgentHomeScaffold extends StatelessWidget {
                   label: 'Mail',
                 ),
                 NavigationDestination(
+                  selectedIcon: Icon(Icons.map_rounded),
+                  icon: Icon(Icons.map_outlined),
+                  label: 'Map',
+                ),
+                NavigationDestination(
                   selectedIcon: Icon(Icons.restaurant_rounded),
                   icon: Icon(Icons.restaurant_outlined),
                   label: 'Campus',
@@ -152,6 +159,7 @@ class AgentHomeScaffold extends StatelessWidget {
                       compactMessages: compactMessages,
                       onSuggestionSelected: onSuggestionSelected,
                       onSend: onSend,
+                      onAskAssistant: onAskAssistant,
                       onSelectView: onSelectView,
                       worldState: worldState,
                       memoryText: memoryText,
@@ -185,6 +193,7 @@ const List<AppView> _navigationViews = <AppView>[
   AppView.chat,
   AppView.schedule,
   AppView.mail,
+  AppView.maps,
   AppView.campus,
   AppView.memories,
   AppView.settings,

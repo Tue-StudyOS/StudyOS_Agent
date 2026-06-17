@@ -213,6 +213,14 @@ class _AgentHomePageState extends State<AgentHomePage>
     _inputController.selection = TextSelection.collapsed(offset: text.length);
   }
 
+  void _prefillChatPrompt(String text) {
+    setState(() {
+      _inputController.text = text;
+      _inputController.selection = TextSelection.collapsed(offset: text.length);
+      _selectedView = AppView.chat;
+    });
+  }
+
   Future<void> _sendMessage() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _isSending) return;
@@ -298,6 +306,7 @@ class _AgentHomePageState extends State<AgentHomePage>
       onDeleteSession: _deleteSession,
       onSuggestionSelected: _useSuggestion,
       onSend: _sendMessage,
+      onAskAssistant: _prefillChatPrompt,
       onLogout: widget.onLogout,
       onSaveProfile: widget.onSaveProfile,
       onSaveAgentConfig: _saveAgentConfig,
