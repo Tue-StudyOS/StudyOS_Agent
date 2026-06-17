@@ -1,0 +1,87 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:studyos_agent/src/agent_config_store.dart';
+import 'package:studyos_agent/src/agent_llm_provider.dart';
+import 'package:studyos_agent/src/agent_request_runner.dart';
+import 'package:studyos_agent/src/mail_repository.dart';
+import 'package:studyos_agent/src/mail_tools.dart';
+import 'package:studyos_agent/src/memory_store.dart';
+import 'package:studyos_agent/src/models.dart';
+import 'package:studyos_agent/src/native_bridge.dart';
+import 'package:studyos_agent/src/prompt_context.dart';
+
+void main() {
+  test('AgentLlmProviderRegistry resolves registered providers', () {
+    final provider = _FakeLlmProvider(provider: AgentProvider.cloud);
+    final registry = AgentLlmProviderRegistry(<AgentLlmProvider>[provider]);
+
+    expect(registry.resolve(AgentProvider.cloud), same(provider));
+    expect(
+      () => registry.resolve(AgentProvider.local),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test(
+    'AgentRequestRunner delegates requests to the selected provider',
+    () async {
+      final provider = _FakeLlmProvider(provider: AgentProvider.cloud);
+      final runner = AgentRequestRunner(
+        bridge: NativeBridge(),
+        configStore: AgentConfigStore(),
+        memoryStore: MemoryStore(),
+        appendMemory: (_) async {},
+        onToolTrace: (_) {},
+        providerRegistry: AgentLlmProviderRegistry(<AgentLlmProvider>[
+          provider,
+        ]),
+      );
+
+      final response = await runner.send(
+        config: const AgentConfig(
+          provider: AgentProvider.cloud,
+          cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+          cloudModel: 'test-model',
+          hasApiKey: true,
+          localModelId: 'test-local',
+          localModelPath: '',
+        ),
+        sessions: const <ChatSession>[],
+        activeSessionId: null,
+        userText: 'Hello',
+        context: const PromptContext(
+          profile: null,
+          memory: '',
+          worldState: <String, Object?>{},
+        ),
+        memoryText: 'Saved context',
+        readSchedule: () async => 'No schedule.',
+        mailTools: MailToolRunner(repository: MailRepository(), profile: null),
+      );
+
+      expect(response, 'fake response');
+      expect(provider.lastRequest?.userText, 'Hello');
+      expect(provider.lastRequest?.memoryText, 'Saved context');
+    },
+  );
+}
+
+class _FakeLlmProvider implements AgentLlmProvider {
+  _FakeLlmProvider({required this.provider});
+
+  @override
+  final AgentProvider provider;
+
+  @override
+  String get id => 'fake-${provider.name}';
+
+  @override
+  String get displayName => 'Fake ${provider.name} provider';
+
+  AgentLlmRequest? lastRequest;
+
+  @override
+  Future<String> send(AgentLlmRequest request) async {
+    lastRequest = request;
+    return 'fake response';
+  }
+}

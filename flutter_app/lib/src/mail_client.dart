@@ -88,7 +88,9 @@ class MailClient {
         );
       }
     } else {
-      final source = allIds.where((uid) => !unreadOnly || unreadIds.contains(uid));
+      final source = allIds.where(
+        (uid) => !unreadOnly || unreadIds.contains(uid),
+      );
       for (final uid in source.toList().reversed.take(scanLimit)) {
         final summary = await _fetchSummary(
           uid,
@@ -144,7 +146,9 @@ class MailClient {
   }
 
   Future<List<String>> _searchUids(String criterion) async {
-    final response = await _requireConnection().command('UID SEARCH $criterion');
+    final response = await _requireConnection().command(
+      'UID SEARCH $criterion',
+    );
     final line = response.lines.firstWhere(
       (item) => item.toUpperCase().startsWith('* SEARCH'),
       orElse: () => '',
@@ -252,9 +256,10 @@ bool _matches(
 }
 
 int? _extractStatusValue(String payload, String key) {
-  final match = RegExp('$key\\s+(\\d+)', caseSensitive: false).firstMatch(
-    payload,
-  );
+  final match = RegExp(
+    '$key\\s+(\\d+)',
+    caseSensitive: false,
+  ).firstMatch(payload);
   return int.tryParse(match?.group(1) ?? '');
 }
 

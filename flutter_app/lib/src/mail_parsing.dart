@@ -4,8 +4,7 @@ import 'mail_models.dart';
 
 const approvedBroadcastNotice = MailApprovalNotice(
   title: 'Approved university broadcast',
-  message:
-      'Die Hochschulleitung hat dem Versand dieser Rundmail zugestimmt.',
+  message: 'Die Hochschulleitung hat dem Versand dieser Rundmail zugestimmt.',
 );
 
 final _approvalPattern = RegExp(
@@ -25,7 +24,7 @@ MailMessageSummary parseMailSummary(
   final parsed = ParsedMail.fromBytes(rawMessage);
   final body = parsed.bodyText;
   final cleanedBody = stripBroadcastBoilerplate(body);
-  final sender = parseAddress(parsed.header('from'));
+  final sender = _parseAddress(parsed.header('from'));
   return MailMessageSummary(
     uid: uid,
     subject: decodeMimeHeader(parsed.header('subject')) ?? '(No subject)',
@@ -47,7 +46,7 @@ MailMessageDetail parseMailDetail(
   final parsed = ParsedMail.fromBytes(rawMessage);
   final body = parsed.bodyText;
   final cleanedBody = stripBroadcastBoilerplate(body);
-  final sender = parseAddress(parsed.header('from'));
+  final sender = _parseAddress(parsed.header('from'));
   return MailMessageDetail(
     uid: uid,
     mailbox: mailbox,
@@ -87,21 +86,20 @@ String? previewFromText(String? value, {int limit = 160}) {
 
 String? decodeMimeHeader(String? value) {
   if (value == null || value.trim().isEmpty) return null;
-  return value.replaceAllMapped(
-    RegExp(r'=\?([^?]+)\?([bqBQ])\?([^?]*)\?='),
-    (match) {
-      final charset = match.group(1)?.toLowerCase() ?? 'utf-8';
-      final encoding = match.group(2)?.toLowerCase();
-      final payload = match.group(3) ?? '';
-      List<int> bytes;
-      if (encoding == 'b') {
-        bytes = base64.decode(payload);
-      } else {
-        bytes = quotedPrintableBytes(payload.replaceAll('_', ' '));
-      }
-      return _decodeBytes(bytes, charset);
-    },
-  ).trim();
+  return value.replaceAllMapped(RegExp(r'=\?([^?]+)\?([bqBQ])\?([^?]*)\?='), (
+    match,
+  ) {
+    final charset = match.group(1)?.toLowerCase() ?? 'utf-8';
+    final encoding = match.group(2)?.toLowerCase();
+    final payload = match.group(3) ?? '';
+    List<int> bytes;
+    if (encoding == 'b') {
+      bytes = base64.decode(payload);
+    } else {
+      bytes = quotedPrintableBytes(payload.replaceAll('_', ' '));
+    }
+    return _decodeBytes(bytes, charset);
+  }).trim();
 }
 
 List<int> quotedPrintableBytes(String value) {
@@ -122,7 +120,7 @@ List<int> quotedPrintableBytes(String value) {
   return bytes;
 }
 
-_MailAddress parseAddress(String? value) {
+_MailAddress _parseAddress(String? value) {
   final decoded = decodeMimeHeader(value) ?? '';
   final match = RegExp(r'^\s*"?([^"<]*)"?\s*<([^>]+)>').firstMatch(decoded);
   if (match != null) {
@@ -197,10 +195,9 @@ class MailPart {
       (headers['content-type'] ?? 'text/plain').toLowerCase();
   String get transferEncoding =>
       (headers['content-transfer-encoding'] ?? '').toLowerCase();
-  bool get isAttachment =>
-      (headers['content-disposition'] ?? '').toLowerCase().contains(
-        'attachment',
-      );
+  bool get isAttachment => (headers['content-disposition'] ?? '')
+      .toLowerCase()
+      .contains('attachment');
   String? get filename {
     final disposition = headers['content-disposition'] ?? '';
     final match = RegExp(r'filename="?([^";]+)"?').firstMatch(disposition);
@@ -308,9 +305,12 @@ String? normalizeBodyText(String value) {
 
 String htmlToText(String value) {
   return value
-      .replaceAll(RegExp(r'(?i)<br\s*/?>'), '\n')
-      .replaceAll(RegExp(r'(?i)</(p|div|li|tr|h[1-6]|blockquote)>'), '\n')
-      .replaceAll(RegExp(r'(?i)<li[^>]*>'), '- ')
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(
+        RegExp(r'</(p|div|li|tr|h[1-6]|blockquote)>', caseSensitive: false),
+        '\n',
+      )
+      .replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '- ')
       .replaceAll(RegExp(r'<[^>]+>'), '')
       .replaceAll('&nbsp;', ' ')
       .replaceAll('&amp;', '&')

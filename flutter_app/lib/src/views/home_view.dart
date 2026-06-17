@@ -87,6 +87,7 @@ class HomeView extends StatelessWidget {
         ),
         const SizedBox(height: StudyOsSpacing.md),
         _HomeCard(
+          key: const ValueKey<String>('home-campus-card'),
           icon: Icons.restaurant_outlined,
           title: 'Campus',
           body: _campusLine(profile),
@@ -171,6 +172,7 @@ class _HomeCard extends StatelessWidget {
     required this.title,
     required this.body,
     this.onTap,
+    super.key,
   });
 
   final IconData icon;

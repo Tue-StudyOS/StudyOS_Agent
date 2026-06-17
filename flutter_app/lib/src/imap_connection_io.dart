@@ -50,7 +50,9 @@ class ImapConnection {
   Future<List<int>> _readUntilTagged(String tag) {
     return _readUntil(
       (text) => RegExp(
-        r'(^|\r\n)' '$tag' r'\s+(OK|NO|BAD)\b',
+        r'(^|\r\n)'
+        '$tag'
+        r'\s+(OK|NO|BAD)\b',
         caseSensitive: false,
       ).hasMatch(text),
     );

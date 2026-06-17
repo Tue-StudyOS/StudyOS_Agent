@@ -35,7 +35,7 @@ class _MailControls extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: mailbox,
+              initialValue: mailbox,
               decoration: const InputDecoration(labelText: 'Mailbox'),
               items: options
                   .map(

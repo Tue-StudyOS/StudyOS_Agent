@@ -4,11 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
 class AgentConfigStore {
-  AgentConfigStore({
+  factory AgentConfigStore({
     SharedPreferencesAsync? preferences,
     FlutterSecureStorage? secureStorage,
-  }) : _preferences = preferences ?? SharedPreferencesAsync(),
-       _secureStorage = secureStorage ?? const FlutterSecureStorage();
+  }) {
+    return AgentConfigStore._(preferences, secureStorage);
+  }
+
+  AgentConfigStore._(this._preferences, this._secureStorage);
 
   static const String _providerKey = 'studyos.agent.provider.v1';
   static const String _endpointKey = 'studyos.agent.cloudEndpoint.v1';
@@ -17,16 +20,20 @@ class AgentConfigStore {
   static const String _localModelPathKey = 'studyos.agent.localModelPath.v1';
   static const String _apiKeyKey = 'studyos.agent.cloudApiKey.v1';
 
-  final SharedPreferencesAsync _preferences;
-  final FlutterSecureStorage _secureStorage;
+  final SharedPreferencesAsync? _preferences;
+  final FlutterSecureStorage? _secureStorage;
+
+  SharedPreferencesAsync get _prefs => _preferences ?? SharedPreferencesAsync();
+  FlutterSecureStorage get _secure =>
+      _secureStorage ?? const FlutterSecureStorage();
 
   Future<AgentConfig> load() async {
-    final providerName = await _preferences.getString(_providerKey);
-    final endpoint = await _preferences.getString(_endpointKey);
-    final model = await _preferences.getString(_modelKey);
-    final localModelId = await _preferences.getString(_localModelIdKey);
-    final localModelPath = await _preferences.getString(_localModelPathKey);
-    final apiKey = await _secureStorage.read(key: _apiKeyKey);
+    final providerName = await _prefs.getString(_providerKey);
+    final endpoint = await _prefs.getString(_endpointKey);
+    final model = await _prefs.getString(_modelKey);
+    final localModelId = await _prefs.getString(_localModelIdKey);
+    final localModelPath = await _prefs.getString(_localModelPathKey);
+    final apiKey = await _secure.read(key: _apiKeyKey);
 
     return AgentConfig(
       provider: providerName == AgentProvider.cloud.name
@@ -41,28 +48,25 @@ class AgentConfigStore {
   }
 
   Future<String?> readApiKey() {
-    return _secureStorage.read(key: _apiKeyKey);
+    return _secure.read(key: _apiKeyKey);
   }
 
   Future<void> save({
     required AgentConfig config,
     required String? apiKey,
   }) async {
-    await _preferences.setString(_providerKey, config.provider.name);
-    await _preferences.setString(_endpointKey, config.cloudEndpoint.trim());
-    await _preferences.setString(_modelKey, config.cloudModel.trim());
-    await _preferences.setString(_localModelIdKey, config.localModelId.trim());
-    await _preferences.setString(
-      _localModelPathKey,
-      config.localModelPath.trim(),
-    );
+    await _prefs.setString(_providerKey, config.provider.name);
+    await _prefs.setString(_endpointKey, config.cloudEndpoint.trim());
+    await _prefs.setString(_modelKey, config.cloudModel.trim());
+    await _prefs.setString(_localModelIdKey, config.localModelId.trim());
+    await _prefs.setString(_localModelPathKey, config.localModelPath.trim());
 
     if (apiKey != null) {
       final trimmed = apiKey.trim();
       if (trimmed.isEmpty) {
-        await _secureStorage.delete(key: _apiKeyKey);
+        await _secure.delete(key: _apiKeyKey);
       } else {
-        await _secureStorage.write(key: _apiKeyKey, value: trimmed);
+        await _secure.write(key: _apiKeyKey, value: trimmed);
       }
     }
   }

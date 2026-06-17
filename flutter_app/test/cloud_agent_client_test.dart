@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:studyos_agent/src/cloud_agent_client.dart';
 import 'package:studyos_agent/src/cloud_tool_definitions.dart';
-import 'package:studyos_agent/src/mail_models.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/models.dart';
@@ -328,6 +327,8 @@ MailToolRunner _fakeMailTools() {
 }
 
 class _FakeMailRepository extends MailRepository {
+  _FakeMailRepository() : super.test();
+
   @override
   Future<List<MailboxSummary>> listMailboxes(OnboardingProfile? profile) async {
     return const <MailboxSummary>[
