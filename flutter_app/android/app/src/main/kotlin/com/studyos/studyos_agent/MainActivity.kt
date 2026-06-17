@@ -211,14 +211,46 @@ class MainActivity : FlutterActivity() {
                     "After the app returns tool results, answer naturally. " +
                         "Do not show raw tool directives to the user in the final answer.",
                 )
+                appendLine("Only call tools from this list; do not invent tool names.")
+                appendLine()
                 appendLine("Available Android LiteRT tools:")
-                appendLine("- [TOOL:GET_STUDY_CONTEXT:] reads the current StudyOS context.")
-                appendLine("- [TOOL:READ_MEMORIES:] reads provided local StudyOS memories.")
-                appendLine("- [TOOL:GET_SCHEDULE:] reads cached timetable context when available.")
-                appendLine("- [TOOL:GET_STATUS:] reads Android device status.")
-                appendLine("- [TOOL:LIGHT_CONTROL:ON] or [TOOL:LIGHT_CONTROL:OFF] toggles flashlight.")
-                appendLine("- [TOOL:OPEN_APP:Camera] opens an installed app by name.")
-                appendLine("- [TOOL:SEARCH_YOUTUBE:query] opens a YouTube search.")
+                appendLine(
+                    "- GET_STUDY_CONTEXT, no argument: read the current StudyOS " +
+                        "profile, timetable summary, memory, and device context.",
+                )
+                appendLine(
+                    "  Example: [TOOL:GET_STUDY_CONTEXT:]",
+                )
+                appendLine(
+                    "- READ_MEMORIES, no argument: read the provided local " +
+                        "StudyOS long-term memories.",
+                )
+                appendLine("  Example: [TOOL:READ_MEMORIES:]")
+                appendLine(
+                    "- GET_SCHEDULE, no argument: read cached timetable context " +
+                        "when it is present in the StudyOS prompt.",
+                )
+                appendLine("  Example: [TOOL:GET_SCHEDULE:]")
+                appendLine(
+                    "- GET_STATUS, no argument: read Android device status such " +
+                        "as volume, Wi-Fi, location, and airplane mode.",
+                )
+                appendLine("  Example: [TOOL:GET_STATUS:]")
+                appendLine(
+                    "- LIGHT_CONTROL, argument ON or OFF: turn the flashlight on " +
+                        "or off.",
+                )
+                appendLine("  Example: [TOOL:LIGHT_CONTROL:ON]")
+                appendLine(
+                    "- OPEN_APP, argument app name: open an installed Android app " +
+                        "by its display name.",
+                )
+                appendLine("  Example: [TOOL:OPEN_APP:Camera]")
+                appendLine(
+                    "- SEARCH_YOUTUBE, argument search query: open YouTube search " +
+                        "results for the query.",
+                )
+                appendLine("  Example: [TOOL:SEARCH_YOUTUBE:study techniques]")
             } else {
                 appendLine(
                     "Runtime note: Android Gemini Nano through ML Kit Prompt API " +
