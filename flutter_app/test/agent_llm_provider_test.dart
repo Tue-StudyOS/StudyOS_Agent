@@ -64,44 +64,47 @@ void main() {
     },
   );
 
-  test('local provider advertises StudyOS mail tools to native models', () async {
-    final bridge = _FakeNativeBridge('Plain local response.');
-    final provider = LocalNativeLlmProvider(bridge);
+  test(
+    'local provider advertises StudyOS mail tools to native models',
+    () async {
+      final bridge = _FakeNativeBridge('Plain local response.');
+      final provider = LocalNativeLlmProvider(bridge);
 
-    final response = await provider.send(
-      AgentLlmRequest(
-        config: const AgentConfig(
-          provider: AgentProvider.local,
-          cloudEndpoint: 'https://example.invalid/v1/chat/completions',
-          cloudModel: 'test-model',
-          hasApiKey: false,
-          localModelId: 'test-local',
-          localModelPath: '/tmp/model.litertlm',
+      final response = await provider.send(
+        AgentLlmRequest(
+          config: const AgentConfig(
+            provider: AgentProvider.local,
+            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+            cloudModel: 'test-model',
+            hasApiKey: false,
+            localModelId: 'test-local',
+            localModelPath: '/tmp/model.litertlm',
+          ),
+          sessions: const <ChatSession>[],
+          activeSessionId: null,
+          userText: 'Do I have recent mail?',
+          context: const PromptContext(
+            profile: null,
+            memory: '',
+            worldState: <String, Object?>{},
+          ),
+          memoryText: '',
+          appendMemory: (_) async {},
+          readSchedule: () async => 'No schedule.',
+          mailTools: MailToolRunner(
+            repository: MailRepository.test(),
+            profile: null,
+          ),
+          onToolTrace: (_) {},
         ),
-        sessions: const <ChatSession>[],
-        activeSessionId: null,
-        userText: 'Do I have recent mail?',
-        context: const PromptContext(
-          profile: null,
-          memory: '',
-          worldState: <String, Object?>{},
-        ),
-        memoryText: '',
-        appendMemory: (_) async {},
-        readSchedule: () async => 'No schedule.',
-        mailTools: MailToolRunner(
-          repository: MailRepository.test(),
-          profile: null,
-        ),
-        onToolTrace: (_) {},
-      ),
-    );
+      );
 
-    expect(response, 'Plain local response.');
-    expect(bridge.lastSystemPrompt, contains('get_recent_mail'));
-    expect(bridge.lastSystemPrompt, contains('search_mail'));
-    expect(bridge.lastSystemPrompt, contains('find_mail_deadlines'));
-  });
+      expect(response, 'Plain local response.');
+      expect(bridge.lastSystemPrompt, contains('get_recent_mail'));
+      expect(bridge.lastSystemPrompt, contains('search_mail'));
+      expect(bridge.lastSystemPrompt, contains('find_mail_deadlines'));
+    },
+  );
 }
 
 class _FakeLlmProvider implements AgentLlmProvider {
