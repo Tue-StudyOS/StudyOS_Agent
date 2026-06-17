@@ -22,9 +22,26 @@ class MapSearchBar extends StatelessWidget {
       textInputAction: TextInputAction.search,
       onSubmitted: (_) => onSearch(),
       decoration: InputDecoration(
-        labelText: 'Destination',
-        hintText: 'Library, lecture hall, mensa...',
+        filled: true,
+        fillColor: StudyOsColors.surface.withValues(alpha: 0.96),
+        hintText: 'Where to?',
         prefixIcon: const Icon(Icons.search_rounded),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: StudyOsSpacing.lg,
+          vertical: StudyOsSpacing.lg,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: StudyOsColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: StudyOsColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: StudyOsColors.accent),
+        ),
         suffixIcon: IconButton(
           tooltip: 'Search destination',
           onPressed: isSearching ? null : onSearch,
@@ -42,15 +59,73 @@ class MapSearchBar extends StatelessWidget {
 
 class MapOverlay extends StatelessWidget {
   const MapOverlay({
+    required this.controller,
+    required this.results,
+    required this.selectedLocation,
+    required this.isSearching,
+    required this.searchError,
+    required this.hasSearched,
+    required this.onSearch,
+    required this.onSelect,
+    required this.onAskAssistant,
+    required this.onOpenExternalMaps,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final List<MapLocation> results;
+  final MapLocation? selectedLocation;
+  final bool isSearching;
+  final String? searchError;
+  final bool hasSearched;
+  final VoidCallback onSearch;
+  final ValueChanged<MapLocation> onSelect;
+  final VoidCallback onAskAssistant;
+  final VoidCallback onOpenExternalMaps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        _MapResultStrip(
+          results: results,
+          selectedLocation: selectedLocation,
+          isSearching: isSearching,
+          searchError: searchError,
+          hasSearched: hasSearched,
+          onSelect: onSelect,
+          onOpenExternalMaps: onOpenExternalMaps,
+        ),
+        const SizedBox(height: StudyOsSpacing.sm),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: <Widget>[
+            Expanded(
+              child: MapSearchBar(
+                controller: controller,
+                isSearching: isSearching,
+                onSearch: onSearch,
+              ),
+            ),
+            const SizedBox(width: StudyOsSpacing.sm),
+            _AskAssistantButton(onPressed: onAskAssistant),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MapResultStrip extends StatelessWidget {
+  const _MapResultStrip({
     required this.results,
     required this.selectedLocation,
     required this.isSearching,
     required this.searchError,
     required this.hasSearched,
     required this.onSelect,
-    required this.onAskAssistant,
     required this.onOpenExternalMaps,
-    super.key,
   });
 
   final List<MapLocation> results;
@@ -59,79 +134,88 @@ class MapOverlay extends StatelessWidget {
   final String? searchError;
   final bool hasSearched;
   final ValueChanged<MapLocation> onSelect;
-  final VoidCallback onAskAssistant;
   final VoidCallback onOpenExternalMaps;
 
   @override
   Widget build(BuildContext context) {
+    if (!isSearching &&
+        searchError == null &&
+        !(results.isEmpty && hasSearched) &&
+        results.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final selected = selectedLocation;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: StudyOsColors.surface.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-        border: Border.all(color: StudyOsColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.md),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 380),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                if (searchError != null)
-                  Text(
-                    searchError!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  )
-                else if (isSearching)
-                  const LinearProgressIndicator()
-                else if (results.isEmpty && hasSearched)
-                  Text(
-                    'No destination found.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  )
-                else if (results.isNotEmpty)
-                  _ResultList(
-                    results: results,
-                    selectedLocation: selected,
-                    onSelect: onSelect,
-                  ),
-                if (selected != null) ...<Widget>[
-                  const Divider(height: StudyOsSpacing.lg),
-                  Text(
-                    selected.name,
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: StudyOsSpacing.xs),
-                  Text(
-                    selected.address ?? selected.coordinateText,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: StudyOsSpacing.sm),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onAskAssistant,
-                          icon: const Icon(Icons.auto_awesome_rounded),
-                          label: const Text('Ask StudyOS'),
+    final message =
+        searchError ??
+        (results.isEmpty && hasSearched ? 'No destination found.' : null);
+
+    if (isSearching || message != null) {
+      return _FloatingMapPanel(
+        child: isSearching
+            ? const LinearProgressIndicator()
+            : Text(message!, style: Theme.of(context).textTheme.bodyMedium),
+      );
+    }
+
+    final visibleResults = results.take(4).toList(growable: false);
+    return _FloatingMapPanel(
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: <Widget>[
+                  for (final result in visibleResults)
+                    Padding(
+                      padding: const EdgeInsets.only(right: StudyOsSpacing.sm),
+                      child: ChoiceChip(
+                        selected: result == selected,
+                        label: Text(
+                          result.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        avatar: const Icon(Icons.place_outlined, size: 18),
+                        onSelected: (_) => onSelect(result),
                       ),
-                      const SizedBox(width: StudyOsSpacing.sm),
-                      IconButton.filledTonal(
-                        tooltip: 'Open in maps',
-                        onPressed: onOpenExternalMaps,
-                        icon: const Icon(Icons.near_me_outlined),
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
-              ],
+              ),
             ),
+          ),
+          if (selected != null) ...<Widget>[
+            const SizedBox(width: StudyOsSpacing.xs),
+            IconButton.filledTonal(
+              tooltip: 'Open in maps',
+              onPressed: onOpenExternalMaps,
+              icon: const Icon(Icons.near_me_outlined),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AskAssistantButton extends StatelessWidget {
+  const _AskAssistantButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 58,
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.auto_awesome_rounded),
+        label: const Text('Ask AI'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.lg),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
           ),
         ),
       ),
@@ -139,42 +223,23 @@ class MapOverlay extends StatelessWidget {
   }
 }
 
-class _ResultList extends StatelessWidget {
-  const _ResultList({
-    required this.results,
-    required this.selectedLocation,
-    required this.onSelect,
-  });
+class _FloatingMapPanel extends StatelessWidget {
+  const _FloatingMapPanel({required this.child});
 
-  final List<MapLocation> results;
-  final MapLocation? selectedLocation;
-  final ValueChanged<MapLocation> onSelect;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final visibleResults = results.take(4).toList(growable: false);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (final result in visibleResults)
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            selected: result == selectedLocation,
-            leading: const Icon(Icons.place_outlined),
-            title: Text(
-              result.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              result.address ?? result.coordinateText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () => onSelect(result),
-          ),
-      ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: StudyOsColors.surface.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
+        border: Border.all(color: StudyOsColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(StudyOsSpacing.sm),
+        child: child,
+      ),
     );
   }
 }
