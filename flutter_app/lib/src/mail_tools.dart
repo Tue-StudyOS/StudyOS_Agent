@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'mail_models.dart';
 import 'mail_repository.dart';
 import 'models.dart';
 
@@ -46,9 +45,11 @@ class MailToolRunner {
       query: _stringArg(args, 'query'),
       sender: _stringArg(args, 'sender'),
       since: _stringArg(args, 'since'),
-      scanLimit: _intArg(args, 'scan_limit', fallback: 100)
-          .clamp(20, 300)
-          .toInt(),
+      scanLimit: _intArg(
+        args,
+        'scan_limit',
+        fallback: 100,
+      ).clamp(20, 300).toInt(),
     );
     return jsonEncode(inbox.toJson());
   }
@@ -72,9 +73,11 @@ class MailToolRunner {
       query: _stringArg(args, 'query'),
       sender: _stringArg(args, 'sender'),
       since: _stringArg(args, 'since'),
-      scanLimit: _intArg(args, 'scan_limit', fallback: 150)
-          .clamp(20, 300)
-          .toInt(),
+      scanLimit: _intArg(
+        args,
+        'scan_limit',
+        fallback: 150,
+      ).clamp(20, 300).toInt(),
     );
     final candidates = inbox.messages
         .where(_looksDeadlineRelated)
@@ -118,8 +121,7 @@ int _intArg(Map<String, Object?> args, String name, {required int fallback}) {
 }
 
 bool _looksDeadlineRelated(MailMessageSummary message) {
-  final haystack =
-      '${message.subject} ${message.preview ?? ''}'.toLowerCase();
+  final haystack = '${message.subject} ${message.preview ?? ''}'.toLowerCase();
   return <String>[
     'deadline',
     'frist',

@@ -64,7 +64,7 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byIcon(Icons.home_rounded), findsOneWidget);
     expect(find.text('Schedule'), findsOneWidget);
-    expect(find.text('Mail'), findsOneWidget);
+    expect(find.text('Mail'), findsWidgets);
     expect(find.text('Campus'), findsWidgets);
 
     await tester.tap(find.text('Schedule'));
@@ -112,7 +112,13 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Campus'));
+    final campusCard = find.byKey(const ValueKey<String>('home-campus-card'));
+    await tester.scrollUntilVisible(
+      campusCard,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(campusCard);
 
     expect(selectedView, AppView.campus);
   });

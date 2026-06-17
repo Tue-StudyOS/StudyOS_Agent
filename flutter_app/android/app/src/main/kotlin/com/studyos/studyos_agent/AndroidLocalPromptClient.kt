@@ -21,16 +21,27 @@ class AndroidLocalPromptClient(context: Context) {
     fun generate(
         prompt: String,
         modelPath: String,
+        canExecuteTool: (String) -> Boolean,
+        onToolRequest: (String, String) -> String,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit,
     ) {
         executor.execute {
             try {
                 if (modelPath.isNotBlank()) {
-                    val response = liteRtClient.generate(
+                    val response = liteRtClient.generateWithTools(
                         modelPath,
                         prompt,
                         appContext.cacheDir.absolutePath,
+                        object : LiteRtLocalPromptClient.ToolExecutor {
+                            override fun canExecute(toolName: String): Boolean {
+                                return canExecuteTool(toolName)
+                            }
+
+                            override fun execute(toolName: String, argument: String): String {
+                                return onToolRequest(toolName, argument)
+                            }
+                        },
                     )
                     if (response.isBlank()) {
                         onError("LiteRT-LM returned an empty response.")
@@ -67,7 +78,12 @@ class AndroidLocalPromptClient(context: Context) {
                     }
                 }
             } catch (error: Throwable) {
-                onError("Android Gemini Nano failed: ${error.message}")
+                val provider = if (modelPath.isBlank()) {
+                    "Android Gemini Nano"
+                } else {
+                    "LiteRT-LM"
+                }
+                onError("$provider failed: ${error.message}")
             }
         }
     }
@@ -83,8 +99,8 @@ class AndroidLocalPromptClient(context: Context) {
                     "Apps initialize a desired Gemini Nano configuration and check its status.",
             "androidLocalToolCalling" to
                 "ML Kit Prompt API does not expose native function calling. " +
-                    "Google AI Edge or LiteRT-LM function calling is a separate " +
-                    "bundled-model path that needs physical-device validation.",
+                    "Downloaded LiteRT-LM models can use StudyOS bracketed " +
+                    "[TOOL:NAME:ARG] calls executed by the Android bridge.",
             "androidLocalModelContext" to appContext.packageName,
         )
     }

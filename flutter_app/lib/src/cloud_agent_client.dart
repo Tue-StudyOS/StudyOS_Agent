@@ -7,12 +7,15 @@ import 'mail_tools.dart';
 import 'models.dart';
 import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
+import 'studyos_tool_executor.dart';
 
 class CloudAgentClient {
-  CloudAgentClient({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  CloudAgentClient({http.Client? httpClient, StudyOsToolExecutor? toolExecutor})
+    : _httpClient = httpClient ?? http.Client(),
+      _toolExecutor = toolExecutor ?? const StudyOsToolExecutor();
 
   final http.Client _httpClient;
+  final StudyOsToolExecutor _toolExecutor;
 
   Future<String> sendMessage({
     required AgentConfig config,
@@ -48,23 +51,25 @@ class CloudAgentClient {
     final message = _messageFromResponse(decoded);
     final toolCalls = _toolCalls(message);
     if (toolCalls.isEmpty) {
-      throw const CloudAgentException(
-        'The selected model could not use StudyOS tools. Choose a compatible model.',
-      );
+      return _contentFromMessage(message);
     }
 
     final toolMessages = <Map<String, Object?>>[];
+    final toolContext = StudyOsToolContext(
+      promptContext: context,
+      appendMemory: appendMemory,
+      readMemory: readMemory,
+      readSchedule: readSchedule,
+      mailTools: mailTools,
+    );
     for (final call in toolCalls) {
       onToolTrace?.call(_traceForCall(call, 'running'));
       final String output;
       try {
-        output = await _executeTool(
-          call,
-          context: context,
-          appendMemory: appendMemory,
-          readMemory: readMemory,
-          readSchedule: readSchedule,
-          mailTools: mailTools,
+        output = await _toolExecutor.execute(
+          call.name,
+          call.arguments,
+          toolContext,
         );
       } on Object catch (error) {
         onToolTrace?.call(
@@ -131,7 +136,7 @@ class CloudAgentClient {
         <String, Object?>{'role': 'user', 'content': userText},
       ],
       'tools': cloudToolDefinitions(),
-      'tool_choice': 'required',
+      'tool_choice': 'auto',
     };
   }
 
@@ -195,28 +200,6 @@ class CloudAgentClient {
         .toList();
   }
 
-  Future<String> _executeTool(
-    _ToolCall call, {
-    required PromptContext context,
-    required Future<void> Function(String text) appendMemory,
-    required Future<String> Function() readMemory,
-    required Future<String> Function() readSchedule,
-    required MailToolRunner mailTools,
-  }) async {
-    return switch (call.name) {
-      'append_memory' => _appendMemory(call.arguments, appendMemory),
-      'read_memories' => readMemory(),
-      'get_study_context' => context.systemPrompt(),
-      'get_schedule' => readSchedule(),
-      'list_mailboxes' ||
-      'get_recent_mail' ||
-      'search_mail' ||
-      'get_mail_message' ||
-      'find_mail_deadlines' => mailTools.execute(call.name, call.arguments),
-      _ => 'Tool is not available: ${call.name}',
-    };
-  }
-
   ToolTrace _traceForCall(_ToolCall call, String status, {String? output}) {
     final summary =
         studyOsToolByName(call.name)?.traceSummary ??
@@ -230,25 +213,6 @@ class CloudAgentClient {
       summary: '$summary$outputSuffix',
       callId: call.id,
     );
-  }
-
-  Future<String> _appendMemory(
-    String arguments,
-    Future<void> Function(String text) appendMemory,
-  ) async {
-    final Object? decoded;
-    try {
-      decoded = jsonDecode(arguments);
-    } on FormatException {
-      return 'Memory arguments were not valid JSON.';
-    }
-    if (decoded is! Map) return 'Memory text was not provided.';
-    final text = Map<String, Object?>.from(decoded)['text']?.toString();
-    if (text == null || text.trim().isEmpty) {
-      return 'Memory text was not provided.';
-    }
-    await appendMemory(text);
-    return 'Memory saved.';
   }
 }
 

@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:studyos_agent/src/cloud_agent_client.dart';
 import 'package:studyos_agent/src/cloud_tool_definitions.dart';
-import 'package:studyos_agent/src/mail_models.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/models.dart';
@@ -120,14 +119,16 @@ void main() {
     expect(response, 'Use the saved morning focus preference.');
     expect(traces.map((trace) => trace.status), <String>['running', 'done']);
     expect(traces.every((trace) => trace.toolName == 'read_memories'), isTrue);
-    expect(bodies.first['tool_choice'], 'required');
+    expect(bodies.first['tool_choice'], 'auto');
     expect(bodies.first['tools'], isA<List>());
     expect(bodies.last.containsKey('tools'), isFalse);
   });
 
-  test('rejects cloud responses that skip tools', () async {
+  test('accepts cloud responses that skip tools', () async {
+    final bodies = <Map<String, Object?>>[];
     final client = CloudAgentClient(
       httpClient: MockClient((request) async {
+        bodies.add(jsonDecode(request.body) as Map<String, Object?>);
         return http.Response(
           jsonEncode(<String, Object?>{
             'choices': <Object?>[
@@ -145,31 +146,32 @@ void main() {
       }),
     );
 
-    expect(
-      () => client.sendMessage(
-        config: const AgentConfig(
-          provider: AgentProvider.cloud,
-          cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
-          cloudModel: 'openai/gpt-4.1-mini',
-          hasApiKey: true,
-          localModelId: 'gemma-4-e2b-it',
-          localModelPath: '',
-        ),
-        apiKey: 'secret',
-        history: const <ChatMessage>[],
-        userText: 'Plan a study block',
-        context: const PromptContext(
-          profile: null,
-          memory: '',
-          worldState: <String, Object?>{},
-        ),
-        appendMemory: (_) async {},
-        readMemory: () async => '',
-        readSchedule: () async => 'No timetable has been synced yet.',
-        mailTools: _fakeMailTools(),
+    final response = await client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+        localModelId: 'gemma-4-e2b-it',
+        localModelPath: '',
       ),
-      throwsA(isA<CloudAgentException>()),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'Plan a study block',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => '',
+      readSchedule: () async => 'No timetable has been synced yet.',
+      mailTools: _fakeMailTools(),
     );
+
+    expect(response, 'Here is an ungrounded answer.');
+    expect(bodies, hasLength(1));
+    expect(bodies.single['tool_choice'], 'auto');
   });
 
   test('executes get_schedule tool calls', () async {
@@ -328,6 +330,8 @@ MailToolRunner _fakeMailTools() {
 }
 
 class _FakeMailRepository extends MailRepository {
+  _FakeMailRepository() : super.test();
+
   @override
   Future<List<MailboxSummary>> listMailboxes(OnboardingProfile? profile) async {
     return const <MailboxSummary>[

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:studyos_agent/src/mail_models.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/models.dart';
@@ -52,6 +51,8 @@ const _profile = OnboardingProfile(
 );
 
 class _ToolMailRepository extends MailRepository {
+  _ToolMailRepository() : super.test();
+
   @override
   Future<MailInboxSummary> fetchMailboxSummary(
     OnboardingProfile? profile, {

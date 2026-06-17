@@ -24,6 +24,7 @@ class MainActivity : FlutterActivity() {
     private var nativeInitialized = false
     private var localPromptClient: AndroidLocalPromptClient? = null
     private var localModelStore: AndroidLocalModelStore? = null
+    private var liteRtToolExecutor: AndroidLiteRtToolExecutor? = null
     private lateinit var intentBridge: AndroidIntentBridge
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,9 +141,26 @@ class MainActivity : FlutterActivity() {
         }
 
         try {
+            val prompt = localPrompt(
+                systemPrompt = systemPrompt,
+                memory = memory,
+                userText = text,
+                supportsLiteRtTools = localModelPath.isNotBlank(),
+            )
             localPromptClient().generate(
-                prompt = localPrompt(systemPrompt, memory, text),
+                prompt = prompt,
                 modelPath = localModelPath,
+                canExecuteTool = { toolName ->
+                    liteRtToolExecutor().canExecute(toolName)
+                },
+                onToolRequest = { toolName, argument ->
+                    liteRtToolExecutor().execute(
+                        toolName = toolName,
+                        argument = argument,
+                        systemPrompt = systemPrompt,
+                        memory = memory,
+                    )
+                },
                 onSuccess = { response ->
                     emitStatus(
                         if (localModelPath.isBlank()) {
@@ -177,15 +195,72 @@ class MainActivity : FlutterActivity() {
         systemPrompt: String,
         memory: String,
         userText: String,
+        supportsLiteRtTools: Boolean,
     ): String {
         return buildString {
             appendLine(systemPrompt.ifBlank { "You are StudyOS Agent." })
             appendLine()
-            appendLine(
-                "Runtime note: Android local mode uses ML Kit Prompt API. " +
-                    "It cannot execute StudyOS tool calls in this app, so only " +
-                    "answer from provided context and say what is missing.",
-            )
+            if (supportsLiteRtTools) {
+                appendLine("Android LiteRT local tool protocol:")
+                appendLine(
+                    "Use tools only when they are helpful. For normal questions, " +
+                        "answer directly from the provided context.",
+                )
+                appendLine(
+                    "To call tools, respond only with one or more directives " +
+                        "in this exact form: [TOOL:TOOL_NAME:ARGUMENT].",
+                )
+                appendLine(
+                    "After the app returns tool results, answer naturally. " +
+                        "Do not show raw tool directives to the user in the final answer.",
+                )
+                appendLine("Only call tools from this list; do not invent tool names.")
+                appendLine()
+                appendLine("Available Android LiteRT tools:")
+                appendLine(
+                    "- GET_STUDY_CONTEXT, no argument: read the current StudyOS " +
+                        "profile, timetable summary, memory, and device context.",
+                )
+                appendLine(
+                    "  Example: [TOOL:GET_STUDY_CONTEXT:]",
+                )
+                appendLine(
+                    "- READ_MEMORIES, no argument: read the provided local " +
+                        "StudyOS long-term memories.",
+                )
+                appendLine("  Example: [TOOL:READ_MEMORIES:]")
+                appendLine(
+                    "- GET_SCHEDULE, no argument: read cached timetable context " +
+                        "when it is present in the StudyOS prompt.",
+                )
+                appendLine("  Example: [TOOL:GET_SCHEDULE:]")
+                appendLine(
+                    "- GET_STATUS, no argument: read Android device status such " +
+                        "as volume, Wi-Fi, location, and airplane mode.",
+                )
+                appendLine("  Example: [TOOL:GET_STATUS:]")
+                appendLine(
+                    "- LIGHT_CONTROL, argument ON or OFF: turn the flashlight on " +
+                        "or off.",
+                )
+                appendLine("  Example: [TOOL:LIGHT_CONTROL:ON]")
+                appendLine(
+                    "- OPEN_APP, argument app name: open an installed Android app " +
+                        "by its display name.",
+                )
+                appendLine("  Example: [TOOL:OPEN_APP:Camera]")
+                appendLine(
+                    "- SEARCH_YOUTUBE, argument search query: open YouTube search " +
+                        "results for the query.",
+                )
+                appendLine("  Example: [TOOL:SEARCH_YOUTUBE:study techniques]")
+            } else {
+                appendLine(
+                    "Runtime note: Android Gemini Nano through ML Kit Prompt API " +
+                        "does not expose tool calling in this app. Answer from " +
+                        "provided context and say what is missing.",
+                )
+            }
             if (memory.isNotBlank()) {
                 appendLine()
                 appendLine("Local StudyOS memory:")
@@ -210,6 +285,14 @@ class MainActivity : FlutterActivity() {
         if (existing != null) return existing
         return AndroidLocalModelStore(applicationContext).also {
             localModelStore = it
+        }
+    }
+
+    private fun liteRtToolExecutor(): AndroidLiteRtToolExecutor {
+        val existing = liteRtToolExecutor
+        if (existing != null) return existing
+        return AndroidLiteRtToolExecutor(applicationContext, ::emitToolTrace).also {
+            liteRtToolExecutor = it
         }
     }
 
@@ -332,6 +415,32 @@ class MainActivity : FlutterActivity() {
         val payload = mapOf(
             "type" to "status",
             "message" to message,
+            "timestamp" to SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss",
+                Locale.US
+            ).format(Date()),
+        )
+
+        Handler(Looper.getMainLooper()).post {
+            eventSink?.success(payload)
+        }
+    }
+
+    private fun emitToolTrace(
+        toolName: String,
+        status: String,
+        summary: String,
+        callId: String,
+    ) {
+        val payload = mapOf(
+            "type" to "toolTrace",
+            "message" to summary,
+            "trace" to mapOf(
+                "toolName" to toolName,
+                "status" to status,
+                "summary" to summary,
+                "callId" to callId,
+            ),
             "timestamp" to SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss",
                 Locale.US

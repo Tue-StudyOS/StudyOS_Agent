@@ -1,16 +1,21 @@
 import 'mail_client.dart';
-import 'mail_models.dart';
 import 'models.dart';
 import 'profile_store.dart';
 
 class MailRepository {
-  MailRepository({
+  factory MailRepository({
     ProfileStore? profileStore,
     MailClient Function()? clientFactory,
-  }) : _profileStore = profileStore ?? ProfileStore(),
-       _clientFactory = clientFactory ?? MailClient.new;
+  }) {
+    return MailRepository._(profileStore, clientFactory ?? MailClient.new);
+  }
 
-  final ProfileStore _profileStore;
+  MailRepository.test({MailClient Function()? clientFactory})
+    : this._(null, clientFactory ?? MailClient.new);
+
+  MailRepository._(this._profileStore, this._clientFactory);
+
+  final ProfileStore? _profileStore;
   final MailClient Function() _clientFactory;
 
   Future<List<MailboxSummary>> listMailboxes(OnboardingProfile? profile) async {
@@ -65,7 +70,7 @@ class MailRepository {
     if (profile == null) {
       throw const MailException('Sign in again to access university mail.');
     }
-    final password = await _profileStore.readPassword();
+    final password = await (_profileStore ?? ProfileStore()).readPassword();
     if (password == null || password.isEmpty) {
       throw const MailException('Sign in again to access university mail.');
     }

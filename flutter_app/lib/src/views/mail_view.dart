@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../mail_models.dart';
 import '../mail_parsing.dart';
 import '../mail_repository.dart';
 import '../models.dart';
@@ -9,11 +8,7 @@ import '../studyos_theme.dart';
 part 'mail_view_components.dart';
 
 class MailView extends StatefulWidget {
-  const MailView({
-    required this.profile,
-    this.repository,
-    super.key,
-  });
+  const MailView({required this.profile, this.repository, super.key});
 
   final OnboardingProfile? profile;
   final MailRepository? repository;
@@ -79,7 +74,10 @@ class _MailViewState extends State<MailView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('Mail', style: Theme.of(context).textTheme.headlineSmall),
+                  Text(
+                    'Mail',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
                   const SizedBox(height: StudyOsSpacing.xs),
                   Text(
                     'University mailbox, folders, and read-only message access.',
