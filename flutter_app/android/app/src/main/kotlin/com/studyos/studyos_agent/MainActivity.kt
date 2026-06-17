@@ -150,6 +150,9 @@ class MainActivity : FlutterActivity() {
             localPromptClient().generate(
                 prompt = prompt,
                 modelPath = localModelPath,
+                canExecuteTool = { toolName ->
+                    liteRtToolExecutor().canExecute(toolName)
+                },
                 onToolRequest = { toolName, argument ->
                     liteRtToolExecutor().execute(
                         toolName = toolName,

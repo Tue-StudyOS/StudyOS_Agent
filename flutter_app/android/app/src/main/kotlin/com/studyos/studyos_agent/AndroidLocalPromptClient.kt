@@ -21,6 +21,7 @@ class AndroidLocalPromptClient(context: Context) {
     fun generate(
         prompt: String,
         modelPath: String,
+        canExecuteTool: (String) -> Boolean,
         onToolRequest: (String, String) -> String,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit,
@@ -32,8 +33,14 @@ class AndroidLocalPromptClient(context: Context) {
                         modelPath,
                         prompt,
                         appContext.cacheDir.absolutePath,
-                        LiteRtLocalPromptClient.ToolExecutor { toolName, argument ->
-                            onToolRequest(toolName, argument)
+                        object : LiteRtLocalPromptClient.ToolExecutor {
+                            override fun canExecute(toolName: String): Boolean {
+                                return canExecuteTool(toolName)
+                            }
+
+                            override fun execute(toolName: String, argument: String): String {
+                                return onToolRequest(toolName, argument)
+                            }
                         },
                     )
                     if (response.isBlank()) {

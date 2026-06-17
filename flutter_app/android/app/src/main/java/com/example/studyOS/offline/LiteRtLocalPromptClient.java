@@ -27,6 +27,8 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
     private String activeModelPath;
 
     public interface ToolExecutor {
+        boolean canExecute(String toolName);
+
         String execute(String toolName, String argument);
     }
 
@@ -47,6 +49,9 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
             List<ToolCall> toolCalls = parseToolCalls(responseText);
             if (toolCalls.isEmpty()) {
+                return responseText;
+            }
+            if (!allCallsCanExecute(toolCalls, toolExecutor)) {
                 return responseText;
             }
 
@@ -70,6 +75,15 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         }
 
         return responseText;
+    }
+
+    private boolean allCallsCanExecute(List<ToolCall> toolCalls, ToolExecutor toolExecutor) {
+        for (ToolCall call : toolCalls) {
+            if (!toolExecutor.canExecute(call.name)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void ensureConversation(String modelPath, String cacheDir) throws Exception {

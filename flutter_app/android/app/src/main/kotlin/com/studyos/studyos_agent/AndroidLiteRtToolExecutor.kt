@@ -17,6 +17,10 @@ class AndroidLiteRtToolExecutor(
     private val appContext = context.applicationContext
     private val tools: Tools by lazy { Tools(appContext) }
 
+    fun canExecute(toolName: String): Boolean {
+        return normalizeToolName(toolName) in androidToolNames
+    }
+
     fun execute(
         toolName: String,
         argument: String,
@@ -88,5 +92,17 @@ class AndroidLiteRtToolExecutor(
             return "No cached timetable summary was provided."
         }
         return systemPrompt.substring(index).trim()
+    }
+
+    private companion object {
+        val androidToolNames = setOf(
+            "GET_STUDY_CONTEXT",
+            "READ_MEMORIES",
+            "GET_SCHEDULE",
+            "GET_STATUS",
+            "LIGHT_CONTROL",
+            "OPEN_APP",
+            "SEARCH_YOUTUBE",
+        )
     }
 }

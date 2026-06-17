@@ -6,6 +6,8 @@ import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'prompt_context.dart';
+import 'studyos_tool_catalog.dart';
+import 'studyos_tool_executor.dart';
 
 class AgentLlmRequest {
   const AgentLlmRequest({
@@ -78,9 +80,18 @@ class AgentLlmProviderRegistry {
 }
 
 class LocalNativeLlmProvider implements AgentLlmProvider {
-  const LocalNativeLlmProvider(this._bridge);
+  const LocalNativeLlmProvider(
+    this._bridge, [
+    this._toolExecutor = const StudyOsToolExecutor(),
+  ]);
+
+  static final RegExp _toolCallPattern = RegExp(
+    r'\[TOOL:([^\]:]+):?([^\]]*)\]',
+  );
+  static const int _maxToolRounds = 3;
 
   final NativeBridge _bridge;
+  final StudyOsToolExecutor _toolExecutor;
 
   @override
   AgentProvider get provider => AgentProvider.local;
@@ -92,14 +103,148 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
   String get displayName => 'Local native model';
 
   @override
-  Future<String> send(AgentLlmRequest request) {
-    return _bridge.sendMessage(
+  Future<String> send(AgentLlmRequest request) async {
+    final systemPrompt = _localSystemPrompt(request.context.systemPrompt());
+    var response = await _bridge.sendMessage(
       request.userText,
-      systemPrompt: request.context.systemPrompt(),
+      systemPrompt: systemPrompt,
       memory: request.memoryText,
       localModelPath: request.config.localModelPath,
     );
+    final toolContext = StudyOsToolContext(
+      promptContext: request.context,
+      appendMemory: request.appendMemory,
+      readMemory: () async => request.memoryText,
+      readSchedule: request.readSchedule,
+      mailTools: request.mailTools,
+    );
+
+    for (var round = 0; round < _maxToolRounds; round += 1) {
+      final calls = _toolCalls(response);
+      if (calls.isEmpty) return response;
+
+      final feedback = <String>[];
+      for (final call in calls) {
+        final callId =
+            'local-${call.name}-${DateTime.now().microsecondsSinceEpoch}';
+        final trace = _traceForCall(call, 'running', callId: callId);
+        request.onToolTrace(trace);
+        final String output;
+        try {
+          output = await _toolExecutor.execute(
+            call.name,
+            call.arguments,
+            toolContext,
+          );
+        } on Object catch (error) {
+          request.onToolTrace(
+            _traceForCall(
+              call,
+              'failed',
+              callId: callId,
+              output: error.toString(),
+            ),
+          );
+          rethrow;
+        }
+        request.onToolTrace(
+          _traceForCall(call, 'done', callId: callId, output: output),
+        );
+        feedback.add('- ${call.name}: $output');
+      }
+
+      response = await _bridge.sendMessage(
+        _localToolFeedbackPrompt(feedback),
+        systemPrompt: systemPrompt,
+        memory: request.memoryText,
+        localModelPath: request.config.localModelPath,
+      );
+    }
+    return response;
   }
+
+  String _localSystemPrompt(String basePrompt) {
+    final buffer = StringBuffer()
+      ..writeln(basePrompt)
+      ..writeln()
+      ..writeln('Local StudyOS tool protocol:')
+      ..writeln(
+        'Use StudyOS tools only when they are helpful. For normal questions, answer directly.',
+      )
+      ..writeln(
+        'To call a StudyOS tool, respond only with one or more directives '
+        'in this exact form: [TOOL:tool_name:arguments].',
+      )
+      ..writeln(
+        'Use JSON object arguments for tools that take parameters, and {} '
+        'for tools with no parameters.',
+      )
+      ..writeln('After tool results are returned, answer naturally.')
+      ..writeln('Available StudyOS tools:');
+    for (final tool in studyOsTools) {
+      final args = tool.required.isEmpty
+          ? '{}'
+          : '{${tool.required.map((name) => '"$name":"..."').join(',')}}';
+      buffer.writeln('- ${tool.name}: ${tool.description}');
+      buffer.writeln('  Example: [TOOL:${tool.name}:$args]');
+    }
+    return buffer.toString().trim();
+  }
+
+  String _localToolFeedbackPrompt(List<String> feedback) {
+    return <String>[
+      'System feedback from executed StudyOS tools:',
+      feedback.join('\n'),
+      '',
+      'If another StudyOS tool is still needed, respond only with '
+          '[TOOL:tool_name:arguments]. Otherwise answer the user naturally '
+          'using the tool results.',
+    ].join('\n');
+  }
+
+  List<_LocalToolCall> _toolCalls(String text) {
+    return _toolCallPattern
+        .allMatches(text)
+        .map((match) {
+          final name = match.group(1)?.trim().toLowerCase() ?? '';
+          final arguments = match.group(2)?.trim();
+          return _LocalToolCall(
+            name: name,
+            arguments: arguments == null || arguments.isEmpty
+                ? '{}'
+                : arguments,
+          );
+        })
+        .where((call) => studyOsToolByName(call.name) != null)
+        .toList();
+  }
+
+  ToolTrace _traceForCall(
+    _LocalToolCall call,
+    String status, {
+    required String callId,
+    String? output,
+  }) {
+    final summary =
+        studyOsToolByName(call.name)?.traceSummary ??
+        'Requested unavailable tool.';
+    final outputSuffix = output == null
+        ? ''
+        : ' Returned ${output.length} chars.';
+    return ToolTrace(
+      toolName: call.name,
+      status: status,
+      summary: '$summary$outputSuffix',
+      callId: callId,
+    );
+  }
+}
+
+class _LocalToolCall {
+  const _LocalToolCall({required this.name, required this.arguments});
+
+  final String name;
+  final String arguments;
 }
 
 class CloudLlmProvider implements AgentLlmProvider {
