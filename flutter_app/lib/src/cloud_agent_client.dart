@@ -51,9 +51,7 @@ class CloudAgentClient {
     final message = _messageFromResponse(decoded);
     final toolCalls = _toolCalls(message);
     if (toolCalls.isEmpty) {
-      throw const CloudAgentException(
-        'The selected model could not use StudyOS tools. Choose a compatible model.',
-      );
+      return _contentFromMessage(message);
     }
 
     final toolMessages = <Map<String, Object?>>[];
@@ -138,7 +136,7 @@ class CloudAgentClient {
         <String, Object?>{'role': 'user', 'content': userText},
       ],
       'tools': cloudToolDefinitions(),
-      'tool_choice': 'required',
+      'tool_choice': 'auto',
     };
   }
 
