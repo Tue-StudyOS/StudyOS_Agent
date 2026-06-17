@@ -79,7 +79,8 @@ void main() {
     await tester.pump();
 
     expect(selectedView, AppView.maps);
-    expect(find.text('Maps'), findsOneWidget);
+    expect(find.text('Where to?'), findsOneWidget);
+    expect(find.text('Ask AI'), findsOneWidget);
 
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();

@@ -49,86 +49,67 @@ class _MapsViewState extends State<MapsView> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Maps', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: StudyOsSpacing.xs),
-        Text(
-          'Search destinations around Tübingen and ask StudyOS for local context.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: StudyOsSpacing.md),
-        MapSearchBar(
-          controller: _searchController,
-          isSearching: _isSearching,
-          onSearch: _search,
-        ),
-        const SizedBox(height: StudyOsSpacing.md),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-            child: Stack(
-              children: <Widget>[
-                FlutterMap(
-                  mapController: _mapController,
-                  options: const MapOptions(
-                    initialCenter: _tuebingen,
-                    initialZoom: 13.5,
-                  ),
-                  children: <Widget>[
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.studyos.studyos_agent',
-                    ),
-                    MarkerLayer(markers: _markers),
-                  ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(StudyOsRadii.lg),
+      child: Stack(
+        children: <Widget>[
+          FlutterMap(
+            mapController: _mapController,
+            options: const MapOptions(
+              initialCenter: _tuebingen,
+              initialZoom: 13.5,
+            ),
+            children: <Widget>[
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.studyos.studyos_agent',
+              ),
+              MarkerLayer(markers: _markers),
+            ],
+          ),
+          Positioned(
+            left: StudyOsSpacing.sm,
+            top: StudyOsSpacing.sm,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: StudyOsColors.background.withValues(alpha: 0.78),
+                borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+                border: Border.all(color: StudyOsColors.border),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: StudyOsSpacing.sm,
+                  vertical: StudyOsSpacing.xs,
                 ),
-                Positioned(
-                  left: StudyOsSpacing.sm,
-                  bottom: StudyOsSpacing.sm,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: StudyOsColors.background.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(StudyOsRadii.sm),
-                      border: Border.all(color: StudyOsColors.border),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: StudyOsSpacing.sm,
-                        vertical: StudyOsSpacing.xs,
-                      ),
-                      child: Text(
-                        '© OpenStreetMap contributors',
-                        style: TextStyle(
-                          color: StudyOsColors.textMuted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
+                child: Text(
+                  '© OpenStreetMap contributors',
+                  style: TextStyle(
+                    color: StudyOsColors.textMuted,
+                    fontSize: 11,
                   ),
                 ),
-                Positioned(
-                  left: StudyOsSpacing.md,
-                  right: StudyOsSpacing.md,
-                  top: StudyOsSpacing.md,
-                  child: MapOverlay(
-                    results: _results,
-                    selectedLocation: _selectedLocation,
-                    isSearching: _isSearching,
-                    searchError: _searchError,
-                    hasSearched: _hasSearched,
-                    onSelect: _selectLocation,
-                    onAskAssistant: _askAssistant,
-                    onOpenExternalMaps: _openExternalMaps,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ],
+          Positioned(
+            left: StudyOsSpacing.md,
+            right: StudyOsSpacing.md,
+            bottom: StudyOsSpacing.md,
+            child: MapOverlay(
+              controller: _searchController,
+              results: _results,
+              selectedLocation: _selectedLocation,
+              isSearching: _isSearching,
+              searchError: _searchError,
+              hasSearched: _hasSearched,
+              onSearch: _search,
+              onSelect: _selectLocation,
+              onAskAssistant: _askAssistant,
+              onOpenExternalMaps: _openExternalMaps,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -188,8 +169,12 @@ class _MapsViewState extends State<MapsView> {
 
   void _askAssistant() {
     final location = _selectedLocation;
-    if (location == null) return;
-    widget.onAskAssistant(location.assistantPrompt());
+    widget.onAskAssistant(
+      location?.assistantPrompt() ??
+          'Use my current StudyOS location context and help me with nearby '
+              'places. Suggest useful options such as food nearby, study '
+              'spaces, transit, and what I should know before going there.',
+    );
   }
 
   Future<void> _openExternalMaps() async {
