@@ -49,6 +49,7 @@ void main() {
               onDeleteSession: (_) {},
               onSuggestionSelected: (_) {},
               onSend: () {},
+              onAskAssistant: (_) {},
               onLogout: null,
               onSaveProfile: (_) async {},
               onSaveAgentConfig: (_, _) async {},
@@ -65,6 +66,7 @@ void main() {
     expect(find.byIcon(Icons.home_rounded), findsOneWidget);
     expect(find.text('Schedule'), findsOneWidget);
     expect(find.text('Mail'), findsWidgets);
+    expect(find.text('Map'), findsWidgets);
     expect(find.text('Campus'), findsWidgets);
 
     await tester.tap(find.text('Schedule'));
@@ -72,6 +74,12 @@ void main() {
 
     expect(selectedView, AppView.schedule);
     expect(find.text('No timetable synced yet'), findsOneWidget);
+
+    await tester.tap(find.text('Map'));
+    await tester.pump();
+
+    expect(selectedView, AppView.maps);
+    expect(find.text('Maps'), findsOneWidget);
 
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
@@ -105,6 +113,7 @@ void main() {
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedView = AppView.mail,
+            onOpenMaps: () => selectedView = AppView.maps,
             onOpenCampus: () => selectedView = AppView.campus,
             onOpenSchedule: () => selectedView = AppView.schedule,
           ),
@@ -136,6 +145,7 @@ void main() {
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedView = AppView.mail,
+            onOpenMaps: () => selectedView = AppView.maps,
             onOpenCampus: () => selectedView = AppView.campus,
             onOpenSchedule: () => selectedView = AppView.schedule,
           ),
@@ -146,5 +156,39 @@ void main() {
     await tester.tap(find.text('Inbox'));
 
     expect(selectedView, AppView.mail);
+  });
+
+  testWidgets('home navigation card opens maps view', (
+    WidgetTester tester,
+  ) async {
+    var selectedView = AppView.home;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: null,
+            config: const AgentConfig.defaults(),
+            memoryText: '',
+            timetable: null,
+            onOpenMail: () => selectedView = AppView.mail,
+            onOpenMaps: () => selectedView = AppView.maps,
+            onOpenCampus: () => selectedView = AppView.campus,
+            onOpenSchedule: () => selectedView = AppView.schedule,
+          ),
+        ),
+      ),
+    );
+
+    final mapsCard = find.byKey(const ValueKey<String>('home-maps-card'));
+    await tester.scrollUntilVisible(
+      mapsCard,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(mapsCard);
+
+    expect(selectedView, AppView.maps);
   });
 }

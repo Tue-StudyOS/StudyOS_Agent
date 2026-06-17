@@ -11,6 +11,7 @@ class HomeView extends StatelessWidget {
     required this.memoryText,
     required this.timetable,
     required this.onOpenMail,
+    required this.onOpenMaps,
     required this.onOpenCampus,
     required this.onOpenSchedule,
     super.key,
@@ -21,6 +22,7 @@ class HomeView extends StatelessWidget {
   final String memoryText;
   final TimetableSnapshot? timetable;
   final VoidCallback onOpenMail;
+  final VoidCallback onOpenMaps;
   final VoidCallback onOpenCampus;
   final VoidCallback onOpenSchedule;
 
@@ -69,6 +71,11 @@ class HomeView extends StatelessWidget {
               label: 'Mail',
               value: profile == null ? 'Sign in needed' : 'Local tools ready',
             ),
+            const _HomeStatusItem(
+              icon: Icons.map_outlined,
+              label: 'Map',
+              value: 'Tübingen',
+            ),
           ],
         ),
         const SizedBox(height: StudyOsSpacing.lg),
@@ -84,6 +91,14 @@ class HomeView extends StatelessWidget {
           title: 'Inbox',
           body: 'Browse folders or ask the agent to search recent mail.',
           onTap: onOpenMail,
+        ),
+        const SizedBox(height: StudyOsSpacing.md),
+        _HomeCard(
+          key: const ValueKey<String>('home-maps-card'),
+          icon: Icons.map_outlined,
+          title: 'Navigate',
+          body: 'Search destinations and ask StudyOS about routes.',
+          onTap: onOpenMaps,
         ),
         const SizedBox(height: StudyOsSpacing.md),
         _HomeCard(

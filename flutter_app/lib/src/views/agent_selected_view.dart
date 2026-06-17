@@ -7,6 +7,7 @@ import 'campus_view.dart';
 import 'chat_view.dart';
 import 'home_view.dart';
 import 'mail_view.dart';
+import 'maps_view.dart';
 import 'memories_view.dart';
 import 'schedule_view.dart';
 import 'settings_view.dart';
@@ -22,6 +23,7 @@ class AgentSelectedView extends StatelessWidget {
     required this.compactMessages,
     required this.onSuggestionSelected,
     required this.onSend,
+    required this.onAskAssistant,
     required this.onSelectView,
     required this.worldState,
     required this.memoryText,
@@ -50,6 +52,7 @@ class AgentSelectedView extends StatelessWidget {
   final bool compactMessages;
   final ValueChanged<String> onSuggestionSelected;
   final VoidCallback onSend;
+  final ValueChanged<String> onAskAssistant;
   final ValueChanged<AppView> onSelectView;
   final Map<String, Object?> worldState;
   final String memoryText;
@@ -77,6 +80,7 @@ class AgentSelectedView extends StatelessWidget {
         memoryText: memoryText,
         timetable: timetable,
         onOpenMail: () => onSelectView(AppView.mail),
+        onOpenMaps: () => onSelectView(AppView.maps),
         onOpenCampus: () => onSelectView(AppView.campus),
         onOpenSchedule: () => onSelectView(AppView.schedule),
       ),
@@ -97,6 +101,7 @@ class AgentSelectedView extends StatelessWidget {
         onRefresh: onRefreshTimetable,
       ),
       AppView.mail => MailView(profile: profile),
+      AppView.maps => MapsView(onAskAssistant: onAskAssistant),
       AppView.campus => CampusView(profile: profile),
       AppView.memories => MemoriesView(
         worldState: worldState,
