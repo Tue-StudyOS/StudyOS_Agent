@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>StudyOS Agent Downloads</title>
+    <meta
+      name="description"
+      content="Download the latest StudyOS Agent builds for Android, desktop, and web."
+    />
+    <link rel="stylesheet" href="./download.css" />
+    <script defer src="./download.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./index.html">StudyOS Agent</a>
+      <nav aria-label="Documentation">
+        <a href="./install.html">Install</a>
+        <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Releases</a>
+        <a href="https://github.com/Tue-StudyOS/StudyOS_Agent">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <h1>Download StudyOS Agent.</h1>
+          <p class="lead">
+            Install the University of Tuebingen study assistant shell with chat, campus tools,
+            maps, mail, and local model integrations.
+          </p>
+          <div class="download-panel" aria-live="polite">
+            <p class="status" id="release-status">Looking for the latest StudyOS Agent release...</p>
+            <a class="primary-link disabled" id="primary-download" href="#" aria-disabled="true">
+              Checking downloads
+            </a>
+            <a class="secondary-link" href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">
+              View all releases
+            </a>
+          </div>
+        </div>
+
+        <figure class="preview" aria-label="StudyOS Agent app preview">
+          <div class="preview-shell">
+            <img src="../flutter_app/web/icons/Icon-512.png" alt="" />
+            <div class="preview-content">
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <strong>StudyOS Agent</strong>
+              <p>Calendar, mail, campus maps, and assistant tools in one app.</p>
+            </div>
+          </div>
+        </figure>
+      </section>
+
+      <section class="platforms" aria-labelledby="platforms-title">
+        <div>
+          <h2 id="platforms-title">Available builds</h2>
+          <p>Release assets are attached by the repository build workflow.</p>
+        </div>
+        <div class="platform-grid" id="platform-list">
+          <article class="platform-card" data-platform-card="android">
+            <span>Android</span>
+            <strong>APK</strong>
+            <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Open releases</a>
+          </article>
+          <article class="platform-card" data-platform-card="macos">
+            <span>macOS</span>
+            <strong>ZIP</strong>
+            <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Open releases</a>
+          </article>
+          <article class="platform-card" data-platform-card="windows">
+            <span>Windows</span>
+            <strong>ZIP</strong>
+            <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Open releases</a>
+          </article>
+          <article class="platform-card" data-platform-card="linux">
+            <span>Linux</span>
+            <strong>TAR.GZ</strong>
+            <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Open releases</a>
+          </article>
+          <article class="platform-card" data-platform-card="web">
+            <span>Web</span>
+            <strong>ZIP</strong>
+            <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Open releases</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="note-band">
+        <div>
+          <h2>Early release notes</h2>
+          <p>
+            These builds are intended for course testing and local development. Android APKs use the
+            Flutter runner signing setup, and desktop apps are not notarized or store-distributed yet.
+          </p>
+        </div>
+        <a class="secondary-link" href="./install.html">Read install notes</a>
+      </section>
+    </main>
+  </body>
+</html>
