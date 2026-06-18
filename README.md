@@ -33,3 +33,23 @@ flutter run
 The first migration PR is intentionally a bridge-first implementation. It
 does not rewrite every Android service in Dart because many current features
 are Android-specific and should stay behind native adapters.
+
+## Installing builds
+
+Installable app bundles are built by the `Build and Release Artifacts` GitHub
+Actions workflow for Android, web, Linux, macOS, and Windows. iOS is skipped
+because distribution needs to go through Apple's signing and App Store/TestFlight
+flow.
+
+- For branch and pull request builds, open the workflow run and download the
+  platform artifact you need, such as `studyos-agent-android-apk`,
+  `studyos-agent-web`, `studyos-agent-linux-x64`, `studyos-agent-macos`, or
+  `studyos-agent-windows-x64`.
+- For tagged releases such as `v1.0.0`, or a `flutter_app/pubspec.yaml`
+  version change on `main`, download the platform artifact from the matching
+  GitHub Release.
+
+Android may ask you to allow installing APKs from your browser or file manager
+before opening the downloaded build. The APK is currently signed with the
+debug signing configuration from the Flutter Android runner, so it is suitable
+for course testing but not yet for app-store distribution.
