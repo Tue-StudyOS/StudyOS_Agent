@@ -58,6 +58,8 @@ class _LoginPageState extends State<LoginPage> {
     return OnboardingScaffold(
       title: 'StudyOS',
       subtitle: 'Connect your student workspace',
+      backgroundImageAsset: 'assets/images/tuebingen_login_background.jpg',
+      backgroundBlurSigma: 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
