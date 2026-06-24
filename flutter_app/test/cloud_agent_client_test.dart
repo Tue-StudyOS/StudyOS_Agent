@@ -37,13 +37,14 @@ void main() {
   });
 
   test('cloud tools include only supported native tools', () {
-    final toolNames = cloudToolDefinitions(
-      supportedNativeToolNames: <String>{nativeDeviceStatusToolName},
-    )
-        .map((tool) => tool['function'])
-        .whereType<Map>()
-        .map((function) => function['name'])
-        .toList();
+    final toolNames =
+        cloudToolDefinitions(
+              supportedNativeToolNames: <String>{nativeDeviceStatusToolName},
+            )
+            .map((tool) => tool['function'])
+            .whereType<Map>()
+            .map((function) => function['name'])
+            .toList();
 
     expect(toolNames, contains(nativeDeviceStatusToolName));
     expect(toolNames, isNot(contains(nativeSetFlashlightToolName)));

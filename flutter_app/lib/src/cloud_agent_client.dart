@@ -15,10 +15,9 @@ class CloudAgentClient {
     http.Client? httpClient,
     StudyOsToolExecutor? toolExecutor,
     NativeToolRunner? nativeTools,
-  })
-    : _httpClient = httpClient ?? http.Client(),
-      _toolExecutor = toolExecutor ?? const StudyOsToolExecutor(),
-      _nativeTools = nativeTools;
+  }) : _httpClient = httpClient ?? http.Client(),
+       _toolExecutor = toolExecutor ?? const StudyOsToolExecutor(),
+       _nativeTools = nativeTools;
 
   final http.Client _httpClient;
   final StudyOsToolExecutor _toolExecutor;

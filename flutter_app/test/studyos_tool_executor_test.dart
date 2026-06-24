@@ -66,20 +66,23 @@ void main() {
     expect(toolNames, isNot(contains(nativeCreateReminderToolName)));
   });
 
-  test('StudyOsToolExecutor routes native tools through native runner', () async {
-    final nativeTools = _FakeNativeToolRunner('Flashlight enabled.');
-    final executor = StudyOsToolExecutor();
+  test(
+    'StudyOsToolExecutor routes native tools through native runner',
+    () async {
+      final nativeTools = _FakeNativeToolRunner('Flashlight enabled.');
+      final executor = StudyOsToolExecutor();
 
-    final response = await executor.execute(
-      nativeSetFlashlightToolName,
-      '{"enabled":true}',
-      _context(nativeTools: nativeTools),
-    );
+      final response = await executor.execute(
+        nativeSetFlashlightToolName,
+        '{"enabled":true}',
+        _context(nativeTools: nativeTools),
+      );
 
-    expect(response, 'Flashlight enabled.');
-    expect(nativeTools.calls, <String>[nativeSetFlashlightToolName]);
-    expect(nativeTools.arguments, <String>['{"enabled":true}']);
-  });
+      expect(response, 'Flashlight enabled.');
+      expect(nativeTools.calls, <String>[nativeSetFlashlightToolName]);
+      expect(nativeTools.arguments, <String>['{"enabled":true}']);
+    },
+  );
 
   test('StudyOsToolExecutor gates native tools without runner', () async {
     final executor = StudyOsToolExecutor();

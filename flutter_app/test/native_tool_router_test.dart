@@ -77,12 +77,10 @@ void main() {
     );
     final router = NativeToolRouter(bridge);
 
-    expect(
-      await router.supportedToolNames(),
-      <String>{nativeDeviceStatusToolName},
-    );
+    expect(await router.supportedToolNames(), <String>{
+      nativeDeviceStatusToolName,
+    });
   });
-
 
   test('NativeToolRouter rejects non-object JSON arguments', () async {
     final router = NativeToolRouter(_FakeNativeBridge());

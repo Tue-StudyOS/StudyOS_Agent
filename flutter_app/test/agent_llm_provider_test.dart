@@ -111,60 +111,57 @@ void main() {
     },
   );
 
-  test(
-    'local provider advertises only supported native tools',
-    () async {
-      final bridge = _FakeNativeBridge(
-        'Plain local response.',
-        nativeTools: const <Map<String, Object?>>[
-          <String, Object?>{
-            'name': nativeDeviceStatusToolName,
-            'supported': true,
-          },
-          <String, Object?>{
-            'name': nativeSetFlashlightToolName,
-            'supported': false,
-          },
-        ],
-      );
-      final provider = LocalNativeLlmProvider(bridge);
+  test('local provider advertises only supported native tools', () async {
+    final bridge = _FakeNativeBridge(
+      'Plain local response.',
+      nativeTools: const <Map<String, Object?>>[
+        <String, Object?>{
+          'name': nativeDeviceStatusToolName,
+          'supported': true,
+        },
+        <String, Object?>{
+          'name': nativeSetFlashlightToolName,
+          'supported': false,
+        },
+      ],
+    );
+    final provider = LocalNativeLlmProvider(bridge);
 
-      await provider.send(
-        AgentLlmRequest(
-          config: const AgentConfig(
-            provider: AgentProvider.local,
-            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
-            cloudModel: 'test-model',
-            hasApiKey: false,
-            localModelId: 'test-local',
-            localModelPath: '/tmp/model.litertlm',
-          ),
-          sessions: const <ChatSession>[],
-          activeSessionId: null,
-          userText: 'What is my device status?',
-          context: const PromptContext(
-            profile: null,
-            memory: '',
-            worldState: <String, Object?>{},
-          ),
-          memoryText: '',
-          appendMemory: (_) async {},
-          readSchedule: () async => 'No schedule.',
-          mailTools: MailToolRunner(
-            repository: MailRepository.test(),
-            profile: null,
-          ),
-          onToolTrace: (_) {},
+    await provider.send(
+      AgentLlmRequest(
+        config: const AgentConfig(
+          provider: AgentProvider.local,
+          cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+          cloudModel: 'test-model',
+          hasApiKey: false,
+          localModelId: 'test-local',
+          localModelPath: '/tmp/model.litertlm',
         ),
-      );
+        sessions: const <ChatSession>[],
+        activeSessionId: null,
+        userText: 'What is my device status?',
+        context: const PromptContext(
+          profile: null,
+          memory: '',
+          worldState: <String, Object?>{},
+        ),
+        memoryText: '',
+        appendMemory: (_) async {},
+        readSchedule: () async => 'No schedule.',
+        mailTools: MailToolRunner(
+          repository: MailRepository.test(),
+          profile: null,
+        ),
+        onToolTrace: (_) {},
+      ),
+    );
 
-      expect(bridge.lastSystemPrompt, contains(nativeDeviceStatusToolName));
-      expect(
-        bridge.lastSystemPrompt,
-        isNot(contains(nativeSetFlashlightToolName)),
-      );
-    },
-  );
+    expect(bridge.lastSystemPrompt, contains(nativeDeviceStatusToolName));
+    expect(
+      bridge.lastSystemPrompt,
+      isNot(contains(nativeSetFlashlightToolName)),
+    );
+  });
 }
 
 class _FakeLlmProvider implements AgentLlmProvider {

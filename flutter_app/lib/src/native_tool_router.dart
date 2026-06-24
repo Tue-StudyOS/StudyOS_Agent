@@ -64,9 +64,9 @@ class NativeToolRouter implements NativeToolRunner {
   }
 
   Future<NativeToolCapabilities> _loadCapabilities() {
-    return _capabilities ??= _bridge
-        .getNativeToolCapabilities()
-        .then(NativeToolCapabilities.fromMap);
+    return _capabilities ??= _bridge.getNativeToolCapabilities().then(
+      NativeToolCapabilities.fromMap,
+    );
   }
 
   Map<String, Object?> _decodeArguments(String arguments) {
