@@ -59,6 +59,8 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       result(worldState())
     case "getCapabilities":
       result(capabilities())
+    case "executeNativeTool":
+      executeNativeTool(call: call, result: result)
     case "publishIntentSnapshot":
       publishIntentSnapshot(call: call, result: result)
     case "consumePendingIntentPrompt":
@@ -209,6 +211,22 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     result("iOS speech started.")
   }
 
+  private func executeNativeTool(call: FlutterMethodCall, result: FlutterResult) {
+    guard
+      let args = call.arguments as? [String: Any],
+      let name = args["name"] as? String
+    else {
+      result(FlutterError(code: "native_tool_missing_name", message: "Native tool name is required.", details: nil))
+      return
+    }
+
+    result(FlutterError(
+      code: "native_tool_unsupported",
+      message: "Native tool is not supported on iOS in this build: \(name).",
+      details: nil
+    ))
+  }
+
   private func worldState() -> [String: Any] {
     var state: [String: Any] = [
       "platform": "ios",
@@ -241,13 +259,15 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       "canOpenInstalledApps": false,
       "canReadCalendar": false,
       "canUseOfflineLiteRtModel": false,
-      "canControlFlashlight": true,
+      "canControlFlashlight": false,
       "canStartPhoneCall": true,
       "canUseSpeechRecognition": SFSpeechRecognizer(locale: Locale.current)?.isAvailable ?? false,
       "canUseTextToSpeech": true,
       "canCreateLocalNotificationReminder": true,
       "canUseAppIntents": canUseAppIntents()
     ]
+    values["nativeToolContractVersion"] = 1
+    values["nativeTools"] = nativeToolCapabilities()
 
     #if canImport(FoundationModels)
     if #available(iOS 26.0, *) {
@@ -262,6 +282,18 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     #endif
 
     return values
+  }
+
+  private func nativeToolCapabilities() -> [[String: Any]] {
+    let iosControlReason = "This native control is Android-only in this build."
+    return [
+      ["name": "get_device_status", "supported": false, "reason": iosControlReason],
+      ["name": "set_flashlight", "supported": false, "reason": iosControlReason],
+      ["name": "open_installed_app", "supported": false, "reason": "iOS does not support arbitrary installed-app launching from this app."],
+      ["name": "search_youtube", "supported": false, "reason": iosControlReason],
+      ["name": "open_system_setting", "supported": false, "reason": iosControlReason],
+      ["name": "create_reminder", "supported": false, "reason": "Reminder tool exposure is reserved for the reminder PR."]
+    ]
   }
 
   private func canUseAppIntents() -> Bool {

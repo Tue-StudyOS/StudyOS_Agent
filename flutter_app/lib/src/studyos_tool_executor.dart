@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'mail_tools.dart';
 import 'memory_store.dart';
+import 'native_tool_router.dart';
 import 'prompt_context.dart';
 
 class StudyOsToolContext {
@@ -11,6 +12,7 @@ class StudyOsToolContext {
     required this.readMemory,
     required this.readSchedule,
     required this.mailTools,
+    required this.nativeTools,
   });
 
   final PromptContext promptContext;
@@ -18,6 +20,7 @@ class StudyOsToolContext {
   final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
   final MailToolRunner mailTools;
+  final NativeToolRunner? nativeTools;
 }
 
 class StudyOsToolExecutor {
@@ -38,8 +41,26 @@ class StudyOsToolExecutor {
       'search_mail' ||
       'get_mail_message' ||
       'find_mail_deadlines' => context.mailTools.execute(toolName, arguments),
+      _ when activeNativeToolNames.contains(toolName) => _executeNativeTool(
+        toolName,
+        arguments,
+        context.nativeTools,
+      ),
       _ => 'Tool is not available: $toolName',
     };
+  }
+
+  Future<String> _executeNativeTool(
+    String toolName,
+    String arguments,
+    NativeToolRunner? nativeTools,
+  ) {
+    if (nativeTools == null) {
+      return Future<String>.value(
+        'Native tool is not available in this runtime: $toolName',
+      );
+    }
+    return nativeTools.execute(toolName, arguments);
   }
 
   Future<String> _appendMemory(
@@ -68,6 +89,7 @@ StudyOsToolContext studyOsToolContext({
   required MemoryStore memoryStore,
   required Future<String> Function() readSchedule,
   required MailToolRunner mailTools,
+  NativeToolRunner? nativeTools,
 }) {
   return StudyOsToolContext(
     promptContext: promptContext,
@@ -75,5 +97,6 @@ StudyOsToolContext studyOsToolContext({
     readMemory: memoryStore.read,
     readSchedule: readSchedule,
     mailTools: mailTools,
+    nativeTools: nativeTools,
   );
 }

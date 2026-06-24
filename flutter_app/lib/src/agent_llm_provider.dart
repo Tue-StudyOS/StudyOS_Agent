@@ -5,6 +5,7 @@ import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'native_tool_router.dart';
 import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
@@ -117,6 +118,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       readMemory: () async => request.memoryText,
       readSchedule: request.readSchedule,
       mailTools: request.mailTools,
+      nativeTools: NativeToolRouter(_bridge),
     );
 
     for (var round = 0; round < _maxToolRounds; round += 1) {

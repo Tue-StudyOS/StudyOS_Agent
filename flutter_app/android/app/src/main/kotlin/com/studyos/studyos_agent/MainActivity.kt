@@ -25,6 +25,7 @@ class MainActivity : FlutterActivity() {
     private var localPromptClient: AndroidLocalPromptClient? = null
     private var localModelStore: AndroidLocalModelStore? = null
     private var liteRtToolExecutor: AndroidLiteRtToolExecutor? = null
+    private var nativeToolExecutor: AndroidNativeToolExecutor? = null
     private lateinit var intentBridge: AndroidIntentBridge
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +68,7 @@ class MainActivity : FlutterActivity() {
             "initialize" -> result.success(initializeNativeLayer())
             "getWorldState" -> result.success(worldStateMap())
             "getCapabilities" -> result.success(capabilities())
+            "executeNativeTool" -> executeNativeTool(call, result)
             "listLocalModels" -> result.success(localModelStore().listModels())
             "downloadLocalModel" -> downloadLocalModel(call, result)
             "cancelLocalModelDownload" -> {
@@ -296,6 +298,32 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun nativeToolExecutor(): AndroidNativeToolExecutor {
+        val existing = nativeToolExecutor
+        if (existing != null) return existing
+        return AndroidNativeToolExecutor(applicationContext).also {
+            nativeToolExecutor = it
+        }
+    }
+
+    private fun executeNativeTool(call: MethodCall, result: MethodChannel.Result) {
+        val name = call.argument<String>("name")?.trim().orEmpty()
+        val arguments = call.argument<Map<*, *>>("arguments") ?: emptyMap<String, Any?>()
+        if (name.isBlank()) {
+            result.error("native_tool_missing_name", "Native tool name is required.", null)
+            return
+        }
+        try {
+            result.success(nativeToolExecutor().execute(name, arguments))
+        } catch (error: Throwable) {
+            result.error(
+                "native_tool_failed",
+                error.message ?: "Native tool failed.",
+                null,
+            )
+        }
+    }
+
     private fun downloadLocalModel(call: MethodCall, result: MethodChannel.Result) {
         val id = call.argument<String>("id").orEmpty()
         val label = call.argument<String>("label").orEmpty()
@@ -394,8 +422,10 @@ class MainActivity : FlutterActivity() {
             "canUseOfflineLiteRtModel" to true,
             "canManageDownloadedLiteRtModels" to true,
             "canUseAndroidGeminiNanoPrompt" to true,
-            "canControlFlashlight" to true,
+            "canControlFlashlight" to nativeToolExecutor().canControlFlashlight(),
             "canStartPhoneCall" to hasPermission(Manifest.permission.CALL_PHONE),
+            "nativeToolContractVersion" to 1,
+            "nativeTools" to nativeToolExecutor().capabilities(),
             "androidAssistantSnapshot" to intentBridge.snapshotStatus(),
             "iosParity" to "limited by iOS background execution and app-control policies",
             "webDesktopParity" to "limited shell only until adapters are implemented",

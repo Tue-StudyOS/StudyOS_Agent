@@ -5,17 +5,24 @@ import 'package:http/http.dart' as http;
 import 'cloud_tool_definitions.dart';
 import 'mail_tools.dart';
 import 'models.dart';
+import 'native_tool_router.dart';
 import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
 
 class CloudAgentClient {
-  CloudAgentClient({http.Client? httpClient, StudyOsToolExecutor? toolExecutor})
+  CloudAgentClient({
+    http.Client? httpClient,
+    StudyOsToolExecutor? toolExecutor,
+    NativeToolRunner? nativeTools,
+  })
     : _httpClient = httpClient ?? http.Client(),
-      _toolExecutor = toolExecutor ?? const StudyOsToolExecutor();
+      _toolExecutor = toolExecutor ?? const StudyOsToolExecutor(),
+      _nativeTools = nativeTools;
 
   final http.Client _httpClient;
   final StudyOsToolExecutor _toolExecutor;
+  final NativeToolRunner? _nativeTools;
 
   Future<String> sendMessage({
     required AgentConfig config,
@@ -61,6 +68,7 @@ class CloudAgentClient {
       readMemory: readMemory,
       readSchedule: readSchedule,
       mailTools: mailTools,
+      nativeTools: _nativeTools,
     );
     for (final call in toolCalls) {
       onToolTrace?.call(_traceForCall(call, 'running'));
