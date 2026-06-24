@@ -59,6 +59,8 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       result(worldState())
     case "getCapabilities":
       result(capabilities())
+    case "getNativeToolCapabilities":
+      result(nativeToolCapabilityMap())
     case "executeNativeTool":
       executeNativeTool(call: call, result: result)
     case "publishIntentSnapshot":
@@ -293,6 +295,14 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       ["name": "search_youtube", "supported": false, "reason": iosControlReason],
       ["name": "open_system_setting", "supported": false, "reason": iosControlReason],
       ["name": "create_reminder", "supported": false, "reason": "Reminder tool exposure is reserved for the reminder PR."]
+    ]
+  }
+
+  private func nativeToolCapabilityMap() -> [String: Any] {
+    return [
+      "platform": "ios",
+      "nativeToolContractVersion": 1,
+      "nativeTools": nativeToolCapabilities()
     ]
   }
 

@@ -68,6 +68,7 @@ class MainActivity : FlutterActivity() {
             "initialize" -> result.success(initializeNativeLayer())
             "getWorldState" -> result.success(worldStateMap())
             "getCapabilities" -> result.success(capabilities())
+            "getNativeToolCapabilities" -> result.success(nativeToolCapabilities())
             "executeNativeTool" -> executeNativeTool(call, result)
             "listLocalModels" -> result.success(localModelStore().listModels())
             "downloadLocalModel" -> downloadLocalModel(call, result)
@@ -430,6 +431,14 @@ class MainActivity : FlutterActivity() {
             "iosParity" to "limited by iOS background execution and app-control policies",
             "webDesktopParity" to "limited shell only until adapters are implemented",
         ) + localPromptClient().capabilities()
+    }
+
+    private fun nativeToolCapabilities(): Map<String, Any?> {
+        return mapOf(
+            "platform" to "android",
+            "nativeToolContractVersion" to 1,
+            "nativeTools" to nativeToolExecutor().capabilities(),
+        )
     }
 
     private fun hasLocationPermission(): Boolean {

@@ -115,7 +115,9 @@ class _FakeNativeBridge extends NativeBridge {
   Map<String, Object?>? executedArguments;
 
   @override
-  Future<Map<String, Object?>> getCapabilities() async => capabilities;
+  Future<Map<String, Object?>> getNativeToolCapabilities() async {
+    return capabilities;
+  }
 
   @override
   Future<String> executeNativeTool(

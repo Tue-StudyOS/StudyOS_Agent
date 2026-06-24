@@ -35,6 +35,13 @@ class NativeBridge {
     return result ?? const {};
   }
 
+  Future<Map<String, Object?>> getNativeToolCapabilities() async {
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'getNativeToolCapabilities',
+    );
+    return result ?? const {};
+  }
+
   Future<String> executeNativeTool(
     String name,
     Map<String, Object?> arguments,

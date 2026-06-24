@@ -199,7 +199,7 @@ class _FakeNativeBridge extends NativeBridge {
   String? lastSystemPrompt;
 
   @override
-  Future<Map<String, Object?>> getCapabilities() async {
+  Future<Map<String, Object?>> getNativeToolCapabilities() async {
     return <String, Object?>{'nativeTools': nativeTools};
   }
 
