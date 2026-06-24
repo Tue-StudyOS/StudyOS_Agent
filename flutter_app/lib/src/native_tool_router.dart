@@ -20,13 +20,22 @@ const activeNativeToolNames = <String>{
 };
 
 abstract class NativeToolRunner {
+  Future<Set<String>> supportedToolNames();
+
   Future<String> execute(String toolName, String arguments);
 }
 
 class NativeToolRouter implements NativeToolRunner {
-  const NativeToolRouter(this._bridge);
+  NativeToolRouter(this._bridge);
 
   final NativeBridge _bridge;
+  Future<NativeToolCapabilities>? _capabilities;
+
+  @override
+  Future<Set<String>> supportedToolNames() async {
+    final capabilities = await _loadCapabilities();
+    return capabilities.supportedToolNames(activeNativeToolNames);
+  }
 
   @override
   Future<String> execute(String toolName, String arguments) async {
@@ -41,9 +50,7 @@ class NativeToolRouter implements NativeToolRunner {
       return 'Native tool arguments were not valid JSON.';
     }
 
-    final capabilities = NativeToolCapabilities.fromMap(
-      await _bridge.getCapabilities(),
-    );
+    final capabilities = await _loadCapabilities();
     final support = capabilities.supportFor(toolName);
     if (!support.supported) {
       return support.messageFor(toolName);
@@ -54,6 +61,12 @@ class NativeToolRouter implements NativeToolRunner {
     } on PlatformException catch (error) {
       return error.message ?? 'Native tool failed: ${error.code}';
     }
+  }
+
+  Future<NativeToolCapabilities> _loadCapabilities() {
+    return _capabilities ??= _bridge
+        .getCapabilities()
+        .then(NativeToolCapabilities.fromMap);
   }
 
   Map<String, Object?> _decodeArguments(String arguments) {
@@ -92,6 +105,12 @@ class NativeToolCapabilities {
 
   NativeToolSupport supportFor(String toolName) {
     return _tools[toolName] ?? const NativeToolSupport(supported: false);
+  }
+
+  Set<String> supportedToolNames(Iterable<String> toolNames) {
+    return toolNames
+        .where((toolName) => supportFor(toolName).supported)
+        .toSet();
   }
 }
 

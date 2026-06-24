@@ -47,11 +47,14 @@ class CloudAgentClient {
       throw const CloudAgentException('API key is required.');
     }
 
+    final supportedNativeToolNames =
+        await _nativeTools?.supportedToolNames() ?? const <String>{};
     final request = _requestBody(
       config: config,
       history: history,
       userText: userText,
       context: context,
+      supportedNativeToolNames: supportedNativeToolNames,
     );
     final response = await _post(endpoint, apiKey, request);
     final decoded = _decodeResponse(response);
@@ -124,6 +127,7 @@ class CloudAgentClient {
     required List<ChatMessage> history,
     required String userText,
     required PromptContext context,
+    required Set<String> supportedNativeToolNames,
   }) {
     final historyWithoutCurrent =
         history.isNotEmpty &&
@@ -143,7 +147,9 @@ class CloudAgentClient {
             },
         <String, Object?>{'role': 'user', 'content': userText},
       ],
-      'tools': cloudToolDefinitions(),
+      'tools': cloudToolDefinitions(
+        supportedNativeToolNames: supportedNativeToolNames,
+      ),
       'tool_choice': 'auto',
     };
   }

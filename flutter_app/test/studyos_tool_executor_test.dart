@@ -119,6 +119,9 @@ class _FakeNativeToolRunner implements NativeToolRunner {
   final arguments = <String>[];
 
   @override
+  Future<Set<String>> supportedToolNames() async => activeNativeToolNames;
+
+  @override
   Future<String> execute(String toolName, String arguments) async {
     calls.add(toolName);
     this.arguments.add(arguments);

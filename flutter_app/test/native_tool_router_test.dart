@@ -56,6 +56,34 @@ void main() {
     expect(bridge.executedTool, isNull);
   });
 
+  test('NativeToolRouter lists only supported active native tools', () async {
+    final bridge = _FakeNativeBridge(
+      capabilities: <String, Object?>{
+        'nativeTools': <Map<String, Object?>>[
+          <String, Object?>{
+            'name': nativeDeviceStatusToolName,
+            'supported': true,
+          },
+          <String, Object?>{
+            'name': nativeOpenInstalledAppToolName,
+            'supported': false,
+          },
+          <String, Object?>{
+            'name': nativeCreateReminderToolName,
+            'supported': true,
+          },
+        ],
+      },
+    );
+    final router = NativeToolRouter(bridge);
+
+    expect(
+      await router.supportedToolNames(),
+      <String>{nativeDeviceStatusToolName},
+    );
+  });
+
+
   test('NativeToolRouter rejects non-object JSON arguments', () async {
     final router = NativeToolRouter(_FakeNativeBridge());
 

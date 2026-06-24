@@ -8,6 +8,7 @@ import 'package:studyos_agent/src/cloud_tool_definitions.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/models.dart';
+import 'package:studyos_agent/src/native_tool_router.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
 
 void main() {
@@ -32,6 +33,20 @@ void main() {
         'find_mail_deadlines',
       ]),
     );
+    expect(toolNames, isNot(contains(nativeDeviceStatusToolName)));
+  });
+
+  test('cloud tools include only supported native tools', () {
+    final toolNames = cloudToolDefinitions(
+      supportedNativeToolNames: <String>{nativeDeviceStatusToolName},
+    )
+        .map((tool) => tool['function'])
+        .whereType<Map>()
+        .map((function) => function['name'])
+        .toList();
+
+    expect(toolNames, contains(nativeDeviceStatusToolName));
+    expect(toolNames, isNot(contains(nativeSetFlashlightToolName)));
   });
 
   test('emits traces for cloud tool calls', () async {

@@ -236,6 +236,18 @@ const studyOsTools = <StudyOsToolSpec>[
   openSystemSettingTool,
 ];
 
+List<StudyOsToolSpec> studyOsToolsForNativeSupport(
+  Set<String> supportedNativeToolNames,
+) {
+  return studyOsTools
+      .where(
+        (tool) =>
+            !activeNativeToolNames.contains(tool.name) ||
+            supportedNativeToolNames.contains(tool.name),
+      )
+      .toList();
+}
+
 StudyOsToolSpec? studyOsToolByName(String name) {
   for (final tool in studyOsTools) {
     if (tool.name == name) return tool;
