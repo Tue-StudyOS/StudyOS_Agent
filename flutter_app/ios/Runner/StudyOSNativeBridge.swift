@@ -172,6 +172,10 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       return
     }
 
+    scheduleLocalReminder(title: title, secondsFromNow: seconds, result: result)
+  }
+
+  private func scheduleLocalReminder(title: String, secondsFromNow: Double, result: @escaping FlutterResult) {
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
       if let error = error {
         result(FlutterError(code: "notification_permission_error", message: error.localizedDescription, details: nil))
@@ -185,7 +189,7 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       let content = UNMutableNotificationContent()
       content.title = title
       content.sound = .default
-      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(seconds, 1), repeats: false)
+      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(secondsFromNow, 1), repeats: false)
       let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
       UNUserNotificationCenter.current().add(request) { error in
         if let error = error {
@@ -213,7 +217,7 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     result("iOS speech started.")
   }
 
-  private func executeNativeTool(call: FlutterMethodCall, result: FlutterResult) {
+  private func executeNativeTool(call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard
       let args = call.arguments as? [String: Any],
       let name = args["name"] as? String
@@ -222,11 +226,61 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       return
     }
 
+    if name == "create_reminder" {
+      guard let toolArgs = args["arguments"] as? [String: Any] else {
+        result(FlutterError(code: "invalid_reminder", message: "Expected reminder arguments.", details: nil))
+        return
+      }
+      createReminderFromNativeTool(arguments: toolArgs, result: result)
+      return
+    }
+
     result(FlutterError(
       code: "native_tool_unsupported",
       message: "Native tool is not supported on iOS in this build: \(name).",
       details: nil
     ))
+  }
+
+  private func createReminderFromNativeTool(arguments: [String: Any], result: @escaping FlutterResult) {
+    guard
+      let title = arguments["title"] as? String,
+      !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      let time = arguments["time"] as? String,
+      let date = parseIsoDate(time)
+    else {
+      result(FlutterError(code: "invalid_reminder", message: "Expected title and ISO-8601 time.", details: nil))
+      return
+    }
+
+    let type = (arguments["type"] as? String ?? "REMINDER").uppercased()
+    guard type == "REMINDER" else {
+      result(FlutterError(code: "unsupported_reminder_type", message: "iOS supports one-time reminder notifications only.", details: nil))
+      return
+    }
+
+    let repeatValue = (arguments["repeat"] as? String ?? "ONCE").uppercased()
+    guard repeatValue == "ONCE" else {
+      result(FlutterError(code: "unsupported_reminder_repeat", message: "iOS reminder repeat is not supported in this build.", details: nil))
+      return
+    }
+
+    let seconds = date.timeIntervalSinceNow
+    guard seconds > 0 else {
+      result(FlutterError(code: "invalid_reminder_time", message: "Reminder time must be in the future.", details: nil))
+      return
+    }
+
+    scheduleLocalReminder(title: title, secondsFromNow: seconds, result: result)
+  }
+
+  private func parseIsoDate(_ value: String) -> Date? {
+    let fractional = ISO8601DateFormatter()
+    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = fractional.date(from: value) {
+      return date
+    }
+    return ISO8601DateFormatter().date(from: value)
   }
 
   private func worldState() -> [String: Any] {
@@ -294,7 +348,7 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       ["name": "open_installed_app", "supported": false, "reason": "iOS does not support arbitrary installed-app launching from this app."],
       ["name": "search_youtube", "supported": false, "reason": iosControlReason],
       ["name": "open_system_setting", "supported": false, "reason": iosControlReason],
-      ["name": "create_reminder", "supported": false, "reason": "Reminder tool exposure is reserved for the reminder PR."]
+      ["name": "create_reminder", "supported": true]
     ]
   }
 

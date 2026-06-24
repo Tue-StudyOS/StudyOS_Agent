@@ -52,6 +52,9 @@ public class ReminderManager {
         EINZIGE öffentliche Methode
      */
     public String create(String title, LocalDateTime time, Type type, Repeat repeat) {
+        if (context == null)
+            throw new IllegalStateException("ReminderManager is not initialized.");
+
         String id = UUID.randomUUID().toString().substring(0, 8);
         long trigger = time
                 .atZone(ZoneId.systemDefault())
@@ -74,7 +77,9 @@ public class ReminderManager {
             save(arr);
 
             schedule(obj);
-        } catch (Exception ignored) {}
+        } catch (Exception error) {
+            throw new RuntimeException("Reminder could not be scheduled: " + error.getMessage(), error);
+        }
 
         return id;
     }

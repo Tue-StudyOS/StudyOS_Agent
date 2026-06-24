@@ -219,6 +219,35 @@ const openSystemSettingTool = StudyOsToolSpec(
   required: <String>['setting'],
 );
 
+const createReminderTool = StudyOsToolSpec(
+  name: nativeCreateReminderToolName,
+  description:
+      'Create a local reminder from an ISO-8601 timestamp. Android supports reminders, alarms, and morning routines where permitted; iOS supports one-time reminder notifications.',
+  traceSummary: 'Creating a native reminder.',
+  properties: <String, Object?>{
+    'title': <String, Object?>{
+      'type': 'string',
+      'description': 'Short reminder title shown to the user.',
+    },
+    'time': <String, Object?>{
+      'type': 'string',
+      'description':
+          'ISO-8601 timestamp for the reminder, for example 2026-06-24T18:30:00+02:00.',
+    },
+    'type': <String, Object?>{
+      'type': 'string',
+      'enum': <String>['REMINDER', 'ALARM', 'MORNING_ROUTINE'],
+      'description': 'Optional Android reminder type. Defaults to REMINDER.',
+    },
+    'repeat': <String, Object?>{
+      'type': 'string',
+      'enum': <String>['ONCE', 'DAILY', 'WEEKLY'],
+      'description': 'Optional repeat cadence. Defaults to ONCE.',
+    },
+  },
+  required: <String>['title', 'time'],
+);
+
 const studyOsTools = <StudyOsToolSpec>[
   appendMemoryTool,
   readMemoriesTool,
@@ -234,6 +263,7 @@ const studyOsTools = <StudyOsToolSpec>[
   openInstalledAppTool,
   searchYoutubeTool,
   openSystemSettingTool,
+  createReminderTool,
 ];
 
 List<StudyOsToolSpec> studyOsToolsForNativeSupport(

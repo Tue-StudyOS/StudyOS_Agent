@@ -79,6 +79,7 @@ void main() {
 
     expect(await router.supportedToolNames(), <String>{
       nativeDeviceStatusToolName,
+      nativeCreateReminderToolName,
     });
   });
 
@@ -91,13 +92,28 @@ void main() {
     );
   });
 
-  test('NativeToolRouter keeps reminder inactive for #30', () async {
-    final router = NativeToolRouter(_FakeNativeBridge());
+  test('NativeToolRouter executes create reminder when supported', () async {
+    final bridge = _FakeNativeBridge(
+      capabilities: <String, Object?>{
+        'nativeTools': <Map<String, Object?>>[
+          <String, Object?>{
+            'name': nativeCreateReminderToolName,
+            'supported': true,
+          },
+        ],
+      },
+      response: 'Reminder scheduled.',
+    );
+    final router = NativeToolRouter(bridge);
 
     expect(
-      await router.execute(nativeCreateReminderToolName, '{}'),
-      'Native tool is not available: create_reminder',
+      await router.execute(
+        nativeCreateReminderToolName,
+        '{"title":"Submit report","time":"2026-06-24T18:00:00+02:00"}',
+      ),
+      'Reminder scheduled.',
     );
+    expect(bridge.executedTool, nativeCreateReminderToolName);
   });
 }
 

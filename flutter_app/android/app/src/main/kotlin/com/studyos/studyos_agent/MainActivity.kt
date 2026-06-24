@@ -417,7 +417,8 @@ class MainActivity : FlutterActivity() {
             "canUseBackgroundLocation" to hasPermission(
                 Manifest.permission.ACCESS_BACKGROUND_LOCATION,
             ),
-            "canCreateExactAlarm" to true,
+            "canCreateExactAlarm" to nativeToolExecutor().canScheduleExactAlarms(),
+            "canCreateLocalReminder" to nativeToolExecutor().canCreateReminder(),
             "canOpenInstalledApps" to true,
             "canReadCalendar" to hasPermission(Manifest.permission.READ_CALENDAR),
             "canUseOfflineLiteRtModel" to true,
