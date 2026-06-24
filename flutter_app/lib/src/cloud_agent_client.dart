@@ -17,6 +17,8 @@ class CloudAgentClient {
     NativeToolRunner? nativeTools,
   }) : _httpClient = httpClient ?? http.Client(),
        _toolExecutor = toolExecutor ?? const StudyOsToolExecutor(),
+       // Keep the public constructor parameter named `nativeTools`.
+       // ignore: prefer_initializing_formals
        _nativeTools = nativeTools;
 
   final http.Client _httpClient;
