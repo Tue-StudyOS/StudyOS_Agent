@@ -35,6 +35,24 @@ class NativeBridge {
     return result ?? const {};
   }
 
+  Future<Map<String, Object?>> getNativeToolCapabilities() async {
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'getNativeToolCapabilities',
+    );
+    return result ?? const {};
+  }
+
+  Future<String> executeNativeTool(
+    String name,
+    Map<String, Object?> arguments,
+  ) async {
+    final result = await _methods.invokeMethod<String>(
+      'executeNativeTool',
+      <String, Object?>{'name': name, 'arguments': arguments},
+    );
+    return result ?? 'Native tool returned no response.';
+  }
+
   Future<List<Map<String, Object?>>> listLocalModels() async {
     final result = await _methods.invokeListMethod<Object?>('listLocalModels');
     return (result ?? const <Object?>[])

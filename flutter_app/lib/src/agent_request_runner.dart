@@ -5,6 +5,7 @@ import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'native_tool_router.dart';
 import 'prompt_context.dart';
 
 class AgentRequestRunner {
@@ -23,7 +24,9 @@ class AgentRequestRunner {
              configStore: configStore,
              memoryStore: memoryStore,
              appendMemory: appendMemory,
-             cloudClient: cloudClient ?? CloudAgentClient(),
+             cloudClient:
+                 cloudClient ??
+                 CloudAgentClient(nativeTools: NativeToolRouter(bridge)),
            );
 
   final NativeBridge bridge;

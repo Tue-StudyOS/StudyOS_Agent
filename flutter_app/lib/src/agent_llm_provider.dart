@@ -5,6 +5,7 @@ import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'native_tool_router.dart';
 import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
@@ -104,7 +105,12 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
 
   @override
   Future<String> send(AgentLlmRequest request) async {
-    final systemPrompt = _localSystemPrompt(request.context.systemPrompt());
+    final nativeTools = NativeToolRouter(_bridge);
+    final supportedNativeToolNames = await nativeTools.supportedToolNames();
+    final systemPrompt = _localSystemPrompt(
+      request.context.systemPrompt(),
+      supportedNativeToolNames,
+    );
     var response = await _bridge.sendMessage(
       request.userText,
       systemPrompt: systemPrompt,
@@ -117,6 +123,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       readMemory: () async => request.memoryText,
       readSchedule: request.readSchedule,
       mailTools: request.mailTools,
+      nativeTools: nativeTools,
     );
 
     for (var round = 0; round < _maxToolRounds; round += 1) {
@@ -163,7 +170,10 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
     return response;
   }
 
-  String _localSystemPrompt(String basePrompt) {
+  String _localSystemPrompt(
+    String basePrompt,
+    Set<String> supportedNativeToolNames,
+  ) {
     final buffer = StringBuffer()
       ..writeln(basePrompt)
       ..writeln()
@@ -181,7 +191,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       )
       ..writeln('After tool results are returned, answer naturally.')
       ..writeln('Available StudyOS tools:');
-    for (final tool in studyOsTools) {
+    for (final tool in studyOsToolsForNativeSupport(supportedNativeToolNames)) {
       final args = tool.required.isEmpty
           ? '{}'
           : '{${tool.required.map((name) => '"$name":"..."').join(',')}}';

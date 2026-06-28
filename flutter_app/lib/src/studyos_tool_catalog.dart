@@ -1,3 +1,5 @@
+import 'native_tool_router.dart';
+
 class StudyOsToolSpec {
   const StudyOsToolSpec({
     required this.name,
@@ -152,6 +154,71 @@ const findMailDeadlinesTool = StudyOsToolSpec(
   required: <String>[],
 );
 
+const getDeviceStatusTool = StudyOsToolSpec(
+  name: nativeDeviceStatusToolName,
+  description:
+      'Read native device status when the platform supports this local action.',
+  traceSummary: 'Reading native device status.',
+  properties: <String, Object?>{},
+  required: <String>[],
+);
+
+const setFlashlightTool = StudyOsToolSpec(
+  name: nativeSetFlashlightToolName,
+  description:
+      'Turn the device flashlight on or off when the platform allows it.',
+  traceSummary: 'Setting the native flashlight state.',
+  properties: <String, Object?>{
+    'enabled': <String, Object?>{
+      'type': 'boolean',
+      'description': 'True to turn the flashlight on, false to turn it off.',
+    },
+  },
+  required: <String>['enabled'],
+);
+
+const openInstalledAppTool = StudyOsToolSpec(
+  name: nativeOpenInstalledAppToolName,
+  description:
+      'Open an installed Android app by display name after the user asks for it.',
+  traceSummary: 'Opening an installed app.',
+  properties: <String, Object?>{
+    'name': <String, Object?>{
+      'type': 'string',
+      'description': 'Display name of the app to open.',
+    },
+  },
+  required: <String>['name'],
+);
+
+const searchYoutubeTool = StudyOsToolSpec(
+  name: nativeSearchYoutubeToolName,
+  description: 'Open YouTube search results for a user-requested query.',
+  traceSummary: 'Opening YouTube search.',
+  properties: <String, Object?>{
+    'query': <String, Object?>{
+      'type': 'string',
+      'description': 'Search query to open in YouTube or the browser.',
+    },
+  },
+  required: <String>['query'],
+);
+
+const openSystemSettingTool = StudyOsToolSpec(
+  name: nativeOpenSystemSettingToolName,
+  description:
+      'Open a native settings panel for Wi-Fi, Bluetooth, location, or mobile data; does not claim direct toggle control.',
+  traceSummary: 'Opening a native settings panel.',
+  properties: <String, Object?>{
+    'setting': <String, Object?>{
+      'type': 'string',
+      'enum': <String>['wifi', 'bluetooth', 'location', 'mobile_data'],
+      'description': 'The settings panel to open.',
+    },
+  },
+  required: <String>['setting'],
+);
+
 const studyOsTools = <StudyOsToolSpec>[
   appendMemoryTool,
   readMemoriesTool,
@@ -162,7 +229,24 @@ const studyOsTools = <StudyOsToolSpec>[
   searchMailTool,
   getMailMessageTool,
   findMailDeadlinesTool,
+  getDeviceStatusTool,
+  setFlashlightTool,
+  openInstalledAppTool,
+  searchYoutubeTool,
+  openSystemSettingTool,
 ];
+
+List<StudyOsToolSpec> studyOsToolsForNativeSupport(
+  Set<String> supportedNativeToolNames,
+) {
+  return studyOsTools
+      .where(
+        (tool) =>
+            !activeNativeToolNames.contains(tool.name) ||
+            supportedNativeToolNames.contains(tool.name),
+      )
+      .toList();
+}
 
 StudyOsToolSpec? studyOsToolByName(String name) {
   for (final tool in studyOsTools) {

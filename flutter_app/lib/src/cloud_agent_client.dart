@@ -5,17 +5,25 @@ import 'package:http/http.dart' as http;
 import 'cloud_tool_definitions.dart';
 import 'mail_tools.dart';
 import 'models.dart';
+import 'native_tool_router.dart';
 import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
 
 class CloudAgentClient {
-  CloudAgentClient({http.Client? httpClient, StudyOsToolExecutor? toolExecutor})
-    : _httpClient = httpClient ?? http.Client(),
-      _toolExecutor = toolExecutor ?? const StudyOsToolExecutor();
+  CloudAgentClient({
+    http.Client? httpClient,
+    StudyOsToolExecutor? toolExecutor,
+    NativeToolRunner? nativeTools,
+  }) : _httpClient = httpClient ?? http.Client(),
+       _toolExecutor = toolExecutor ?? const StudyOsToolExecutor(),
+       // Keep the public constructor parameter named `nativeTools`.
+       // ignore: prefer_initializing_formals
+       _nativeTools = nativeTools;
 
   final http.Client _httpClient;
   final StudyOsToolExecutor _toolExecutor;
+  final NativeToolRunner? _nativeTools;
 
   Future<String> sendMessage({
     required AgentConfig config,
@@ -40,11 +48,14 @@ class CloudAgentClient {
       throw const CloudAgentException('API key is required.');
     }
 
+    final supportedNativeToolNames =
+        await _nativeTools?.supportedToolNames() ?? const <String>{};
     final request = _requestBody(
       config: config,
       history: history,
       userText: userText,
       context: context,
+      supportedNativeToolNames: supportedNativeToolNames,
     );
     final response = await _post(endpoint, apiKey, request);
     final decoded = _decodeResponse(response);
@@ -61,6 +72,7 @@ class CloudAgentClient {
       readMemory: readMemory,
       readSchedule: readSchedule,
       mailTools: mailTools,
+      nativeTools: _nativeTools,
     );
     for (final call in toolCalls) {
       onToolTrace?.call(_traceForCall(call, 'running'));
@@ -116,6 +128,7 @@ class CloudAgentClient {
     required List<ChatMessage> history,
     required String userText,
     required PromptContext context,
+    required Set<String> supportedNativeToolNames,
   }) {
     final historyWithoutCurrent =
         history.isNotEmpty &&
@@ -135,7 +148,9 @@ class CloudAgentClient {
             },
         <String, Object?>{'role': 'user', 'content': userText},
       ],
-      'tools': cloudToolDefinitions(),
+      'tools': cloudToolDefinitions(
+        supportedNativeToolNames: supportedNativeToolNames,
+      ),
       'tool_choice': 'auto',
     };
   }
