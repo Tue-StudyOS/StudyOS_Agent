@@ -17,6 +17,7 @@ const activeNativeToolNames = <String>{
   nativeOpenInstalledAppToolName,
   nativeSearchYoutubeToolName,
   nativeOpenSystemSettingToolName,
+  nativeCreateReminderToolName,
 };
 
 abstract class NativeToolRunner {

@@ -63,7 +63,7 @@ void main() {
     expect(toolNames, contains(nativeOpenInstalledAppToolName));
     expect(toolNames, contains(nativeSearchYoutubeToolName));
     expect(toolNames, contains(nativeOpenSystemSettingToolName));
-    expect(toolNames, isNot(contains(nativeCreateReminderToolName)));
+    expect(toolNames, contains(nativeCreateReminderToolName));
   });
 
   test(
@@ -92,6 +92,23 @@ void main() {
       'Native tool is not available in this runtime: get_device_status',
     );
   });
+
+  test(
+    'StudyOsToolExecutor routes create reminder through native runner',
+    () async {
+      final nativeTools = _FakeNativeToolRunner('Reminder scheduled.');
+      final executor = StudyOsToolExecutor();
+
+      final response = await executor.execute(
+        nativeCreateReminderToolName,
+        '{"title":"Submit report","time":"2026-06-24T18:00:00+02:00"}',
+        _context(nativeTools: nativeTools),
+      );
+
+      expect(response, 'Reminder scheduled.');
+      expect(nativeTools.calls, <String>[nativeCreateReminderToolName]);
+    },
+  );
 }
 
 StudyOsToolContext _context({
