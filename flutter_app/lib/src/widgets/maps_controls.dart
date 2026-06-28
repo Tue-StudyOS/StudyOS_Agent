@@ -67,8 +67,6 @@ class MapOverlay extends StatelessWidget {
     required this.hasSearched,
     required this.onSearch,
     required this.onSelect,
-    required this.onAskAssistant,
-    required this.onOpenExternalMaps,
     super.key,
   });
 
@@ -80,8 +78,6 @@ class MapOverlay extends StatelessWidget {
   final bool hasSearched;
   final VoidCallback onSearch;
   final ValueChanged<MapLocation> onSelect;
-  final VoidCallback onAskAssistant;
-  final VoidCallback onOpenExternalMaps;
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +91,6 @@ class MapOverlay extends StatelessWidget {
           searchError: searchError,
           hasSearched: hasSearched,
           onSelect: onSelect,
-          onAskAssistant: onAskAssistant,
-          onOpenExternalMaps: onOpenExternalMaps,
         ),
         const SizedBox(height: StudyOsSpacing.sm),
         MapSearchBar(
@@ -117,8 +111,6 @@ class _MapResultStrip extends StatelessWidget {
     required this.searchError,
     required this.hasSearched,
     required this.onSelect,
-    required this.onAskAssistant,
-    required this.onOpenExternalMaps,
   });
 
   final List<MapLocation> results;
@@ -127,8 +119,6 @@ class _MapResultStrip extends StatelessWidget {
   final String? searchError;
   final bool hasSearched;
   final ValueChanged<MapLocation> onSelect;
-  final VoidCallback onAskAssistant;
-  final VoidCallback onOpenExternalMaps;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +129,6 @@ class _MapResultStrip extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final selected = selectedLocation;
     final message =
         searchError ??
         (results.isEmpty && hasSearched ? 'No destination found.' : null);
@@ -165,7 +154,7 @@ class _MapResultStrip extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(right: StudyOsSpacing.sm),
                       child: ChoiceChip(
-                        selected: result == selected,
+                        selected: result == selectedLocation,
                         label: Text(
                           result.name,
                           maxLines: 1,
@@ -179,37 +168,7 @@ class _MapResultStrip extends StatelessWidget {
               ),
             ),
           ),
-          if (selected != null) ...<Widget>[
-            const SizedBox(width: StudyOsSpacing.xs),
-            _AskAssistantButton(onPressed: onAskAssistant),
-            const SizedBox(width: StudyOsSpacing.xs),
-            IconButton.filledTonal(
-              tooltip: 'Open in maps',
-              onPressed: onOpenExternalMaps,
-              icon: const Icon(Icons.near_me_outlined),
-            ),
-          ],
         ],
-      ),
-    );
-  }
-}
-
-class _AskAssistantButton extends StatelessWidget {
-  const _AskAssistantButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-      label: const Text('Ask AI'),
-      style: FilledButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       ),
     );
   }
