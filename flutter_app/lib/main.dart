@@ -55,8 +55,8 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
       _profile = profile;
       _isLoadingProfile = false;
     });
-    _syncAuthState();
     _syncShellController();
+    _syncAuthState();
   }
 
   Future<void> _handleLogin(UserSession session, String password) async {

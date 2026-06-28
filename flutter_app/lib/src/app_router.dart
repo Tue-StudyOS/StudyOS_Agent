@@ -66,7 +66,7 @@ GoRouter buildAppRouter({
   }
 
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/',
     refreshListenable: authState,
     redirect: redirect,
     routes: <RouteBase>[
