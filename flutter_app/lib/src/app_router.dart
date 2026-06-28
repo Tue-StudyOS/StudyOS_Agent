@@ -20,10 +20,10 @@ class AuthRouterState extends ChangeNotifier {
   AuthRouterState({
     required UserSession? initialSession,
     required OnboardingProfile? initialProfile,
-    required bool isLoading,
+    required bool initialLoading,
   }) : _session = initialSession,
        _profile = initialProfile,
-       _isLoading = isLoading;
+       _isLoading = initialLoading;
 
   UserSession? _session;
   OnboardingProfile? _profile;

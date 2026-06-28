@@ -37,7 +37,7 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
     _authState = AuthRouterState(
       initialSession: _session,
       initialProfile: _profile,
-      isLoading: _isLoadingProfile,
+      initialLoading: _isLoadingProfile,
     );
     _router = buildAppRouter(
       authState: _authState,
