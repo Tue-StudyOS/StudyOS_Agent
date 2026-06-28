@@ -14,6 +14,11 @@ class NativeBridge {
         return const NativeEvent(type: 'status', message: '', timestamp: '');
       });
 
+  // TODO(voice): native voice assist should emit
+  // {type: 'voicePrompt', message: '<transcript>', autosend: true} so the
+  // Flutter router can open /chat?prompt=<transcript>&autosend=true without
+  // touching widget-local navigation state.
+
   Future<Map<String, Object?>> initialize() async {
     final result = await _methods.invokeMapMethod<String, Object?>(
       'initialize',

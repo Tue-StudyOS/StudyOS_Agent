@@ -9,7 +9,7 @@ import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/chat_view.dart';
 import 'package:studyos_agent/src/views/memories_view.dart';
 import 'package:studyos_agent/src/views/settings_view.dart';
-import 'package:studyos_agent/src/widgets/app_drawer.dart';
+import 'package:studyos_agent/src/widgets/conversation_list.dart';
 
 void main() {
   testWidgets('chat view starts clean with suggestions and composer', (
@@ -56,7 +56,7 @@ void main() {
     expect(find.textContaining('Ask about lectures'), findsNothing);
   });
 
-  testWidgets('drawer exposes persisted chat sessions', (
+  testWidgets('conversation list exposes persisted chat sessions', (
     WidgetTester tester,
   ) async {
     final session = ChatSession.fresh().copyWith(title: 'Algorithms review');
@@ -64,11 +64,10 @@ void main() {
 
     await tester.pumpWidget(
       _TestShell(
-        child: AppDrawer(
+        child: ConversationList(
           sessions: <ChatSession>[session],
           activeSessionId: session.id,
           onSelectSession: (_) {},
-          onSelectHome: () {},
           onCreateSession: () {},
           onDeleteSession: (value) => deletedSessionId = value,
         ),
@@ -78,8 +77,8 @@ void main() {
     expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsNothing);
     expect(find.byIcon(Icons.psychology_alt_outlined), findsNothing);
     expect(find.byIcon(Icons.settings_outlined), findsNothing);
-    expect(find.text('Back to home'), findsOneWidget);
-    expect(find.text('New chat'), findsOneWidget);
+    expect(find.text('Back to home'), findsNothing);
+    expect(find.text('New'), findsOneWidget);
     expect(find.text(session.title), findsOneWidget);
     expect(find.textContaining('Active ID:'), findsOneWidget);
     expect(find.text('Capabilities'), findsNothing);
