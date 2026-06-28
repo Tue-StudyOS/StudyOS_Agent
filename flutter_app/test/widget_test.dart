@@ -59,7 +59,12 @@ void main() {
   testWidgets('conversation list exposes persisted chat sessions', (
     WidgetTester tester,
   ) async {
-    final session = ChatSession.fresh().copyWith(title: 'Algorithms review');
+    final session = ChatSession.fresh().copyWith(
+      title: 'Algorithms review',
+      messages: const <ChatMessage>[
+        ChatMessage(author: 'You', text: 'Review algorithms', isUser: true),
+      ],
+    );
     String? deletedSessionId;
 
     await tester.pumpWidget(
