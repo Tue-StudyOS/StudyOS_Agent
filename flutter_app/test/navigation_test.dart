@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:studyos_agent/src/app_router.dart';
+import 'package:studyos_agent/src/app_shell_controller.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/home_view.dart';
@@ -161,5 +167,53 @@ void main() {
     await tester.tap(mapsCard);
 
     expect(selectedTarget, 'maps');
+  });
+
+  testWidgets('chat route prompt is applied after route build', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
+
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: null,
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+    );
+    final authState = AuthRouterState(
+      initialSession: const UserSession(username: 'ada42'),
+      initialProfile: profile,
+      initialLoading: false,
+    );
+    final controller = AppShellController(
+      initialProfile: profile,
+      initialOnLogout: () {},
+      initialOnSaveProfile: (_) async {},
+    );
+    final router = buildAppRouter(
+      authState: authState,
+      shellController: () => controller,
+      onLogin: (_, _) async {},
+      onOnboardingComplete: (_) async {},
+    );
+    addTearDown(router.dispose);
+    addTearDown(controller.dispose);
+    addTearDown(authState.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: buildStudyOsTheme(), routerConfig: router),
+    );
+
+    router.go('/chat?prompt=Campus%20Library');
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(controller.inputController.text, 'Campus Library');
   });
 }

@@ -39,17 +39,20 @@ class _ChatRouteState extends State<ChatRoute> {
         widget.sessionId?.trim().isNotEmpty == true;
     if (!hasParams) return;
     final controller = AppShellScope.of(context);
-    unawaited(
-      controller
-          .applyChatRoute(
-            prompt: widget.prompt,
-            autosend: widget.autosend,
-            sessionId: widget.sessionId,
-          )
-          .then((_) {
-            if (mounted) context.replace('/chat');
-          }),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        controller
+            .applyChatRoute(
+              prompt: widget.prompt,
+              autosend: widget.autosend,
+              sessionId: widget.sessionId,
+            )
+            .then((_) {
+              if (mounted) context.replace('/chat');
+            }),
+      );
+    });
   }
 
   @override
