@@ -95,22 +95,14 @@ class MapOverlay extends StatelessWidget {
           searchError: searchError,
           hasSearched: hasSearched,
           onSelect: onSelect,
+          onAskAssistant: onAskAssistant,
           onOpenExternalMaps: onOpenExternalMaps,
         ),
         const SizedBox(height: StudyOsSpacing.sm),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: <Widget>[
-            Expanded(
-              child: MapSearchBar(
-                controller: controller,
-                isSearching: isSearching,
-                onSearch: onSearch,
-              ),
-            ),
-            const SizedBox(width: StudyOsSpacing.sm),
-            _AskAssistantButton(onPressed: onAskAssistant),
-          ],
+        MapSearchBar(
+          controller: controller,
+          isSearching: isSearching,
+          onSearch: onSearch,
         ),
       ],
     );
@@ -125,6 +117,7 @@ class _MapResultStrip extends StatelessWidget {
     required this.searchError,
     required this.hasSearched,
     required this.onSelect,
+    required this.onAskAssistant,
     required this.onOpenExternalMaps,
   });
 
@@ -134,6 +127,7 @@ class _MapResultStrip extends StatelessWidget {
   final String? searchError;
   final bool hasSearched;
   final ValueChanged<MapLocation> onSelect;
+  final VoidCallback onAskAssistant;
   final VoidCallback onOpenExternalMaps;
 
   @override
@@ -187,6 +181,8 @@ class _MapResultStrip extends StatelessWidget {
           ),
           if (selected != null) ...<Widget>[
             const SizedBox(width: StudyOsSpacing.xs),
+            _AskAssistantButton(onPressed: onAskAssistant),
+            const SizedBox(width: StudyOsSpacing.xs),
             IconButton.filledTonal(
               tooltip: 'Open in maps',
               onPressed: onOpenExternalMaps,
@@ -206,18 +202,14 @@ class _AskAssistantButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 58,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.auto_awesome_rounded),
-        label: const Text('Ask AI'),
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.lg),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-        ),
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+      label: const Text('Ask AI'),
+      style: FilledButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       ),
     );
   }

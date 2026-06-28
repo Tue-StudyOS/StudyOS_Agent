@@ -16,40 +16,54 @@ class StudyBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
+      notchMargin: 10,
       color: StudyOsColors.surface,
+      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.xs),
       child: SizedBox(
         height: 72,
         child: Row(
           children: <Widget>[
-            _BarItem(
-              selected: selectedIndex == 0,
-              icon: Icons.home_outlined,
-              selectedIcon: Icons.home_rounded,
-              label: 'Home',
-              onTap: () => onDestinationSelected(0),
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  _BarItem(
+                    selected: selectedIndex == 0,
+                    icon: Icons.home_outlined,
+                    selectedIcon: Icons.home_rounded,
+                    label: 'Home',
+                    onTap: () => onDestinationSelected(0),
+                  ),
+                  _BarItem(
+                    selected: selectedIndex == 1,
+                    icon: Icons.calendar_month_outlined,
+                    selectedIcon: Icons.calendar_month_rounded,
+                    label: 'Schedule',
+                    onTap: () => onDestinationSelected(1),
+                  ),
+                ],
+              ),
             ),
-            _BarItem(
-              selected: selectedIndex == 1,
-              icon: Icons.calendar_month_outlined,
-              selectedIcon: Icons.calendar_month_rounded,
-              label: 'Schedule',
-              onTap: () => onDestinationSelected(1),
-            ),
-            const SizedBox(width: 76),
-            _BarItem(
-              selected: selectedIndex == 2,
-              icon: Icons.mail_outline_rounded,
-              selectedIcon: Icons.mail_rounded,
-              label: 'Mail',
-              onTap: () => onDestinationSelected(2),
-            ),
-            _BarItem(
-              selected: selectedIndex == 3,
-              icon: Icons.restaurant_outlined,
-              selectedIcon: Icons.restaurant_rounded,
-              label: 'Campus',
-              onTap: () => onDestinationSelected(3),
+            const SizedBox(width: 104),
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  _BarItem(
+                    selected: selectedIndex == 2,
+                    icon: Icons.mail_outline_rounded,
+                    selectedIcon: Icons.mail_rounded,
+                    label: 'Mail',
+                    onTap: () => onDestinationSelected(2),
+                  ),
+                  _BarItem(
+                    selected: selectedIndex == 3,
+                    icon: Icons.restaurant_outlined,
+                    selectedIcon: Icons.restaurant_rounded,
+                    label: 'Campus',
+                    onTap: () => onDestinationSelected(3),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -101,24 +115,40 @@ class _BarItem extends StatelessWidget {
         selected: selected,
         button: true,
         label: label,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(selected ? selectedIcon : icon, color: color),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: color,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          child: Material(
+            color: selected
+                ? StudyOsColors.accent.withValues(alpha: 0.10)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onTap,
+              child: SizedBox(
+                height: 56,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(selected ? selectedIcon : icon, color: color),
+                    const SizedBox(height: 3),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

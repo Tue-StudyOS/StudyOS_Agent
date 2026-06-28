@@ -5,7 +5,7 @@ import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/widgets/maps_controls.dart';
 
 void main() {
-  testWidgets('map overlay keeps search and assistant actions at the bottom', (
+  testWidgets('map overlay shows assistant action for selected location', (
     WidgetTester tester,
   ) async {
     final controller = TextEditingController();
@@ -59,5 +59,46 @@ void main() {
     expect(opened, isTrue);
     expect(asked, isTrue);
     expect(searched, isTrue);
+  });
+
+  testWidgets('map overlay hides assistant action before selecting a result', (
+    WidgetTester tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    const location = MapLocation(
+      name: 'Neue Aula',
+      latitude: 48.52562,
+      longitude: 9.05989,
+      address: 'Neue Aula, Tuebingen, Germany',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: MapOverlay(
+              controller: controller,
+              results: const <MapLocation>[location],
+              selectedLocation: null,
+              isSearching: false,
+              searchError: null,
+              hasSearched: true,
+              onSearch: () {},
+              onSelect: (_) {},
+              onAskAssistant: () {},
+              onOpenExternalMaps: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Neue Aula'), findsOneWidget);
+    expect(find.text('Ask AI'), findsNothing);
+    expect(find.byTooltip('Open in maps'), findsNothing);
   });
 }

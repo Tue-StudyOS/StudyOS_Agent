@@ -169,12 +169,8 @@ class _MapsViewState extends State<MapsView> {
 
   void _askAssistant() {
     final location = _selectedLocation;
-    widget.onAskAssistant(
-      location?.assistantPrompt() ??
-          'Use my current StudyOS location context and help me with nearby '
-              'places. Suggest useful options such as food nearby, study '
-              'spaces, transit, and what I should know before going there.',
-    );
+    if (location == null) return;
+    widget.onAskAssistant(location.assistantPrompt());
   }
 
   Future<void> _openExternalMaps() async {
