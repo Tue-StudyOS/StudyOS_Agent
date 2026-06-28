@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import 'app_shell_controller.dart';
 import 'app_shell_scope.dart';
-import 'login_page.dart';
 import 'models.dart';
 import 'onboarding_flow.dart';
 import 'views/campus_view.dart';
@@ -19,11 +18,11 @@ import 'views/shell_scaffold.dart';
 
 class AuthRouterState extends ChangeNotifier {
   AuthRouterState({
-    required UserSession? session,
-    required OnboardingProfile? profile,
+    required UserSession? initialSession,
+    required OnboardingProfile? initialProfile,
     required bool isLoading,
-  }) : _session = session,
-       _profile = profile,
+  }) : _session = initialSession,
+       _profile = initialProfile,
        _isLoading = isLoading;
 
   UserSession? _session;

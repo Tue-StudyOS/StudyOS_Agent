@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../app_shell_controller.dart';
 import '../app_shell_scope.dart';
 import '../chat_session_mutation.dart';
 import '../studyos_theme.dart';

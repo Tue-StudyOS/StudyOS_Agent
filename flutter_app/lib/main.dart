@@ -35,8 +35,8 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
   void initState() {
     super.initState();
     _authState = AuthRouterState(
-      session: _session,
-      profile: _profile,
+      initialSession: _session,
+      initialProfile: _profile,
       isLoading: _isLoadingProfile,
     );
     _router = buildAppRouter(
@@ -128,9 +128,9 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
       return;
     }
     final controller = AppShellController(
-      profile: profile,
-      onLogout: _handleLogout,
-      onSaveProfile: _saveProfile,
+      initialProfile: profile,
+      initialOnLogout: _handleLogout,
+      initialOnSaveProfile: _saveProfile,
     );
     controller.onOpenChatRequest = (request) {
       _router.go(request.toUri().toString());

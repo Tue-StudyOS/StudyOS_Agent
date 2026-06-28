@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -37,13 +36,14 @@ class ChatRouteRequest {
 
 class AppShellController extends ChangeNotifier {
   AppShellController({
-    required OnboardingProfile? profile,
-    required VoidCallback? onLogout,
-    required Future<void> Function(OnboardingProfile profile)? onSaveProfile,
+    required OnboardingProfile? initialProfile,
+    required VoidCallback? initialOnLogout,
+    required Future<void> Function(OnboardingProfile profile)?
+    initialOnSaveProfile,
     this.onOpenChatRequest,
-  }) : _profile = profile,
-       _onLogout = onLogout,
-       _onSaveProfile = onSaveProfile;
+  }) : _profile = initialProfile,
+       _onLogout = initialOnLogout,
+       _onSaveProfile = initialOnSaveProfile;
 
   final NativeBridge bridge = NativeBridge();
   final SessionStore _sessionStore = SessionStore();

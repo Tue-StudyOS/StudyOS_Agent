@@ -66,12 +66,14 @@ class AskFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton.extended(
-      tooltip: 'Ask StudyOS',
-      onPressed: onPressed,
+    return GestureDetector(
       onLongPress: onLongPress,
-      icon: const Icon(Icons.auto_awesome),
-      label: const Text('Ask'),
+      child: FloatingActionButton.extended(
+        tooltip: 'Ask StudyOS',
+        onPressed: onPressed,
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('Ask'),
+      ),
     );
   }
 }
