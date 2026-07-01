@@ -216,12 +216,14 @@ class _HomeRoute extends StatelessWidget {
       builder: (context, _) => HomeView(
         profile: controller.profile,
         config: controller.agentConfig,
+        briefing: controller.dailyBriefing,
         memoryText: controller.memoryText,
         timetable: controller.timetable,
         onOpenMail: () => context.go('/mail'),
         onOpenMaps: () => context.push('/maps'),
         onOpenCampus: () => context.go('/campus'),
         onOpenSchedule: () => context.go('/schedule'),
+        onRefresh: controller.refreshHomeFeed,
       ),
     );
   }

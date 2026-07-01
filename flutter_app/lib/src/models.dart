@@ -4,6 +4,7 @@ import 'tool_trace.dart';
 
 export 'student_profile.dart';
 export 'mail_models.dart';
+export 'feed_summary.dart';
 export 'timetable_models.dart';
 export 'tool_trace.dart';
 

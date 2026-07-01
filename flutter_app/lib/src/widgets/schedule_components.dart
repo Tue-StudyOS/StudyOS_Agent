@@ -80,6 +80,12 @@ class ScheduleLectureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isNow = event.isOngoingAt(now);
+    final timeLeftLabel = event.relativeTimeLabel(now);
+    final timeLeftColor = event.hasEndedAt(now)
+        ? StudyOsColors.textMuted
+        : color;
     return Container(
       margin: const EdgeInsets.only(bottom: StudyOsSpacing.md),
       decoration: BoxDecoration(
@@ -111,17 +117,35 @@ class ScheduleLectureCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        event.timeRangeText,
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const Spacer(),
-                      if (event.isNow || isFirst)
-                        _ScheduleBadge(
-                          text: event.isNow ? 'Now' : 'Next',
-                          color: color,
+                      Expanded(
+                        child: Text(
+                          event.timeRangeText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge,
                         ),
+                      ),
+                      const SizedBox(width: StudyOsSpacing.xs),
+                      Flexible(
+                        child: Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: StudyOsSpacing.xs,
+                          runSpacing: StudyOsSpacing.xs,
+                          children: <Widget>[
+                            _ScheduleBadge(
+                              text: timeLeftLabel,
+                              color: timeLeftColor,
+                            ),
+                            if (isNow || isFirst)
+                              _ScheduleBadge(
+                                text: isNow ? 'Now' : 'Next',
+                                color: color,
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: StudyOsSpacing.sm),

@@ -71,6 +71,19 @@ class TimetableSnapshot {
 
   LectureEvent? get nextLecture => upcoming.isEmpty ? null : upcoming.first;
 
+  LectureEvent? nextLectureAt(DateTime now) {
+    final upcomingEvents =
+        events
+            .where(
+              (event) =>
+                  (event.end ?? event.start.add(const Duration(minutes: 90)))
+                      .isAfter(now),
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    return upcomingEvents.isEmpty ? null : upcomingEvents.first;
+  }
+
   List<DateTime> get days {
     final starts =
         events.map((event) => _dateOnly(event.start)).toSet().toList()..sort();
@@ -153,6 +166,30 @@ extension LectureEventFormatting on LectureEvent {
       DateTime.sunday: 'Sunday',
     };
     return '${weekdays[start.weekday] ?? 'Day'} ${start.day}.${start.month}.';
+  }
+
+  bool isOngoingAt(DateTime now) {
+    final effectiveEnd = end ?? start.add(const Duration(minutes: 90));
+    return !now.isBefore(start) && now.isBefore(effectiveEnd);
+  }
+
+  bool hasEndedAt(DateTime now) {
+    final effectiveEnd = end ?? start.add(const Duration(minutes: 90));
+    return !now.isBefore(effectiveEnd);
+  }
+
+  String relativeTimeLabel(DateTime now) {
+    if (isOngoingAt(now)) return 'ongoing';
+    if (hasEndedAt(now)) return 'ended';
+    final remaining = start.difference(now);
+    if (remaining.inMinutes <= 5) return 'starts soon';
+    if (remaining.inMinutes < 60) return 'in ${remaining.inMinutes} min';
+    if (remaining.inHours < 24) {
+      final hours = (remaining.inMinutes / 60).ceil();
+      return 'in $hours h';
+    }
+    final days = (remaining.inHours / 24).ceil();
+    return 'in $days d';
   }
 }
 
