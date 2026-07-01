@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models.dart';
@@ -5,9 +7,10 @@ import '../studyos_theme.dart';
 import '../widgets/profile_form.dart';
 
 class ProfileEditView extends StatelessWidget {
-  const ProfileEditView({required this.profile, super.key});
+  const ProfileEditView({required this.profile, this.onSaved, super.key});
 
   final OnboardingProfile profile;
+  final Future<void> Function(OnboardingProfile profile)? onSaved;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +43,14 @@ class ProfileEditView extends StatelessWidget {
                   session: session,
                   initialProfile: profile,
                   submitLabel: 'Save profile',
-                  onSubmit: (updated) => Navigator.of(context).pop(updated),
+                  onSubmit: (updated) {
+                    final onSaved = this.onSaved;
+                    if (onSaved == null) {
+                      Navigator.of(context).pop(updated);
+                      return;
+                    }
+                    unawaited(onSaved(updated));
+                  },
                 ),
               ],
             ),

@@ -55,9 +55,10 @@ class _MapsViewState extends State<MapsView> {
         children: <Widget>[
           FlutterMap(
             mapController: _mapController,
-            options: const MapOptions(
+            options: MapOptions(
               initialCenter: _tuebingen,
               initialZoom: 13.5,
+              onTap: (_, _) => _clearSelection(),
             ),
             children: <Widget>[
               TileLayer(
@@ -104,8 +105,6 @@ class _MapsViewState extends State<MapsView> {
               hasSearched: _hasSearched,
               onSearch: _search,
               onSelect: _selectLocation,
-              onAskAssistant: _askAssistant,
-              onOpenExternalMaps: _openExternalMaps,
             ),
           ),
         ],
@@ -119,12 +118,14 @@ class _MapsViewState extends State<MapsView> {
     return <Marker>[
       Marker(
         point: LatLng(selected.latitude, selected.longitude),
-        width: 44,
-        height: 44,
-        child: const Icon(
-          Icons.location_on_rounded,
-          color: StudyOsColors.accent,
-          size: 42,
+        width: 236,
+        height: 212,
+        alignment: Alignment.bottomCenter,
+        child: _SelectedLocationMarker(
+          location: selected,
+          onAskAssistant: _askAssistant,
+          onOpenExternalMaps: _openExternalMaps,
+          onDismiss: _clearSelection,
         ),
       ),
     ];
@@ -151,6 +152,7 @@ class _MapsViewState extends State<MapsView> {
       if (!mounted) return;
       setState(() {
         _results = const <MapLocation>[];
+        _selectedLocation = null;
         _searchError = error.toString();
       });
     } finally {
@@ -163,18 +165,19 @@ class _MapsViewState extends State<MapsView> {
     _moveTo(location);
   }
 
+  void _clearSelection() {
+    if (_selectedLocation == null) return;
+    setState(() => _selectedLocation = null);
+  }
+
   void _moveTo(MapLocation location) {
     _mapController.move(LatLng(location.latitude, location.longitude), 16);
   }
 
   void _askAssistant() {
     final location = _selectedLocation;
-    widget.onAskAssistant(
-      location?.assistantPrompt() ??
-          'Use my current StudyOS location context and help me with nearby '
-              'places. Suggest useful options such as food nearby, study '
-              'spaces, transit, and what I should know before going there.',
-    );
+    if (location == null) return;
+    widget.onAskAssistant(location.assistantPrompt());
   }
 
   Future<void> _openExternalMaps() async {
@@ -187,5 +190,106 @@ class _MapsViewState extends State<MapsView> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       throw StateError('Could not open maps.');
     }
+  }
+}
+
+class _SelectedLocationMarker extends StatelessWidget {
+  const _SelectedLocationMarker({
+    required this.location,
+    required this.onAskAssistant,
+    required this.onOpenExternalMaps,
+    required this.onDismiss,
+  });
+
+  final MapLocation location;
+  final VoidCallback onAskAssistant;
+  final VoidCallback onOpenExternalMaps;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: <Widget>[
+        Material(
+          color: StudyOsColors.surface.withValues(alpha: 0.96),
+          elevation: 5,
+          shadowColor: Colors.black.withValues(alpha: 0.18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(StudyOsRadii.md),
+            side: const BorderSide(color: StudyOsColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(StudyOsSpacing.sm),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        location.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: StudyOsSpacing.xs),
+                    IconButton(
+                      tooltip: 'Dismiss location',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: onDismiss,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: StudyOsSpacing.xs),
+                Column(
+                  children: <Widget>[
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: onAskAssistant,
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 17),
+                        label: const Text('Ask AI'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: StudyOsSpacing.sm,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: StudyOsSpacing.xs),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onOpenExternalMaps,
+                        icon: const Icon(Icons.near_me_outlined, size: 17),
+                        label: const Text('Open in maps'),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: StudyOsSpacing.sm,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Icon(
+          Icons.location_on_rounded,
+          color: StudyOsColors.accent,
+          size: 42,
+        ),
+      ],
+    );
   }
 }

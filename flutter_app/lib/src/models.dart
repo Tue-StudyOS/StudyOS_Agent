@@ -60,8 +60,6 @@ class ChatMessage {
   }
 }
 
-enum AppView { home, chat, schedule, mail, maps, campus, memories, settings }
-
 enum AgentProvider { local, cloud }
 
 class AgentConfig {

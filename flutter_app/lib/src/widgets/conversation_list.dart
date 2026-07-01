@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
 
-class AppDrawer extends StatelessWidget {
-  const AppDrawer({
+class ConversationList extends StatelessWidget {
+  const ConversationList({
     required this.sessions,
     required this.activeSessionId,
     required this.onSelectSession,
-    required this.onSelectHome,
     required this.onCreateSession,
     required this.onDeleteSession,
     super.key,
@@ -17,64 +16,56 @@ class AppDrawer extends StatelessWidget {
   final List<ChatSession> sessions;
   final String? activeSessionId;
   final ValueChanged<String> onSelectSession;
-  final VoidCallback onSelectHome;
   final VoidCallback onCreateSession;
   final ValueChanged<String> onDeleteSession;
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      backgroundColor: StudyOsColors.background,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(StudyOsSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text('Chats', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: StudyOsSpacing.lg),
-              OutlinedButton.icon(
-                onPressed: () {
-                  onSelectHome();
-                  Navigator.of(context).pop();
-                },
-                icon: const Icon(Icons.home_outlined),
-                label: const Text('Back to home'),
-              ),
-              const SizedBox(height: StudyOsSpacing.sm),
-              FilledButton.icon(
-                onPressed: () {
-                  onCreateSession();
-                  Navigator.of(context).pop();
-                },
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('New chat'),
-              ),
-              const SizedBox(height: StudyOsSpacing.lg),
-              Expanded(
-                child: ListView(
-                  children: <Widget>[
-                    for (final session in sessions)
-                      _SessionTile(
-                        session: session,
-                        selected: session.id == activeSessionId,
-                        onTap: () {
-                          onSelectSession(session.id);
-                          Navigator.of(context).pop();
-                        },
-                        onDelete: () => _confirmDeleteSession(context, session),
-                      ),
-                  ],
+    final visibleSessions = sessions.where((session) => session.hasTurns);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(StudyOsSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Text('Chats', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: () {
+                    onCreateSession();
+                    Navigator.of(context).maybePop();
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('New'),
                 ),
+              ],
+            ),
+            const SizedBox(height: StudyOsSpacing.lg),
+            Expanded(
+              child: ListView(
+                children: <Widget>[
+                  for (final session in visibleSessions)
+                    _SessionTile(
+                      session: session,
+                      selected: session.id == activeSessionId,
+                      onTap: () {
+                        onSelectSession(session.id);
+                        Navigator.of(context).maybePop();
+                      },
+                      onDelete: () => _confirmDeleteSession(context, session),
+                    ),
+                ],
               ),
-              Text(
-                'Active ID: ${_activeShortId()}',
-                style: Theme.of(context).textTheme.bodyMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+            ),
+            Text(
+              'Active ID: ${_activeShortId()}',
+              style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

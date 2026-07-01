@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:studyos_agent/src/app_router.dart';
+import 'package:studyos_agent/src/app_shell_controller.dart';
 import 'package:studyos_agent/src/models.dart';
-import 'package:studyos_agent/src/native_bridge.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/home_view.dart';
-import 'package:studyos_agent/src/widgets/agent_home_scaffold.dart';
+import 'package:studyos_agent/src/widgets/study_bottom_bar.dart';
 
 void main() {
-  testWidgets('bottom navigation switches main app views', (
+  testWidgets('bottom navigation exposes four tabs and centered ask action', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(430, 932);
@@ -15,85 +20,56 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final inputController = TextEditingController();
-    final scrollController = ScrollController();
-    AppView selectedView = AppView.home;
-    addTearDown(inputController.dispose);
-    addTearDown(scrollController.dispose);
+    var selectedIndex = 0;
+    var askPressed = false;
 
     await tester.pumpWidget(
       MaterialApp(
         theme: buildStudyOsTheme(),
         home: StatefulBuilder(
           builder: (context, setState) {
-            return AgentHomeScaffold(
-              selectedView: selectedView,
-              sessions: <ChatSession>[ChatSession.fresh()],
-              activeSessionId: null,
-              inputController: inputController,
-              messageScrollController: scrollController,
-              isSending: false,
-              compactMessages: false,
-              status: 'Ready',
-              worldState: const <String, Object?>{},
-              memoryText: '',
-              timetable: null,
-              timetableError: null,
-              isRefreshingTimetable: false,
-              agentConfig: const AgentConfig.defaults(),
-              nativeBridge: NativeBridge(),
-              profile: null,
-              onSelectView: (value) => setState(() => selectedView = value),
-              onSelectSession: (_) {},
-              onCreateSession: () {},
-              onDeleteSession: (_) {},
-              onSuggestionSelected: (_) {},
-              onSend: () {},
-              onAskAssistant: (_) {},
-              onLogout: null,
-              onSaveProfile: (_) async {},
-              onSaveAgentConfig: (_, _) async {},
-              onSaveMemory: (_) async {},
-              onRefreshTimetable: () async {},
-              onCompactMessagesChanged: (_) {},
+            return Scaffold(
+              floatingActionButton: AskFab(
+                onPressed: () => askPressed = true,
+                onLongPress: () {},
+              ),
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.centerDocked,
+              bottomNavigationBar: StudyBottomBar(
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (value) =>
+                    setState(() => selectedIndex = value),
+              ),
             );
           },
         ),
       ),
     );
 
-    expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
+    expect(find.byType(BottomAppBar), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
     expect(find.text('Schedule'), findsOneWidget);
-    expect(find.text('Mail'), findsWidgets);
-    expect(find.text('Map'), findsWidgets);
-    expect(find.text('Campus'), findsWidgets);
+    expect(find.text('Mail'), findsOneWidget);
+    expect(find.text('Campus'), findsOneWidget);
+    expect(find.text('Ask'), findsOneWidget);
+    expect(find.text('Map'), findsNothing);
+    expect(find.text('Notes'), findsNothing);
 
     await tester.tap(find.text('Schedule'));
     await tester.pumpAndSettle();
 
-    expect(selectedView, AppView.schedule);
-    expect(find.text('No timetable synced yet'), findsOneWidget);
+    expect(selectedIndex, 1);
 
-    await tester.tap(find.text('Map'));
-    await tester.pump();
-
-    expect(selectedView, AppView.maps);
-    expect(find.text('Where to?'), findsOneWidget);
-    expect(find.text('Ask AI'), findsOneWidget);
-
-    await tester.tap(find.text('Chat'));
+    await tester.tap(find.text('Ask'));
     await tester.pumpAndSettle();
 
-    expect(selectedView, AppView.chat);
-    expect(find.byType(NavigationBar), findsNothing);
-    expect(find.byTooltip('New chat'), findsOneWidget);
+    expect(askPressed, isTrue);
   });
 
   testWidgets('home campus card opens campus view', (
     WidgetTester tester,
   ) async {
-    var selectedView = AppView.home;
+    var selectedTarget = 'home';
 
     await tester.pumpWidget(
       MaterialApp(
@@ -113,10 +89,10 @@ void main() {
             config: const AgentConfig.defaults(),
             memoryText: '',
             timetable: null,
-            onOpenMail: () => selectedView = AppView.mail,
-            onOpenMaps: () => selectedView = AppView.maps,
-            onOpenCampus: () => selectedView = AppView.campus,
-            onOpenSchedule: () => selectedView = AppView.schedule,
+            onOpenMail: () => selectedTarget = 'mail',
+            onOpenMaps: () => selectedTarget = 'maps',
+            onOpenCampus: () => selectedTarget = 'campus',
+            onOpenSchedule: () => selectedTarget = 'schedule',
           ),
         ),
       ),
@@ -130,11 +106,11 @@ void main() {
     );
     await tester.tap(campusCard);
 
-    expect(selectedView, AppView.campus);
+    expect(selectedTarget, 'campus');
   });
 
   testWidgets('home inbox card opens mail view', (WidgetTester tester) async {
-    var selectedView = AppView.home;
+    var selectedTarget = 'home';
 
     await tester.pumpWidget(
       MaterialApp(
@@ -145,10 +121,10 @@ void main() {
             config: const AgentConfig.defaults(),
             memoryText: '',
             timetable: null,
-            onOpenMail: () => selectedView = AppView.mail,
-            onOpenMaps: () => selectedView = AppView.maps,
-            onOpenCampus: () => selectedView = AppView.campus,
-            onOpenSchedule: () => selectedView = AppView.schedule,
+            onOpenMail: () => selectedTarget = 'mail',
+            onOpenMaps: () => selectedTarget = 'maps',
+            onOpenCampus: () => selectedTarget = 'campus',
+            onOpenSchedule: () => selectedTarget = 'schedule',
           ),
         ),
       ),
@@ -156,13 +132,13 @@ void main() {
 
     await tester.tap(find.text('Inbox'));
 
-    expect(selectedView, AppView.mail);
+    expect(selectedTarget, 'mail');
   });
 
   testWidgets('home navigation card opens maps view', (
     WidgetTester tester,
   ) async {
-    var selectedView = AppView.home;
+    var selectedTarget = 'home';
 
     await tester.pumpWidget(
       MaterialApp(
@@ -173,10 +149,10 @@ void main() {
             config: const AgentConfig.defaults(),
             memoryText: '',
             timetable: null,
-            onOpenMail: () => selectedView = AppView.mail,
-            onOpenMaps: () => selectedView = AppView.maps,
-            onOpenCampus: () => selectedView = AppView.campus,
-            onOpenSchedule: () => selectedView = AppView.schedule,
+            onOpenMail: () => selectedTarget = 'mail',
+            onOpenMaps: () => selectedTarget = 'maps',
+            onOpenCampus: () => selectedTarget = 'campus',
+            onOpenSchedule: () => selectedTarget = 'schedule',
           ),
         ),
       ),
@@ -190,6 +166,54 @@ void main() {
     );
     await tester.tap(mapsCard);
 
-    expect(selectedView, AppView.maps);
+    expect(selectedTarget, 'maps');
+  });
+
+  testWidgets('chat route prompt is applied after route build', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
+
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: null,
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+    );
+    final authState = AuthRouterState(
+      initialSession: const UserSession(username: 'ada42'),
+      initialProfile: profile,
+      initialLoading: false,
+    );
+    final controller = AppShellController(
+      initialProfile: profile,
+      initialOnLogout: () {},
+      initialOnSaveProfile: (_) async {},
+    );
+    final router = buildAppRouter(
+      authState: authState,
+      shellController: () => controller,
+      onLogin: (_, _) async {},
+      onOnboardingComplete: (_) async {},
+    );
+    addTearDown(router.dispose);
+    addTearDown(controller.dispose);
+    addTearDown(authState.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: buildStudyOsTheme(), routerConfig: router),
+    );
+
+    router.go('/chat?prompt=Campus%20Library');
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(controller.inputController.text, 'Campus Library');
   });
 }

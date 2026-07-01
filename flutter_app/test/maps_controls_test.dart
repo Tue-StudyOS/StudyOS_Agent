@@ -5,14 +5,12 @@ import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/widgets/maps_controls.dart';
 
 void main() {
-  testWidgets('map overlay keeps search and assistant actions at the bottom', (
+  testWidgets('map overlay shows selected result without map actions', (
     WidgetTester tester,
   ) async {
     final controller = TextEditingController();
     var searched = false;
     var selected = false;
-    var asked = false;
-    var opened = false;
     addTearDown(controller.dispose);
 
     const location = MapLocation(
@@ -37,8 +35,6 @@ void main() {
               hasSearched: true,
               onSearch: () => searched = true,
               onSelect: (_) => selected = true,
-              onAskAssistant: () => asked = true,
-              onOpenExternalMaps: () => opened = true,
             ),
           ),
         ),
@@ -46,18 +42,54 @@ void main() {
     );
 
     expect(find.text('Where to?'), findsOneWidget);
-    expect(find.text('Ask AI'), findsOneWidget);
     expect(find.text('Mensa Morgenstelle'), findsOneWidget);
     expect(find.textContaining('Tuebingen, Germany'), findsNothing);
+    expect(find.text('Ask AI'), findsNothing);
+    expect(find.text('Open in maps'), findsNothing);
 
     await tester.tap(find.text('Mensa Morgenstelle'));
-    await tester.tap(find.byTooltip('Open in maps'));
-    await tester.tap(find.text('Ask AI'));
     await tester.tap(find.byTooltip('Search destination'));
 
     expect(selected, isTrue);
-    expect(opened, isTrue);
-    expect(asked, isTrue);
     expect(searched, isTrue);
+  });
+
+  testWidgets('map overlay hides assistant action before selecting a result', (
+    WidgetTester tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    const location = MapLocation(
+      name: 'Neue Aula',
+      latitude: 48.52562,
+      longitude: 9.05989,
+      address: 'Neue Aula, Tuebingen, Germany',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: MapOverlay(
+              controller: controller,
+              results: const <MapLocation>[location],
+              selectedLocation: null,
+              isSearching: false,
+              searchError: null,
+              hasSearched: true,
+              onSearch: () {},
+              onSelect: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Neue Aula'), findsOneWidget);
+    expect(find.text('Ask AI'), findsNothing);
+    expect(find.text('Open in maps'), findsNothing);
   });
 }

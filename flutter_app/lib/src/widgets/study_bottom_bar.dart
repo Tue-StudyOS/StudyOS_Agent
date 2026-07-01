@@ -1,0 +1,157 @@
+import 'package:flutter/material.dart';
+
+import '../studyos_theme.dart';
+
+class StudyBottomBar extends StatelessWidget {
+  const StudyBottomBar({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+    super.key,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 10,
+      color: StudyOsColors.surface,
+      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.xs),
+      child: SizedBox(
+        height: 72,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  _BarItem(
+                    selected: selectedIndex == 0,
+                    icon: Icons.home_outlined,
+                    selectedIcon: Icons.home_rounded,
+                    label: 'Home',
+                    onTap: () => onDestinationSelected(0),
+                  ),
+                  _BarItem(
+                    selected: selectedIndex == 1,
+                    icon: Icons.calendar_month_outlined,
+                    selectedIcon: Icons.calendar_month_rounded,
+                    label: 'Schedule',
+                    onTap: () => onDestinationSelected(1),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 104),
+            Expanded(
+              child: Row(
+                children: <Widget>[
+                  _BarItem(
+                    selected: selectedIndex == 2,
+                    icon: Icons.mail_outline_rounded,
+                    selectedIcon: Icons.mail_rounded,
+                    label: 'Mail',
+                    onTap: () => onDestinationSelected(2),
+                  ),
+                  _BarItem(
+                    selected: selectedIndex == 3,
+                    icon: Icons.restaurant_outlined,
+                    selectedIcon: Icons.restaurant_rounded,
+                    label: 'Campus',
+                    onTap: () => onDestinationSelected(3),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AskFab extends StatelessWidget {
+  const AskFab({required this.onPressed, required this.onLongPress, super.key});
+
+  final VoidCallback onPressed;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: FloatingActionButton.extended(
+        tooltip: 'Ask StudyOS',
+        onPressed: onPressed,
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('Ask'),
+      ),
+    );
+  }
+}
+
+class _BarItem extends StatelessWidget {
+  const _BarItem({
+    required this.selected,
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? StudyOsColors.accent : StudyOsColors.textMuted;
+    return Expanded(
+      child: Semantics(
+        selected: selected,
+        button: true,
+        label: label,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          child: Material(
+            color: selected
+                ? StudyOsColors.accent.withValues(alpha: 0.10)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onTap,
+              child: SizedBox(
+                height: 56,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(selected ? selectedIcon : icon, color: color),
+                    const SizedBox(height: 3),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
