@@ -45,6 +45,8 @@ class AgentRequestRunner {
     required String memoryText,
     required Future<String> Function() readSchedule,
     required MailToolRunner mailTools,
+    AgentStreamSink? onDelta,
+    AgentCancelToken? cancelToken,
   }) async {
     final provider = providerRegistry.resolve(config.provider);
     return provider.send(
@@ -59,6 +61,8 @@ class AgentRequestRunner {
         readSchedule: readSchedule,
         mailTools: mailTools,
         onToolTrace: onToolTrace,
+        onDelta: onDelta,
+        cancelToken: cancelToken,
       ),
     );
   }

@@ -2,6 +2,7 @@ package com.studyos.studyos_agent
 
 import android.content.Context
 import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.common.StreamingCallback
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerationConfig
 import com.google.mlkit.genai.prompt.ModelPreference
@@ -10,6 +11,7 @@ import com.google.mlkit.genai.prompt.generationConfig
 import com.google.mlkit.genai.prompt.java.GenerativeModelFutures
 import com.google.mlkit.genai.prompt.modelConfig
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import com.example.studyOS.offline.LiteRtLocalPromptClient
 
@@ -18,18 +20,35 @@ class AndroidLocalPromptClient(context: Context) {
     private val executor = Executors.newSingleThreadExecutor()
     private val liteRtClient = LiteRtLocalPromptClient()
 
+    @Volatile
+    private var activeNanoFuture: Future<*>? = null
+
+    /** Best-effort cancel of the in-flight generation (Stop button). */
+    fun cancel() {
+        activeNanoFuture?.cancel(true)
+        liteRtClient.cancel()
+    }
+
     fun generate(
         prompt: String,
         modelPath: String,
+        backend: String,
         canExecuteTool: (String) -> Boolean,
         onToolRequest: (String, String) -> String,
+        onDelta: (String) -> Unit,
+        onReset: () -> Unit,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit,
     ) {
+        // Locals so the anonymous StreamListener can call the lambdas without
+        // shadowing its own onReset() override.
+        val deltaSink = onDelta
+        val resetSink = onReset
         executor.execute {
             try {
                 if (modelPath.isNotBlank()) {
-                    val response = liteRtClient.generateWithTools(
+                    liteRtClient.setBackendPreference(backend)
+                    val response = liteRtClient.generateWithToolsStreaming(
                         modelPath,
                         prompt,
                         appContext.cacheDir.absolutePath,
@@ -40,6 +59,15 @@ class AndroidLocalPromptClient(context: Context) {
 
                             override fun execute(toolName: String, argument: String): String {
                                 return onToolRequest(toolName, argument)
+                            }
+                        },
+                        object : LiteRtLocalPromptClient.StreamListener {
+                            override fun onToken(token: String) {
+                                deltaSink(token)
+                            }
+
+                            override fun onReset() {
+                                resetSink()
                             }
                         },
                     )
@@ -54,7 +82,16 @@ class AndroidLocalPromptClient(context: Context) {
                 val model = GenerativeModelFutures.from(Generation.getClient())
                 when (val status = model.checkStatus().get(2, TimeUnit.SECONDS)) {
                     FeatureStatus.AVAILABLE -> {
-                        val response = model.generateContent(prompt).get()
+                        val future = model.generateContent(
+                            prompt,
+                            StreamingCallback { text -> deltaSink(text) },
+                        )
+                        activeNanoFuture = future
+                        val response = try {
+                            future.get()
+                        } finally {
+                            activeNanoFuture = null
+                        }
                         val text = response.candidates.firstOrNull()?.text.orEmpty()
                         if (text.isBlank()) {
                             onError("Android Gemini Nano returned an empty response.")

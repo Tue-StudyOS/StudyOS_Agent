@@ -22,6 +22,8 @@ Future<String> sendAgentMessage({
   required Future<String> Function() readSchedule,
   required MailToolRunner mailTools,
   required void Function(ToolTrace trace) onToolTrace,
+  AgentStreamSink? onDelta,
+  AgentCancelToken? cancelToken,
 }) {
   final context = PromptContext(
     profile: profile,
@@ -44,5 +46,7 @@ Future<String> sendAgentMessage({
     memoryText: memoryText,
     readSchedule: readSchedule,
     mailTools: mailTools,
+    onDelta: onDelta,
+    cancelToken: cancelToken,
   );
 }

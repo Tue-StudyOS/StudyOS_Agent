@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -36,6 +37,8 @@ class CloudAgentClient {
     required Future<String> Function() readSchedule,
     required MailToolRunner mailTools,
     void Function(ToolTrace trace)? onToolTrace,
+    AgentStreamSink? onDelta,
+    AgentCancelToken? cancelToken,
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
     if (endpoint == null || !endpoint.hasScheme || !endpoint.hasAuthority) {
@@ -57,13 +60,15 @@ class CloudAgentClient {
       context: context,
       supportedNativeToolNames: supportedNativeToolNames,
     );
-    final response = await _post(endpoint, apiKey, request);
-    final decoded = _decodeResponse(response);
-    final message = _messageFromResponse(decoded);
+    final message = await _fetchTurn(endpoint, apiKey, request, onDelta, cancelToken);
     final toolCalls = _toolCalls(message);
     if (toolCalls.isEmpty) {
       return _contentFromMessage(message);
     }
+
+    // A streamed turn that resolved into tool calls carries no user-facing
+    // answer yet; clear the live buffer before the follow-up answer streams.
+    onDelta?.call(const AgentStreamDelta(reset: true));
 
     final toolMessages = <Map<String, Object?>>[];
     final toolContext = StudyOsToolContext(
@@ -75,6 +80,9 @@ class CloudAgentClient {
       nativeTools: _nativeTools,
     );
     for (final call in toolCalls) {
+      if (cancelToken?.isCancelled ?? false) {
+        throw const AgentCancelledException();
+      }
       onToolTrace?.call(_traceForCall(call, 'running'));
       final String output;
       try {
@@ -97,15 +105,169 @@ class CloudAgentClient {
       });
     }
 
-    final followUp = await _post(endpoint, apiKey, <String, Object?>{
+    final followUp = await _fetchTurn(endpoint, apiKey, <String, Object?>{
       'model': config.cloudModel.trim(),
       'messages': <Map<String, Object?>>[
         ...List<Map<String, Object?>>.from(request['messages'] as List),
         message,
         ...toolMessages,
       ],
-    });
-    return _contentFromMessage(_messageFromResponse(_decodeResponse(followUp)));
+    }, onDelta, cancelToken);
+    return _contentFromMessage(followUp);
+  }
+
+  /// Fetches one assistant turn, returning a message map shaped like
+  /// [_messageFromResponse]. Streams via SSE when [onDelta] is provided,
+  /// otherwise performs a single buffered request.
+  Future<Map<String, Object?>> _fetchTurn(
+    Uri endpoint,
+    String apiKey,
+    Map<String, Object?> body,
+    AgentStreamSink? onDelta,
+    AgentCancelToken? cancelToken,
+  ) async {
+    if (cancelToken?.isCancelled ?? false) {
+      throw const AgentCancelledException();
+    }
+    if (onDelta == null) {
+      final response = await _post(endpoint, apiKey, body);
+      return _messageFromResponse(_decodeResponse(response));
+    }
+    return _streamTurn(endpoint, apiKey, body, onDelta, cancelToken);
+  }
+
+  Future<Map<String, Object?>> _streamTurn(
+    Uri endpoint,
+    String apiKey,
+    Map<String, Object?> body,
+    AgentStreamSink onDelta,
+    AgentCancelToken? cancelToken,
+  ) async {
+    final request = http.Request('POST', endpoint)
+      ..headers['Authorization'] = 'Bearer ${apiKey.trim()}'
+      ..headers['Content-Type'] = 'application/json'
+      ..headers['Accept'] = 'text/event-stream'
+      ..body = jsonEncode(<String, Object?>{...body, 'stream': true});
+
+    final response = await _httpClient.send(request);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      await response.stream.drain<void>();
+      throw CloudAgentException(
+        'Custom AI service returned HTTP ${response.statusCode}.',
+      );
+    }
+
+    final contentBuffer = StringBuffer();
+    final toolCalls = <int, _StreamingToolCall>{};
+    final completer = Completer<Map<String, Object?>>();
+    final lines = response.stream
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
+
+    late final StreamSubscription<String> subscription;
+
+    void complete() {
+      if (completer.isCompleted) return;
+      completer.complete(<String, Object?>{
+        'role': 'assistant',
+        'content': contentBuffer.isEmpty ? null : contentBuffer.toString(),
+        if (toolCalls.isNotEmpty) 'tool_calls': _assembleToolCalls(toolCalls),
+      });
+    }
+
+    subscription = lines.listen(
+      (rawLine) {
+        final line = rawLine.trim();
+        if (line.isEmpty || !line.startsWith('data:')) return;
+        final data = line.substring(5).trim();
+        if (data == '[DONE]') {
+          subscription.cancel();
+          complete();
+          return;
+        }
+        final decoded = jsonDecode(data);
+        if (decoded is! Map) return;
+        final choices = decoded['choices'];
+        if (choices is! List || choices.isEmpty || choices.first is! Map) {
+          return;
+        }
+        final delta = (choices.first as Map)['delta'];
+        if (delta is! Map) return;
+
+        final content = delta['content'];
+        if (content is String && content.isNotEmpty) {
+          contentBuffer.write(content);
+          onDelta(AgentStreamDelta(content: content));
+        }
+        final reasoning = delta['reasoning'] ?? delta['reasoning_content'];
+        if (reasoning is String && reasoning.isNotEmpty) {
+          onDelta(AgentStreamDelta(reasoning: reasoning));
+        }
+        final rawToolCalls = delta['tool_calls'];
+        if (rawToolCalls is List) {
+          _accumulateToolCalls(rawToolCalls, toolCalls);
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completer.isCompleted) completer.completeError(error, stackTrace);
+      },
+      onDone: complete,
+      cancelOnError: true,
+    );
+
+    // Aborting the subscription tears down the underlying socket, so a stalled
+    // stream (server accepted but never responds) stops immediately on Stop.
+    unawaited(
+      cancelToken?.whenCancelled.then((_) async {
+        await subscription.cancel();
+        if (!completer.isCompleted) {
+          completer.completeError(const AgentCancelledException());
+        }
+      }),
+    );
+
+    return completer.future;
+  }
+
+  void _accumulateToolCalls(
+    List<Object?> raw,
+    Map<int, _StreamingToolCall> accumulator,
+  ) {
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = Map<String, Object?>.from(entry);
+      final rawIndex = map['index'];
+      final index = rawIndex is int
+          ? rawIndex
+          : int.tryParse('${rawIndex ?? 0}') ?? 0;
+      final slot = accumulator.putIfAbsent(index, _StreamingToolCall.new);
+      final id = map['id'];
+      if (id is String && id.isNotEmpty) slot.id = id;
+      final function = map['function'];
+      if (function is Map) {
+        final name = function['name'];
+        if (name is String && name.isNotEmpty) slot.name = name;
+        final args = function['arguments'];
+        if (args is String) slot.arguments.write(args);
+      }
+    }
+  }
+
+  List<Map<String, Object?>> _assembleToolCalls(
+    Map<int, _StreamingToolCall> accumulator,
+  ) {
+    final indices = accumulator.keys.toList()..sort();
+    return <Map<String, Object?>>[
+      for (final index in indices)
+        <String, Object?>{
+          'id': accumulator[index]!.id,
+          'type': 'function',
+          'function': <String, Object?>{
+            'name': accumulator[index]!.name,
+            'arguments': accumulator[index]!.arguments.toString(),
+          },
+        },
+    ];
   }
 
   Future<http.Response> _post(
@@ -241,6 +403,14 @@ class _ToolCall {
   final String id;
   final String name;
   final String arguments;
+}
+
+/// Mutable accumulator for an OpenAI streaming tool call, whose `id`, name, and
+/// argument fragments arrive across multiple `delta.tool_calls` chunks.
+class _StreamingToolCall {
+  String id = '';
+  String name = '';
+  final StringBuffer arguments = StringBuffer();
 }
 
 class CloudAgentException implements Exception {

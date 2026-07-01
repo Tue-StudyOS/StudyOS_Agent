@@ -105,6 +105,7 @@ class _SettingsViewState extends State<SettingsView> {
           hasApiKey: widget.config.hasApiKey || apiKey.isNotEmpty,
           localModelId: widget.config.localModelId,
           localModelPath: widget.config.localModelPath,
+          localBackend: widget.config.localBackend,
         ),
         apiKey.isEmpty ? null : apiKey,
       );

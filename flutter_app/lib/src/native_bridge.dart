@@ -119,6 +119,7 @@ class NativeBridge {
     String? systemPrompt,
     String? memory,
     String? localModelPath,
+    String? localBackend,
   }) async {
     final result = await _methods
         .invokeMethod<String>('sendMessage', <String, Object?>{
@@ -126,8 +127,15 @@ class NativeBridge {
           'systemPrompt': systemPrompt,
           'memory': memory,
           'localModelPath': localModelPath,
+          'localBackend': localBackend,
         });
     return result ?? 'The assistant did not return a response.';
+  }
+
+  /// Best-effort cancel of an in-flight local (native) generation. No-op on
+  /// platforms without a local model bridge.
+  Future<void> cancelMessage() async {
+    await _methods.invokeMethod<void>('cancelMessage');
   }
 
   String _memoryPreview(String value) {
