@@ -6,10 +6,11 @@ import '../models.dart';
 import '../studyos_theme.dart';
 
 class CampusView extends StatefulWidget {
-  const CampusView({required this.profile, this.client, super.key});
+  const CampusView({required this.profile, this.client, this.today, super.key});
 
   final OnboardingProfile? profile;
   final CampusClient? client;
+  final DateTime? today;
 
   @override
   State<CampusView> createState() => _CampusViewState();
@@ -20,6 +21,8 @@ class _CampusViewState extends State<CampusView> {
 
   FoodPreference get _preference =>
       widget.profile?.foodPreference ?? FoodPreference.noPreference;
+
+  DateTime get _today => widget.today ?? DateTime.now();
 
   @override
   void initState() {
@@ -33,6 +36,7 @@ class _CampusViewState extends State<CampusView> {
       final canteens = await client.fetchTuebingenCanteens();
       return canteens
           .map((canteen) => canteen.filteredFor(_preference))
+          .map((canteen) => canteen.forWeek(_today))
           .where((canteen) => canteen.menus.isNotEmpty)
           .toList();
     } finally {
@@ -63,8 +67,8 @@ class _CampusViewState extends State<CampusView> {
                   const SizedBox(height: StudyOsSpacing.xs),
                   Text(
                     preference == FoodPreference.noPreference
-                        ? 'Mensa menus for Tübingen.'
-                        : '${preference.label} Mensa options for Tübingen.',
+                        ? 'This week\'s Mensa menus for Tübingen.'
+                        : 'This week\'s ${preference.label} Mensa options for Tübingen.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
