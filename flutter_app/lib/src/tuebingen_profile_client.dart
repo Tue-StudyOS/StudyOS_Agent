@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import 'alma_login_form.dart';
+
 class StudentProfilePrefill {
   const StudentProfilePrefill({
     this.displayName,
@@ -90,9 +92,10 @@ class TuebingenProfileClient {
   }) async {
     final start = await _http.get(_resolve(_startPath)).timeout(timeout);
     _ensureOk(start);
-    final form = _extractLoginForm(
-      start.body,
-      start.request?.url ?? _resolve(_startPath),
+    final form = extractAlmaLoginForm(
+      html: start.body,
+      pageUrl: start.request?.url ?? _resolve(_startPath),
+      exception: TuebingenProfileException.new,
     );
     final payload = Map<String, String>.from(form.payload)
       ..['asdf'] = username
@@ -126,13 +129,6 @@ class TuebingenProfileException implements Exception {
 
   @override
   String toString() => message;
-}
-
-class _LoginForm {
-  const _LoginForm({required this.action, required this.payload});
-
-  final Uri action;
-  final Map<String, String> payload;
 }
 
 class _CookieClient {
@@ -221,37 +217,6 @@ bool _isRedirect(int statusCode) =>
 bool _redirectsToGet(int statusCode, String method) {
   return statusCode == 303 ||
       (method == 'POST' && (statusCode == 301 || statusCode == 302));
-}
-
-_LoginForm _extractLoginForm(String html, Uri pageUrl) {
-  final document = html_parser.parse(html);
-  final form =
-      document.getElementById('loginForm') ??
-      document.getElementById('mobileLoginForm');
-  if (form == null) {
-    throw const TuebingenProfileException('Could not find ALMA login form.');
-  }
-
-  final action = form.attributes['action'];
-  if (action == null || action.isEmpty) {
-    throw const TuebingenProfileException('ALMA login form has no action.');
-  }
-
-  final payload = <String, String>{};
-  for (final input in form.getElementsByTagName('input')) {
-    final name = input.attributes['name'];
-    final type = input.attributes['type'] ?? '';
-    if (name == null ||
-        name.isEmpty ||
-        type == 'checkbox' ||
-        type == 'button') {
-      continue;
-    }
-    payload[name] = input.attributes['value'] ?? '';
-  }
-
-  payload.putIfAbsent('submit', () => '');
-  return _LoginForm(action: pageUrl.resolve(action), payload: payload);
 }
 
 bool _looksLoggedOut(String html) {
