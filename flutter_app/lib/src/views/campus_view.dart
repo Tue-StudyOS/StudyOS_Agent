@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../campus_client.dart';
 import '../campus_models.dart';
@@ -101,7 +103,8 @@ class _CampusViewState extends State<CampusView> {
             }
             return Column(
               children: <Widget>[
-                for (final canteen in canteens) _CanteenCard(canteen: canteen),
+                for (final entry in sortedCampusMenuEntries(canteens))
+                  _CanteenCard(entry: entry),
               ],
             );
           },
@@ -112,13 +115,17 @@ class _CampusViewState extends State<CampusView> {
 }
 
 class _CanteenCard extends StatelessWidget {
-  const _CanteenCard({required this.canteen});
+  const _CanteenCard({required this.entry});
 
-  final CampusCanteen canteen;
+  final CampusMenuEntry entry;
 
   @override
   Widget build(BuildContext context) {
-    final menu = canteen.menus.first;
+    final canteen = entry.canteen;
+    final menu = entry.menu;
+    final action = actionForCanteen(canteen);
+    final foodName = menu.items.first;
+    final additionalItems = menu.items.skip(1).toList();
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: StudyOsSpacing.md),
@@ -131,20 +138,34 @@ class _CanteenCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(canteen.name, style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            canteen.name,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: StudyOsColors.textMuted,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
           const SizedBox(height: StudyOsSpacing.xs),
           Text(
-            [
-              menu.date,
-              menu.line,
-              _priceLabel(menu),
-            ].where((part) => part.isNotEmpty).join(' · '),
-            style: Theme.of(context).textTheme.bodyMedium,
+            _headline(foodName: foodName, menu: menu),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+            ),
           ),
-          const SizedBox(height: StudyOsSpacing.md),
+          if (additionalItems.isNotEmpty) ...<Widget>[
+            const SizedBox(height: StudyOsSpacing.sm),
+            Text(
+              additionalItems.join('\n'),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+          const SizedBox(height: StudyOsSpacing.sm),
           Text(
-            menu.items.join('\n'),
-            style: Theme.of(context).textTheme.bodyLarge,
+            menu.date,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: StudyOsColors.textMuted),
           ),
           if (menu.icons.isNotEmpty) ...<Widget>[
             const SizedBox(height: StudyOsSpacing.md),
@@ -157,15 +178,71 @@ class _CanteenCard extends StatelessWidget {
               ],
             ),
           ],
+          if (action != null) ...<Widget>[
+            const SizedBox(height: StudyOsSpacing.md),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: StudyOsSpacing.xs,
+                children: <Widget>[
+                  IconButton(
+                    tooltip: 'Open Mensa website',
+                    onPressed: () => _open(action.website),
+                    icon: const Icon(Icons.public_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Share menu',
+                    onPressed: () => _share(entry, action.website),
+                    icon: const Icon(Icons.share_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Navigate to Mensa',
+                    onPressed: () => _open(action.navigation),
+                    icon: const Icon(Icons.navigation_rounded),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  String _priceLabel(CampusMenu menu) {
+  String _headline({required String foodName, required CampusMenu menu}) {
+    return [
+      foodName,
+      menu.line,
+      _priceLabel(menu),
+    ].where((part) => part.isNotEmpty).join(' - ');
+  }
+
+  static String _priceLabel(CampusMenu menu) {
     final price = menu.studentPrice;
     if (price == null || price.isEmpty) return '';
-    return '$price Euro';
+    return '$price €';
+  }
+
+  static Future<void> _open(Uri uri) async {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  static Future<void> _share(CampusMenuEntry entry, Uri website) async {
+    final menu = entry.menu;
+    final foodName = menu.items.first;
+    final additionalItems = menu.items.skip(1).toList();
+    final lines = <String>[
+      entry.canteen.name,
+      [
+        menu.date,
+        foodName,
+        menu.line,
+        _priceLabel(menu),
+      ].where((part) => part.isNotEmpty).join(' - '),
+      if (additionalItems.isNotEmpty) additionalItems.join(', '),
+      website.toString(),
+    ];
+    await SharePlus.instance.share(ShareParams(text: lines.join('\n')));
   }
 }
 
