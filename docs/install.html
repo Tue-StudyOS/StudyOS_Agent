@@ -6,6 +6,7 @@
     <title>Install StudyOS Agent</title>
     <meta name="description" content="Install notes for StudyOS Agent release builds." />
     <link rel="stylesheet" href="./download.css" />
+    <link rel="icon" type="image/png" href="./assets/studyos-icon-512.png" />
   </head>
   <body>
     <header class="site-header">
@@ -27,6 +28,15 @@
       </section>
 
       <section class="doc-section">
+        <h2>Quick install path</h2>
+        <ol>
+          <li>Android: download the APK from the latest release.</li>
+          <li>iOS, macOS, Windows, and Linux: download the web ZIP from the latest release.</li>
+          <li>Run the checklist below and report installation or usability issues.</li>
+        </ol>
+      </section>
+
+      <section class="doc-section">
         <h2>Android</h2>
         <ol>
           <li>Download the APK from the latest release.</li>
@@ -38,9 +48,10 @@
       <section class="doc-section">
         <h2>macOS, Windows, and Linux</h2>
         <p>
-          Download the archive for your system, extract it, and launch the app from the extracted
-          folder. macOS may require Privacy &amp; Security approval because early builds are not
-          signed and notarized yet.
+          Desktop builds are available as optional artifacts, but they are not the lowest-friction
+          install path. macOS may require Privacy &amp; Security approval because early builds are not
+          signed and notarized yet. Use the web bundle unless you specifically need to test desktop
+          packaging.
         </p>
       </section>
 
@@ -49,6 +60,29 @@
         <p>
           The web ZIP contains a static Flutter web build. Serve the extracted folder through a local
           web server rather than opening files directly from disk.
+        </p>
+        <pre><code>unzip studyos-agent-web-*.zip -d studyos-agent-web
+cd studyos-agent-web
+python3 -m http.server 8080</code></pre>
+        <p>Then open <code>http://127.0.0.1:8080</code>.</p>
+      </section>
+
+      <section class="doc-section">
+        <h2>Smoke test checklist</h2>
+        <ol>
+          <li>Open the app and confirm the StudyOS login screen renders.</li>
+          <li>Log in with a University of Tuebingen account if available.</li>
+          <li>Complete onboarding with degree program, semester, and at least one interest.</li>
+          <li>Open Chat, Schedule, Maps, Mail, and Settings from the main app.</li>
+          <li>Record the first unclear step, any visible error, and one useful or missing feature.</li>
+        </ol>
+      </section>
+
+      <section class="doc-section">
+        <h2>Feedback topics</h2>
+        <p>
+          The SurveyHero form should collect platform, installation time, failed step if any,
+          usability issues, usefulness, bugs, missing features, and concept feedback.
         </p>
       </section>
     </main>

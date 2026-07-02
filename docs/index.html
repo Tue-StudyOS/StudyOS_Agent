@@ -9,6 +9,7 @@
       content="Download the latest StudyOS Agent builds for Android, desktop, and web."
     />
     <link rel="stylesheet" href="./download.css" />
+    <link rel="icon" type="image/png" href="./assets/studyos-icon-512.png" />
     <script defer src="./download.js"></script>
   </head>
   <body>
@@ -26,8 +27,8 @@
         <div class="hero-copy">
           <h1>Download StudyOS Agent.</h1>
           <p class="lead">
-            Install the University of Tuebingen study assistant shell with chat, campus tools,
-            maps, mail, and local model integrations.
+            Test the University of Tuebingen study assistant shell. Android users get the APK;
+            everyone else can run the Flutter web bundle locally.
           </p>
           <div class="download-panel" aria-live="polite">
             <p class="status" id="release-status">Looking for the latest StudyOS Agent release...</p>
@@ -42,7 +43,7 @@
 
         <figure class="preview" aria-label="StudyOS Agent app preview">
           <div class="preview-shell">
-            <img src="../flutter_app/web/icons/Icon-512.png" alt="" />
+            <img src="./assets/studyos-icon-512.png" alt="" />
             <div class="preview-content">
               <span class="window-dot"></span>
               <span class="window-dot"></span>
@@ -82,7 +83,7 @@
           </article>
           <article class="platform-card" data-platform-card="web">
             <span>Web</span>
-            <strong>ZIP</strong>
+            <strong>Recommended non-Android path</strong>
             <a href="https://github.com/Tue-StudyOS/StudyOS_Agent/releases">Open releases</a>
           </article>
         </div>
@@ -92,8 +93,9 @@
         <div>
           <h2>Early release notes</h2>
           <p>
-            These builds are intended for course testing and local development. Android APKs use the
-            Flutter runner signing setup, and desktop apps are not notarized or store-distributed yet.
+            These builds are intended for user testing and local development. Use Android APK for
+            native phone testing and web for iOS, macOS, Windows, and Linux when the goal is the
+            lowest-friction browser path.
           </p>
         </div>
         <a class="secondary-link" href="./install.html">Read install notes</a>

@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'demo_agent_config.dart';
 import 'models.dart';
 
 class AgentConfigStore {
@@ -36,6 +37,21 @@ class AgentConfigStore {
     final localModelPath = await _prefs.getString(_localModelPathKey);
     final localBackend = await _prefs.getString(_localBackendKey);
     final apiKey = await _secure.read(key: _apiKeyKey);
+    if (_hasNoSavedConfig(
+      providerName: providerName,
+      endpoint: endpoint,
+      model: model,
+      localModelId: localModelId,
+      localModelPath: localModelPath,
+      apiKey: apiKey,
+    )) {
+      final demoConfig = demoAgentConfig();
+      await _saveValues(config: demoConfig);
+      if (demoOpenRouterApiKey.isNotEmpty) {
+        await _secure.write(key: _apiKeyKey, value: demoOpenRouterApiKey);
+      }
+      return demoConfig;
+    }
 
     return AgentConfig(
       provider: providerName == AgentProvider.cloud.name
@@ -58,12 +74,7 @@ class AgentConfigStore {
     required AgentConfig config,
     required String? apiKey,
   }) async {
-    await _prefs.setString(_providerKey, config.provider.name);
-    await _prefs.setString(_endpointKey, config.cloudEndpoint.trim());
-    await _prefs.setString(_modelKey, config.cloudModel.trim());
-    await _prefs.setString(_localModelIdKey, config.localModelId.trim());
-    await _prefs.setString(_localModelPathKey, config.localModelPath.trim());
-    await _prefs.setString(_localBackendKey, config.localBackend.name);
+    await _saveValues(config: config);
 
     if (apiKey != null) {
       final trimmed = apiKey.trim();
@@ -73,5 +84,30 @@ class AgentConfigStore {
         await _secure.write(key: _apiKeyKey, value: trimmed);
       }
     }
+  }
+
+  Future<void> _saveValues({required AgentConfig config}) async {
+    await _prefs.setString(_providerKey, config.provider.name);
+    await _prefs.setString(_endpointKey, config.cloudEndpoint.trim());
+    await _prefs.setString(_modelKey, config.cloudModel.trim());
+    await _prefs.setString(_localModelIdKey, config.localModelId.trim());
+    await _prefs.setString(_localModelPathKey, config.localModelPath.trim());
+    await _prefs.setString(_localBackendKey, config.localBackend.name);
+  }
+
+  bool _hasNoSavedConfig({
+    required String? providerName,
+    required String? endpoint,
+    required String? model,
+    required String? localModelId,
+    required String? localModelPath,
+    required String? apiKey,
+  }) {
+    return providerName == null &&
+        endpoint == null &&
+        model == null &&
+        localModelId == null &&
+        localModelPath == null &&
+        apiKey == null;
   }
 }

@@ -1,11 +1,11 @@
 {
-    "name": "studyos_agent",
-    "short_name": "studyos_agent",
+    "name": "StudyOS Agent",
+    "short_name": "StudyOS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "StudyOS Agent web app for course testing.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
