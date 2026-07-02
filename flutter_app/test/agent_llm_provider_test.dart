@@ -206,6 +206,7 @@ class _FakeNativeBridge extends NativeBridge {
     String? systemPrompt,
     String? memory,
     String? localModelPath,
+    String? localBackend,
   }) async {
     lastSystemPrompt = systemPrompt;
     return response;

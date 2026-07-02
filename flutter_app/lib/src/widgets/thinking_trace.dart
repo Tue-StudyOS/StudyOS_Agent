@@ -5,11 +5,7 @@ import '../studyos_theme.dart';
 /// Collapsible panel for the model's reasoning/"thinking" trace. Collapsed by
 /// default; the body is revealed only when the user taps the header.
 class ThinkingTrace extends StatefulWidget {
-  const ThinkingTrace({
-    required this.reasoning,
-    this.live = false,
-    super.key,
-  });
+  const ThinkingTrace({required this.reasoning, this.live = false, super.key});
 
   /// The reasoning text to show when expanded.
   final String reasoning;

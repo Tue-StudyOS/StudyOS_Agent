@@ -286,7 +286,8 @@ class _TypingDotsState extends State<_TypingDots>
             mainAxisSize: MainAxisSize.min,
             children: List<Widget>.generate(3, (index) {
               final phase = (_controller.value - index * 0.2) % 1.0;
-              final opacity = 0.3 + 0.7 * (1 - (phase - 0.5).abs() * 2).clamp(0.0, 1.0);
+              final opacity =
+                  0.3 + 0.7 * (1 - (phase - 0.5).abs() * 2).clamp(0.0, 1.0);
               return Padding(
                 padding: const EdgeInsets.only(right: 5),
                 child: Opacity(

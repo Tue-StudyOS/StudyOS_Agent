@@ -434,8 +434,7 @@ class VoiceController extends ChangeNotifier {
         final match = available.firstWhere(
           (lang) => lang.toLowerCase() == candidate.toLowerCase(),
           orElse: () => available.firstWhere(
-            (lang) =>
-                lang.toLowerCase().startsWith(_localeId.split('_').first),
+            (lang) => lang.toLowerCase().startsWith(_localeId.split('_').first),
             orElse: () => 'en-US',
           ),
         );

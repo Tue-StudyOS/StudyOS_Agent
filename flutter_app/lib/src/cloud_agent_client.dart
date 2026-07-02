@@ -60,7 +60,13 @@ class CloudAgentClient {
       context: context,
       supportedNativeToolNames: supportedNativeToolNames,
     );
-    final message = await _fetchTurn(endpoint, apiKey, request, onDelta, cancelToken);
+    final message = await _fetchTurn(
+      endpoint,
+      apiKey,
+      request,
+      onDelta,
+      cancelToken,
+    );
     final toolCalls = _toolCalls(message);
     if (toolCalls.isEmpty) {
       return _contentFromMessage(message);
@@ -105,14 +111,20 @@ class CloudAgentClient {
       });
     }
 
-    final followUp = await _fetchTurn(endpoint, apiKey, <String, Object?>{
-      'model': config.cloudModel.trim(),
-      'messages': <Map<String, Object?>>[
-        ...List<Map<String, Object?>>.from(request['messages'] as List),
-        message,
-        ...toolMessages,
-      ],
-    }, onDelta, cancelToken);
+    final followUp = await _fetchTurn(
+      endpoint,
+      apiKey,
+      <String, Object?>{
+        'model': config.cloudModel.trim(),
+        'messages': <Map<String, Object?>>[
+          ...List<Map<String, Object?>>.from(request['messages'] as List),
+          message,
+          ...toolMessages,
+        ],
+      },
+      onDelta,
+      cancelToken,
+    );
     return _contentFromMessage(followUp);
   }
 
