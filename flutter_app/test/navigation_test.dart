@@ -174,7 +174,10 @@ void main() {
   ) async {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
-    addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
+    addTearDown(() {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+    });
 
     const profile = OnboardingProfile(
       displayName: 'Ada',

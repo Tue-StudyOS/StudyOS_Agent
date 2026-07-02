@@ -94,8 +94,13 @@ class MainActivity : FlutterActivity() {
                     systemPrompt = call.argument<String>("systemPrompt").orEmpty(),
                     memory = call.argument<String>("memory").orEmpty(),
                     localModelPath = call.argument<String>("localModelPath").orEmpty(),
+                    localBackend = call.argument<String>("localBackend").orEmpty(),
                     result = result,
                 )
+            }
+            "cancelMessage" -> {
+                localPromptClient?.cancel()
+                result.success(null)
             }
             else -> result.notImplemented()
         }
@@ -137,6 +142,7 @@ class MainActivity : FlutterActivity() {
         systemPrompt: String,
         memory: String,
         localModelPath: String,
+        localBackend: String,
         result: MethodChannel.Result,
     ) {
         if (!nativeInitialized) {
@@ -153,6 +159,7 @@ class MainActivity : FlutterActivity() {
             localPromptClient().generate(
                 prompt = prompt,
                 modelPath = localModelPath,
+                backend = localBackend,
                 canExecuteTool = { toolName ->
                     liteRtToolExecutor().canExecute(toolName)
                 },
@@ -163,6 +170,12 @@ class MainActivity : FlutterActivity() {
                         systemPrompt = systemPrompt,
                         memory = memory,
                     )
+                },
+                onDelta = { token ->
+                    emitAssistantDelta(token, reset = false)
+                },
+                onReset = {
+                    emitAssistantDelta("", reset = true)
                 },
                 onSuccess = { response ->
                     emitStatus(
@@ -306,6 +319,7 @@ class MainActivity : FlutterActivity() {
             nativeToolExecutor = it
         }
     }
+
 
     private fun executeNativeTool(call: MethodCall, result: MethodChannel.Result) {
         val name = call.argument<String>("name")?.trim().orEmpty()
@@ -481,6 +495,22 @@ class MainActivity : FlutterActivity() {
                 "summary" to summary,
                 "callId" to callId,
             ),
+            "timestamp" to SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss",
+                Locale.US
+            ).format(Date()),
+        )
+
+        Handler(Looper.getMainLooper()).post {
+            eventSink?.success(payload)
+        }
+    }
+
+    private fun emitAssistantDelta(text: String, reset: Boolean) {
+        val payload = mapOf(
+            "type" to "assistantDelta",
+            "message" to text,
+            "reset" to reset,
             "timestamp" to SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss",
                 Locale.US

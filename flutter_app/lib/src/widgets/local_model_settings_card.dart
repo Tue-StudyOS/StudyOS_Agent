@@ -28,6 +28,7 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
   late final TextEditingController _customModelUrlController;
   StreamSubscription<NativeEvent>? _nativeEventSubscription;
   String _localModelId = const AgentConfig.defaults().localModelId;
+  LocalBackend _localBackend = const AgentConfig.defaults().localBackend;
   List<Map<String, Object?>> _installedModels = <Map<String, Object?>>[];
   bool _isDownloadingModel = false;
   bool _isDeletingModel = false;
@@ -40,6 +41,7 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
     super.initState();
     _customModelUrlController = TextEditingController();
     _localModelId = widget.config.localModelId;
+    _localBackend = widget.config.localBackend;
     _nativeEventSubscription = widget.nativeBridge.events.listen(
       _handleNativeEvent,
       onError: (_) {},
@@ -52,6 +54,7 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.config == widget.config) return;
     _localModelId = widget.config.localModelId;
+    _localBackend = widget.config.localBackend;
   }
 
   @override
@@ -88,6 +91,41 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
         _LocalModelStatus(
           model: localModelById(_localModelId),
           installed: _installedModelFor(_localModelId),
+        ),
+        const SizedBox(height: StudyOsSpacing.md),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Accelerator',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+        ),
+        const SizedBox(height: StudyOsSpacing.xs),
+        SegmentedButton<LocalBackend>(
+          segments: const <ButtonSegment<LocalBackend>>[
+            ButtonSegment<LocalBackend>(
+              value: LocalBackend.gpu,
+              icon: Icon(Icons.bolt_rounded),
+              label: Text('GPU'),
+            ),
+            ButtonSegment<LocalBackend>(
+              value: LocalBackend.cpu,
+              icon: Icon(Icons.memory_rounded),
+              label: Text('CPU'),
+            ),
+          ],
+          selected: <LocalBackend>{_localBackend},
+          onSelectionChanged: (selection) => _selectBackend(selection.first),
+        ),
+        const SizedBox(height: StudyOsSpacing.xs),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            _localBackend == LocalBackend.gpu
+                ? 'Runs on the GPU, falling back to CPU if unsupported.'
+                : 'Forces CPU. Slower, but works on every device.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
         const SizedBox(height: StudyOsSpacing.md),
         TextField(
@@ -168,6 +206,20 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
       if (!mounted) return;
       setState(() => _installedModels = <Map<String, Object?>>[]);
     }
+  }
+
+  Future<void> _selectBackend(LocalBackend backend) async {
+    if (backend == _localBackend) return;
+    setState(() => _localBackend = backend);
+    await widget.onSaveAgentConfig(
+      widget.config.copyWith(localBackend: backend),
+      null,
+    );
+    _showMessage(
+      backend == LocalBackend.gpu
+          ? 'Local model will use the GPU (CPU fallback).'
+          : 'Local model will use the CPU.',
+    );
   }
 
   Future<void> _downloadSelectedModel() async {
