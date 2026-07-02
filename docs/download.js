@@ -15,7 +15,7 @@ const PLATFORM_LABELS = {
   macos: "macOS",
   windows: "Windows",
   linux: "Linux",
-  web: "web",
+  web: "Web",
 };
 
 const statusElement = document.querySelector("#release-status");
@@ -40,15 +40,6 @@ function detectPlatform() {
   const platform = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
   if (/android/i.test(platform)) {
     return "android";
-  }
-  if (/mac/i.test(platform)) {
-    return "macos";
-  }
-  if (/win/i.test(platform)) {
-    return "windows";
-  }
-  if (/linux|x11/i.test(platform)) {
-    return "linux";
   }
   return "web";
 }

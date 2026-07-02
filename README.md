@@ -1,55 +1,120 @@
 # StudyOS Agent
 
-This is an agent for the University of Tuebingen.
+StudyOS Agent is a University of Tuebingen study assistant shell. The Flutter
+app provides the cross-platform UI, while native runners expose platform
+features such as Android services, sensors, speech/TTS, reminders, local model
+execution, and iOS-safe native APIs where available.
 
-## Flutter migration
+## Install A Release
 
-The repository now contains a Flutter migration shell in `flutter_app/`.
-The existing native Android Java project remains in place while the Flutter
-app becomes the new cross-platform UI experiment.
+Use the public download page:
 
-Current migration shape:
-
-- Flutter owns the main chat UI, input bar, status display, and capability
-  drawer.
-- Android native code is copied into the Flutter Android runner and exposed
-  through `MethodChannel`/`EventChannel` bridge hooks.
-- Android keeps OS-level integrations such as services, reminders, sensors,
-  app launching, speech/TTS, and LiteRT/LiteRTLM.
-- iOS registers the same native bridge and exposes iOS-safe native APIs for
-  location-backed world state, local notification reminders, speech
-  availability, text-to-speech, and Apple Foundation Models when the SDK/device
-  supports the Foundation Models framework.
-- Web and desktop currently run the Flutter UI shell only; unsupported native
-  bridge calls return explicit errors instead of mock data.
-
-Run the migration shell with:
-
-```sh
-cd flutter_app
-flutter run
+```text
+https://tue-studyos.github.io/StudyOS_Agent/
 ```
 
-The first migration PR is intentionally a bridge-first implementation. It
-does not rewrite every Android service in Dart because many current features
-are Android-specific and should stay behind native adapters.
+Or open the GitHub Releases page directly:
 
-## Installing builds
+```text
+https://github.com/Tue-StudyOS/StudyOS_Agent/releases
+```
 
-Installable app bundles are built by the `Build and Release Artifacts` GitHub
-Actions workflow for Android, web, Linux, macOS, and Windows. iOS is skipped
-because distribution needs to go through Apple's signing and App Store/TestFlight
-flow.
+Recommended artifacts:
 
-- For branch and pull request builds, open the workflow run and download the
-  platform artifact you need, such as `studyos-agent-android-apk`,
-  `studyos-agent-web`, `studyos-agent-linux-x64`, `studyos-agent-macos`, or
-  `studyos-agent-windows-x64`.
-- For tagged releases such as `v1.0.0`, or a `flutter_app/pubspec.yaml`
-  version change on `main`, download the platform artifact from the matching
-  GitHub Release.
+- Android: download `studyos-agent-*-android.apk`, allow installs from your
+  browser or file manager when Android asks, then open the APK.
+- Web: download `studyos-agent-web-*.zip` for iOS, macOS, Windows, Linux, or any
+  machine where installing a native app is inconvenient.
+- Desktop: Linux, macOS, and Windows archives are available for packaging
+  checks. macOS builds are not notarized yet, so Gatekeeper may block them.
+- iOS: no direct installable build is published yet. Real iOS distribution
+  needs Apple Developer Program signing and TestFlight.
 
-Android may ask you to allow installing APKs from your browser or file manager
-before opening the downloaded build. The APK is currently signed with the
-debug signing configuration from the Flutter Android runner, so it is suitable
-for course testing but not yet for app-store distribution.
+Run the release web bundle locally:
+
+```sh
+unzip studyos-agent-web-*.zip -d studyos-agent-web
+cd studyos-agent-web
+python3 -m http.server 8080
+```
+
+Then open `http://127.0.0.1:8080`. Do not open `index.html` directly from disk;
+Flutter web must be served by a web server.
+
+## Run From Source
+
+Requirements:
+
+- Flutter stable with Dart 3.12 or newer
+- Android Studio or Android SDK for Android builds
+- Chrome for web development
+- Xcode only when running iOS or macOS locally
+
+Clone and start the Flutter app:
+
+```sh
+git clone https://github.com/Tue-StudyOS/StudyOS_Agent.git
+cd StudyOS_Agent/flutter_app
+flutter pub get
+flutter run -d chrome
+```
+
+Useful run targets:
+
+```sh
+flutter run -d chrome
+flutter run -d android
+flutter run -d macos
+```
+
+Build release artifacts locally:
+
+```sh
+flutter build web --release
+flutter build apk --release
+```
+
+Serve the local web build:
+
+```sh
+python3 -m http.server 8080 --directory build/web
+```
+
+## Assistant Model Setup
+
+On first run, the app seeds a replaceable OpenRouter endpoint/model preset:
+
+```text
+Endpoint: https://openrouter.ai/api/v1/chat/completions
+Model: nvidia/nemotron-3-ultra-550b-a55b:free
+```
+
+GitHub push protection blocks committing OpenRouter keys, so release builds do
+not contain a default API key. Open `Settings -> Assistant setup -> Custom` and
+paste an OpenRouter key, or build with the Dart define shown below. To avoid
+cloud calls, switch `Assistant setup` back to `Built-in` and use the local model
+controls.
+
+For local development builds, you can override the seeded preset without editing
+source:
+
+```sh
+flutter run -d chrome \
+  --dart-define=STUDYOS_DEMO_OPENROUTER_ENDPOINT=https://openrouter.ai/api/v1/chat/completions \
+  --dart-define=STUDYOS_DEMO_OPENROUTER_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free \
+  --dart-define=STUDYOS_DEMO_OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
+```
+
+## Migration Notes
+
+- Flutter owns the main chat UI, input bar, status display, navigation, and
+  settings surfaces.
+- Android native code is copied into the Flutter Android runner and exposed
+  through `MethodChannel` and `EventChannel` bridge hooks.
+- Android keeps OS-level integrations such as services, reminders, sensors, app
+  launching, speech/TTS, and LiteRT/LiteRTLM.
+- iOS exposes native location/device state, local notification reminders, speech
+  availability, text-to-speech, and Apple Foundation Models when the SDK/device
+  supports the Foundation Models framework.
+- Web and desktop currently run the Flutter UI shell. Unsupported native bridge
+  calls return explicit errors instead of mock data.

@@ -335,7 +335,7 @@ jobs:
               echo "should_publish=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            release_tag="v$current_version"
+            release_tag="v${current_version%%+*}"
           else
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
             exit 0
