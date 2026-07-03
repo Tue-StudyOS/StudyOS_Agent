@@ -87,7 +87,9 @@ class MailRepository {
       sender: sender,
       since: since,
       scanLimit: scanLimit,
-    )] = _MailCacheEntry<Object>(summary);
+    )] = _MailCacheEntry<Object>(
+      summary,
+    );
     return summary;
   }
 
