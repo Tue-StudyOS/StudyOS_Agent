@@ -337,6 +337,9 @@ class MainActivity : FlutterActivity() {
         val label = call.argument<String>("label").orEmpty()
         val fileName = call.argument<String>("fileName").orEmpty()
         val url = call.argument<String>("url").orEmpty()
+        val expectedSizeBytes =
+            (call.argument<Any>("expectedSizeBytes") as? Number)?.toLong() ?: -1L
+        val expectedSha256 = call.argument<String>("expectedSha256").orEmpty()
         Thread {
             try {
                 val model = localModelStore().downloadModel(
@@ -344,6 +347,8 @@ class MainActivity : FlutterActivity() {
                     label = label,
                     fileName = fileName,
                     url = url,
+                    expectedSizeBytes = expectedSizeBytes,
+                    expectedSha256 = expectedSha256,
                     onProgress = { receivedBytes, totalBytes ->
                         emitDownloadProgress(id, label, receivedBytes, totalBytes)
                     },

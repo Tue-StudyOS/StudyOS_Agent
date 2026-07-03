@@ -11,6 +11,9 @@ class MailClient {
     this.timeout = const Duration(seconds: 20),
   });
 
+  static const int summaryPreviewBytes = 4096;
+  static const int detailBodyBytes = 65536;
+
   final String host;
   final int port;
   final Duration timeout;
@@ -122,12 +125,41 @@ class MailClient {
     }
     await _requireConnection().command('EXAMINE ${_quote(mailbox)}');
     final unreadIds = (await _searchUids('UNSEEN')).toSet();
-    final raw = await _fetchRawMessage(uid);
+    final rawHeaders = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[HEADER])',
+    );
+    final structure = await _fetchBodyStructure(uid);
+    final section = structure?.textSection;
+    if (section != null) {
+      final rawBody = await _fetchLiteral(
+        'UID FETCH $uid (BODY.PEEK[${section.section}]<0.$detailBodyBytes>)',
+        allowEmpty: true,
+      );
+      return parseMailDetail(
+        buildTextPartMessage(
+          rawHeaders: rawHeaders,
+          rawPartBody: rawBody,
+          section: section,
+        ),
+        uid: uid,
+        mailbox: mailbox,
+        isUnread: unreadIds.contains(uid),
+        attachmentNames: structure!.attachmentNames,
+      );
+    }
+    final rawBody = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[TEXT]<0.$detailBodyBytes>)',
+      allowEmpty: true,
+    );
+    final attachmentNames = structure?.attachmentNames;
     return parseMailDetail(
-      raw,
+      combineMailHeaderAndBodyPreview(rawHeaders, rawBody),
       uid: uid,
       mailbox: mailbox,
       isUnread: unreadIds.contains(uid),
+      attachmentNames: attachmentNames != null && attachmentNames.isNotEmpty
+          ? attachmentNames
+          : null,
     );
   }
 
@@ -165,17 +197,58 @@ class MailClient {
     String mailbox,
     bool isUnread,
   ) async {
-    final raw = await _fetchRawMessage(uid);
-    return parseMailSummary(raw, uid: uid, isUnread: isUnread);
+    final rawHeaders = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE CONTENT-TYPE)])',
+    );
+    final structure = await _fetchBodyStructure(uid);
+    final section = structure?.textSection;
+    if (section != null) {
+      final rawPart = await _fetchLiteral(
+        'UID FETCH $uid (BODY.PEEK[${section.section}]<0.$summaryPreviewBytes>)',
+        allowEmpty: true,
+      );
+      return parseMailSummary(
+        buildTextPartMessage(
+          rawHeaders: rawHeaders,
+          rawPartBody: rawPart,
+          section: section,
+        ),
+        uid: uid,
+        isUnread: isUnread,
+      );
+    }
+    final rawPreview = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[TEXT]<0.$summaryPreviewBytes>)',
+      allowEmpty: true,
+    );
+    return parseMailSummaryPreview(
+      rawHeaders: rawHeaders,
+      rawPreview: rawPreview,
+      uid: uid,
+      isUnread: isUnread,
+    );
   }
 
-  Future<List<int>> _fetchRawMessage(String uid) async {
-    final response = await _requireConnection().command(
-      'UID FETCH $uid (BODY.PEEK[])',
-    );
+  Future<MailBodyStructure?> _fetchBodyStructure(String uid) async {
+    try {
+      final response = await _requireConnection().command(
+        'UID FETCH $uid (BODYSTRUCTURE)',
+      );
+      return parseBodyStructure(response.text);
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<List<int>> _fetchLiteral(
+    String command, {
+    bool allowEmpty = false,
+  }) async {
+    final response = await _requireConnection().command(command);
     final literal = response.firstLiteral;
     if (literal == null) {
-      throw MailException('IMAP fetch returned no message body for UID $uid.');
+      if (allowEmpty) return const <int>[];
+      throw const MailException('IMAP fetch returned no message body.');
     }
     return literal;
   }

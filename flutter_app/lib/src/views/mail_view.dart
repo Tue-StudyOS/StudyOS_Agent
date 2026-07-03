@@ -37,16 +37,17 @@ class _MailViewState extends State<MailView> {
       _selectedMessage = null;
       _openingMessageUid = null;
       _messageError = null;
-      _state = _load();
+      _state = _load(forceRefresh: true);
     });
   }
 
-  Future<MailMailboxSnapshot> _load() {
+  Future<MailMailboxSnapshot> _load({bool forceRefresh = false}) {
     return _repository.fetchMailboxSnapshot(
       widget.profile,
       mailbox: _mailbox,
       limit: 20,
       unreadOnly: _unreadOnly,
+      forceRefresh: forceRefresh,
     );
   }
 

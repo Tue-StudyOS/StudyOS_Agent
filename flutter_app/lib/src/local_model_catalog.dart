@@ -5,6 +5,8 @@ class LocalModelOption {
     required this.fileName,
     required this.description,
     this.downloadUrl = '',
+    this.expectedSizeBytes,
+    this.expectedSha256,
   });
 
   final String id;
@@ -12,8 +14,12 @@ class LocalModelOption {
   final String fileName;
   final String description;
   final String downloadUrl;
+  final int? expectedSizeBytes;
+  final String? expectedSha256;
 
   bool get needsCustomUrl => downloadUrl.isEmpty;
+  bool get hasIntegrityCheck =>
+      expectedSizeBytes != null || expectedSha256?.isNotEmpty == true;
 }
 
 const List<LocalModelOption> localModelCatalog = <LocalModelOption>[
@@ -22,18 +28,23 @@ const List<LocalModelOption> localModelCatalog = <LocalModelOption>[
     label: 'Gemma 4 E2B Instruct',
     fileName: 'gemma-4-e2b-it.litertlm',
     description: 'Balanced default for mid-range Android phones.',
+    downloadUrl:
+        'https://huggingface.co/litert-community/'
+        'gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
+    // No integrity check for now: the resolver did not expose a stable
+    // SHA-256, and pinning the advertised size is too brittle (a re-upload
+    // would break every download). The native download path still verifies
+    // expectedSizeBytes/expectedSha256 when a future entry supplies them.
   ),
   LocalModelOption(
     id: 'qwen3-1-7b',
     label: 'Qwen3 1.7B',
-    fileName: 'qwen3-1-7b.task',
-    description: 'Small agentic model candidate for tool routing and RAG.',
-  ),
-  LocalModelOption(
-    id: 'lfm2-5-1-2b',
-    label: 'LFM2.5 1.2B',
-    fileName: 'lfm2-5-1-2b.task',
-    description: 'Fast low-memory candidate for smaller devices.',
+    fileName: 'qwen3-1-7b.litertlm',
+    description: 'Small agentic model for tool routing and RAG.',
+    downloadUrl:
+        'https://huggingface.co/litert-community/'
+        'Qwen3-1.7B/resolve/main/Qwen3_1.7B.litertlm',
+    // No integrity check for now (see gemma entry above).
   ),
   LocalModelOption(
     id: 'custom',

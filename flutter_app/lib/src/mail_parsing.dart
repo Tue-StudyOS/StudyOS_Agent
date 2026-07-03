@@ -37,11 +37,34 @@ MailMessageSummary parseMailSummary(
   );
 }
 
+MailMessageSummary parseMailSummaryPreview({
+  required List<int> rawHeaders,
+  required List<int> rawPreview,
+  required String uid,
+  required bool isUnread,
+}) {
+  final parsed = ParsedMail.fromBytes(_messageBytes(rawHeaders, rawPreview));
+  final body = parsed.bodyText;
+  final cleanedBody = stripBroadcastBoilerplate(body);
+  final sender = _parseAddress(parsed.header('from'));
+  return MailMessageSummary(
+    uid: uid,
+    subject: decodeMimeHeader(parsed.header('subject')) ?? '(No subject)',
+    fromName: sender.name,
+    fromAddress: sender.address,
+    receivedAt: parsed.header('date'),
+    preview: previewFromText(cleanedBody),
+    isUnread: isUnread,
+    approvalNotice: hasBroadcastApproval(body) ? approvedBroadcastNotice : null,
+  );
+}
+
 MailMessageDetail parseMailDetail(
   List<int> rawMessage, {
   required String uid,
   required String mailbox,
   required bool isUnread,
+  List<String>? attachmentNames,
 }) {
   final parsed = ParsedMail.fromBytes(rawMessage);
   final body = parsed.bodyText;
@@ -58,10 +81,338 @@ MailMessageDetail parseMailDetail(
     receivedAt: parsed.header('date'),
     preview: previewFromText(cleanedBody),
     bodyText: cleanedBody,
-    attachmentNames: parsed.attachmentNames,
+    attachmentNames: attachmentNames ?? parsed.attachmentNames,
     isUnread: isUnread,
     approvalNotice: hasBroadcastApproval(body) ? approvedBroadcastNotice : null,
   );
+}
+
+List<int> combineMailHeaderAndBodyPreview(
+  List<int> rawHeaders,
+  List<int> rawBody,
+) {
+  return _messageBytes(rawHeaders, rawBody);
+}
+
+/// A single MIME leaf selected from an IMAP BODYSTRUCTURE, describing how to
+/// fetch and decode just that part.
+class MailTextSection {
+  const MailTextSection({
+    required this.section,
+    required this.mimeType,
+    required this.charset,
+    required this.encoding,
+  });
+
+  /// IMAP section spec used in `BODY[<section>]`, e.g. `1` or `1.2`.
+  final String section;
+
+  /// e.g. `text/plain` or `text/html`.
+  final String mimeType;
+
+  /// e.g. `utf-8`.
+  final String charset;
+
+  /// Content transfer encoding, e.g. `base64`, `quoted-printable`, `7bit`.
+  final String encoding;
+}
+
+/// Parsed view of an IMAP BODYSTRUCTURE response: which body part carries the
+/// readable text and which parts are attachments. Used to fetch only the text
+/// part instead of downloading full messages (attachments included).
+class MailBodyStructure {
+  const MailBodyStructure({
+    required this.isMultipart,
+    required this.textSection,
+    required this.attachmentNames,
+  });
+
+  final bool isMultipart;
+
+  /// The best text part to fetch, or null when the message is a single part
+  /// (fetch `BODY[TEXT]` instead) or no text part exists.
+  final MailTextSection? textSection;
+
+  final List<String> attachmentNames;
+}
+
+/// Parses a raw IMAP FETCH response containing a BODYSTRUCTURE. Returns null if
+/// no structure can be recovered, so callers can fall back to a bounded
+/// `BODY[TEXT]` fetch.
+MailBodyStructure? parseBodyStructure(String rawResponse) {
+  final group = _extractStructureGroup(rawResponse);
+  if (group == null) return null;
+  try {
+    final cursor = _StructCursor(group, 0);
+    final root = _readStructToken(group, cursor);
+    if (root is! List) return null;
+    final leaves = <_StructLeaf>[];
+    _collectLeaves(root, '', leaves);
+    final isMultipart = _isMultipartNode(root);
+    final textLeaves = leaves
+        .where((leaf) => !leaf.isAttachment && leaf.type == 'TEXT')
+        .toList();
+    _StructLeaf? chosen;
+    for (final leaf in textLeaves) {
+      if (leaf.subtype == 'PLAIN') {
+        chosen = leaf;
+        break;
+      }
+    }
+    chosen ??= textLeaves.isNotEmpty ? textLeaves.first : null;
+    final attachments = leaves
+        .where((leaf) => leaf.isAttachment)
+        .map((leaf) => leaf.filename)
+        .whereType<String>()
+        .toList();
+    final textSection = (chosen == null || !isMultipart)
+        ? null
+        : MailTextSection(
+            section: chosen.section,
+            mimeType:
+                '${chosen.type.toLowerCase()}/${chosen.subtype.toLowerCase()}',
+            charset: chosen.charset,
+            encoding: chosen.encoding,
+          );
+    return MailBodyStructure(
+      isMultipart: isMultipart,
+      textSection: textSection,
+      attachmentNames: attachments,
+    );
+  } on Object {
+    return null;
+  }
+}
+
+/// Builds a synthetic single-part message (top-level headers + the selected
+/// part's content headers + its still-encoded body) so [parseMailSummary] and
+/// [parseMailDetail] can decode a single fetched text part with the existing
+/// pipeline. The injected content headers are appended last so they win over
+/// any multipart Content-Type carried in [rawHeaders].
+List<int> buildTextPartMessage({
+  required List<int> rawHeaders,
+  required List<int> rawPartBody,
+  required MailTextSection section,
+}) {
+  final headers = latin1.decode(rawHeaders, allowInvalid: true).trim();
+  final injected =
+      '$headers\r\n'
+      'Content-Type: ${section.mimeType}; charset=${section.charset}\r\n'
+      'Content-Transfer-Encoding: ${section.encoding}';
+  final body = latin1.decode(rawPartBody, allowInvalid: true);
+  return latin1.encode('$injected\r\n\r\n$body');
+}
+
+class _StructLeaf {
+  const _StructLeaf({
+    required this.section,
+    required this.type,
+    required this.subtype,
+    required this.charset,
+    required this.encoding,
+    required this.isAttachment,
+    required this.filename,
+  });
+
+  final String section;
+  final String type;
+  final String subtype;
+  final String charset;
+  final String encoding;
+  final bool isAttachment;
+  final String? filename;
+}
+
+String? _extractStructureGroup(String raw) {
+  final marker = RegExp('BODYSTRUCTURE', caseSensitive: false).firstMatch(raw);
+  if (marker == null) return null;
+  final start = raw.indexOf('(', marker.end);
+  if (start < 0) return null;
+  var depth = 0;
+  var inQuote = false;
+  for (var i = start; i < raw.length; i++) {
+    final ch = raw[i];
+    if (inQuote) {
+      if (ch == r'\') {
+        i++;
+        continue;
+      }
+      if (ch == '"') inQuote = false;
+      continue;
+    }
+    if (ch == '"') {
+      inQuote = true;
+    } else if (ch == '(') {
+      depth++;
+    } else if (ch == ')') {
+      depth--;
+      if (depth == 0) return raw.substring(start, i + 1);
+    }
+  }
+  return null;
+}
+
+void _collectLeaves(List node, String prefix, List<_StructLeaf> out) {
+  if (_isMultipartNode(node)) {
+    var index = 0;
+    for (final child in node) {
+      if (child is! List) break;
+      index += 1;
+      final section = prefix.isEmpty ? '$index' : '$prefix.$index';
+      _collectLeaves(child, section, out);
+    }
+    return;
+  }
+  out.add(_leafFromNode(node, prefix.isEmpty ? '1' : prefix));
+}
+
+bool _isMultipartNode(List node) => node.isNotEmpty && node.first is List;
+
+_StructLeaf _leafFromNode(List node, String section) {
+  final type = _asString(node.isNotEmpty ? node[0] : '').toUpperCase();
+  final subtype = _asString(node.length > 1 ? node[1] : '').toUpperCase();
+  final params = node.length > 2 && node[2] is List
+      ? node[2] as List
+      : const <Object>[];
+  final charset = (_paramValue(params, 'CHARSET') ?? 'utf-8').toLowerCase();
+  final encoding = (node.length > 5 ? _asString(node[5]) : '7bit')
+      .toLowerCase();
+  final disposition = _dispositionOf(node);
+  final filename = _filenameOf(node);
+  final isAttachment =
+      disposition == 'ATTACHMENT' || (type != 'TEXT' && filename != null);
+  return _StructLeaf(
+    section: section,
+    type: type,
+    subtype: subtype,
+    charset: charset,
+    encoding: encoding.isEmpty ? '7bit' : encoding,
+    isAttachment: isAttachment,
+    filename: filename,
+  );
+}
+
+String? _dispositionOf(List node) {
+  for (final element in node) {
+    if (element is List && element.isNotEmpty && element.first is String) {
+      final value = (element.first as String).toUpperCase();
+      if (value == 'ATTACHMENT' || value == 'INLINE') return value;
+    }
+  }
+  return null;
+}
+
+String? _filenameOf(List node) {
+  for (final element in node) {
+    if (element is List && element.isNotEmpty && element.first is String) {
+      final value = (element.first as String).toUpperCase();
+      if ((value == 'ATTACHMENT' || value == 'INLINE') &&
+          element.length > 1 &&
+          element[1] is List) {
+        final name = _paramValue(element[1] as List, 'FILENAME');
+        if (name != null && name.isNotEmpty) {
+          return decodeMimeHeader(name) ?? name;
+        }
+      }
+    }
+  }
+  final params = node.length > 2 && node[2] is List
+      ? node[2] as List
+      : const <Object>[];
+  final name = _paramValue(params, 'NAME');
+  if (name != null && name.isNotEmpty) return decodeMimeHeader(name) ?? name;
+  return null;
+}
+
+String? _paramValue(List params, String key) {
+  for (var i = 0; i + 1 < params.length; i += 2) {
+    if (_asString(params[i]).toUpperCase() == key.toUpperCase()) {
+      final value = params[i + 1];
+      if (value is String && value.toUpperCase() != 'NIL') return value;
+    }
+  }
+  return null;
+}
+
+String _asString(Object? value) => value is String ? value : '';
+
+class _StructCursor {
+  _StructCursor(this.text, this.index);
+
+  final String text;
+  int index;
+}
+
+Object? _readStructToken(String source, _StructCursor cursor) {
+  _skipStructSpaces(source, cursor);
+  if (cursor.index >= source.length) return null;
+  final ch = source[cursor.index];
+  if (ch == '(') return _readStructList(source, cursor);
+  if (ch == '"') return _readStructQuoted(source, cursor);
+  return _readStructAtom(source, cursor);
+}
+
+List<Object> _readStructList(String source, _StructCursor cursor) {
+  cursor.index += 1; // consume '('
+  final items = <Object>[];
+  while (cursor.index < source.length) {
+    _skipStructSpaces(source, cursor);
+    if (cursor.index >= source.length) break;
+    if (source[cursor.index] == ')') {
+      cursor.index += 1;
+      break;
+    }
+    final token = _readStructToken(source, cursor);
+    if (token == null) break;
+    items.add(token);
+  }
+  return items;
+}
+
+String _readStructQuoted(String source, _StructCursor cursor) {
+  cursor.index += 1; // consume opening quote
+  final buffer = StringBuffer();
+  while (cursor.index < source.length) {
+    final ch = source[cursor.index];
+    if (ch == r'\' && cursor.index + 1 < source.length) {
+      buffer.write(source[cursor.index + 1]);
+      cursor.index += 2;
+      continue;
+    }
+    if (ch == '"') {
+      cursor.index += 1;
+      break;
+    }
+    buffer.write(ch);
+    cursor.index += 1;
+  }
+  return buffer.toString();
+}
+
+String _readStructAtom(String source, _StructCursor cursor) {
+  final buffer = StringBuffer();
+  while (cursor.index < source.length) {
+    final ch = source[cursor.index];
+    if (ch == ' ' ||
+        ch == '\r' ||
+        ch == '\n' ||
+        ch == '(' ||
+        ch == ')' ||
+        ch == '"') {
+      break;
+    }
+    buffer.write(ch);
+    cursor.index += 1;
+  }
+  return buffer.toString();
+}
+
+void _skipStructSpaces(String source, _StructCursor cursor) {
+  while (cursor.index < source.length) {
+    final ch = source[cursor.index];
+    if (ch != ' ' && ch != '\r' && ch != '\n') break;
+    cursor.index += 1;
+  }
 }
 
 bool hasBroadcastApproval(String? value) {
@@ -330,4 +681,12 @@ class _MailAddress {
 
   final String? name;
   final String? address;
+}
+
+List<int> _messageBytes(List<int> rawHeaders, List<int> rawBody) {
+  final normalizedHeaders = latin1
+      .decode(rawHeaders, allowInvalid: true)
+      .trim();
+  final normalizedBody = latin1.decode(rawBody, allowInvalid: true);
+  return latin1.encode('$normalizedHeaders\r\n\r\n$normalizedBody');
 }

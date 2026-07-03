@@ -244,6 +244,8 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
         label: option.label,
         fileName: option.fileName,
         url: url,
+        expectedSizeBytes: option.expectedSizeBytes,
+        expectedSha256: option.expectedSha256,
       );
       await _loadInstalledModels();
       await widget.onSaveAgentConfig(
