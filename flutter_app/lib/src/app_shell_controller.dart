@@ -16,6 +16,7 @@ import 'profile_context.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
 import 'timetable_repository.dart';
+import 'voice_controller.dart';
 
 class ChatRouteRequest {
   const ChatRouteRequest({this.prompt, this.autosend = false, this.sessionId});
@@ -54,6 +55,13 @@ class AppShellController extends ChangeNotifier {
   final TextEditingController inputController = TextEditingController();
   final ScrollController messageScrollController = ScrollController();
 
+  /// In-app voice prototype: speech capture, live transcript, and TTS of
+  /// replies. Reaches the send pipeline through [inputController] + [sendMessage].
+  late final VoiceController voice = VoiceController(
+    inputController: inputController,
+    onSend: sendMessage,
+  );
+
   ValueChanged<ChatRouteRequest>? onOpenChatRequest;
   StreamSubscription<NativeEvent>? _eventSubscription;
   bool _disposed = false;
@@ -72,6 +80,9 @@ class AppShellController extends ChangeNotifier {
   bool _isSending = false;
   bool _compactMessages = false;
   bool _isRefreshingTimetable = false;
+  StreamingAssistantMessage? _streaming;
+  Timer? _streamNotifyTimer;
+  AgentCancelToken? _cancelToken;
 
   OnboardingProfile? get profile => _profile;
   VoidCallback? get onLogout => _onLogout;
@@ -87,6 +98,10 @@ class AppShellController extends ChangeNotifier {
   bool get compactMessages => _compactMessages;
   bool get isRefreshingTimetable => _isRefreshingTimetable;
 
+  /// The reply currently streaming in, or null when none is in flight. The chat
+  /// UI renders a live bubble from this.
+  StreamingAssistantMessage? get streaming => _streaming;
+
   ChatSession get activeSession =>
       activeSessionFrom(_sessions, _activeSessionId);
 
@@ -100,6 +115,7 @@ class AppShellController extends ChangeNotifier {
     unawaited(_loadMemory());
     unawaited(_loadTimetable());
     unawaited(_initializeNativeLayer());
+    unawaited(voice.init());
   }
 
   void updateProfile({
@@ -126,7 +142,9 @@ class AppShellController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _streamNotifyTimer?.cancel();
     _eventSubscription?.cancel();
+    voice.dispose();
     inputController.dispose();
     messageScrollController.dispose();
     super.dispose();
@@ -159,6 +177,12 @@ class AppShellController extends ChangeNotifier {
     final trace = event.trace;
     if (event.type == 'toolTrace' && trace != null) {
       addToolTrace(trace);
+      return;
+    }
+    if (event.type == 'assistantDelta') {
+      _handleStreamDelta(
+        AgentStreamDelta(content: event.message, reset: event.reset),
+      );
       return;
     }
     if (event.type == 'voicePrompt' && event.message.trim().isNotEmpty) {
@@ -265,6 +289,11 @@ class AppShellController extends ChangeNotifier {
     inputController.clear();
     _notify();
     appendMessage(ChatMessage(author: 'You', text: text, isUser: true));
+    _streaming = StreamingAssistantMessage();
+    voice.beginSpokenReply();
+    final cancelToken = AgentCancelToken();
+    _cancelToken = cancelToken;
+    _notify();
 
     try {
       final response = await sendAgentMessage(
@@ -286,8 +315,11 @@ class AppShellController extends ChangeNotifier {
           profile: _profile,
         ),
         onToolTrace: addToolTrace,
+        onDelta: _handleStreamDelta,
+        cancelToken: cancelToken,
       );
-      addAssistantMessage(response);
+      final reasoning = _finishStreaming();
+      addAssistantMessage(response, reasoning: reasoning);
       await _loadMemory();
       final worldState = await bridge.getWorldState();
       if (_disposed) return;
@@ -297,11 +329,15 @@ class AppShellController extends ChangeNotifier {
         timetable: _timetable,
       );
       _notify();
+    } on AgentCancelledException {
+      _commitStreamingPartial();
     } on Object catch (error) {
+      _finishStreaming();
       final message = sendErrorMessage(error);
       if (message == null) rethrow;
       addAssistantMessage(message);
     } finally {
+      _cancelToken = null;
       if (!_disposed) {
         _isSending = false;
         _notify();
@@ -309,14 +345,96 @@ class AppShellController extends ChangeNotifier {
     }
   }
 
-  void addAssistantMessage(String text) {
+  /// Stops the in-flight reply. Aborts the cloud HTTP stream via the cancel
+  /// token and asks the native bridge to cancel any local generation.
+  void cancelMessage() {
+    if (!_isSending) return;
+    _cancelToken?.cancel();
+    unawaited(_cancelLocalGeneration());
+  }
+
+  Future<void> _cancelLocalGeneration() async {
+    try {
+      await bridge.cancelMessage();
+    } on MissingPluginException {
+      // No native bridge on this platform (e.g. desktop): nothing to cancel.
+    } on PlatformException catch (error) {
+      debugPrint('Local cancel failed: ${error.message}');
+    }
+  }
+
+  /// Finalizes a cancelled reply by committing whatever streamed in so far.
+  void _commitStreamingPartial() {
+    if (_disposed) return;
+    final streaming = _streaming;
+    final reasoning = _finishStreaming();
+    final partial = streaming?.text.trim() ?? '';
+    if (partial.isNotEmpty) {
+      addAssistantMessage(partial, reasoning: reasoning);
+    }
+  }
+
+  /// Applies one streamed fragment to the in-flight reply. Cloud deltas arrive
+  /// through the [AgentStreamSink]; local (native) deltas arrive as
+  /// `assistantDelta` events and are routed here too.
+  void _handleStreamDelta(AgentStreamDelta delta) {
+    final streaming = _streaming;
+    if (streaming == null || _disposed) return;
+    if (delta.reset) streaming.resetContent();
+    final content = delta.content;
+    final hasContent = content != null && content.isNotEmpty;
+    if (hasContent) streaming.addContent(content);
+    final reasoning = delta.reasoning;
+    if (reasoning != null && reasoning.isNotEmpty) {
+      streaming.addReasoning(reasoning);
+    }
+    // Schedule the on-screen update first; only then feed the voice engine, and
+    // only when this reply is actually being spoken. Keeping it after the notify
+    // (and out of the common typed-message path) ensures TTS can never delay or
+    // interfere with the live streaming text.
+    _scheduleStreamNotify();
+    if (hasContent && voice.isVoicingReply) {
+      voice.pushReplyText(streaming.text);
+    }
+  }
+
+  /// Coalesces frequent streaming updates into ~30fps repaints so token bursts
+  /// don't trigger a rebuild per token.
+  void _scheduleStreamNotify() {
+    if (_streamNotifyTimer != null || _disposed) return;
+    _streamNotifyTimer = Timer(const Duration(milliseconds: 33), () {
+      _streamNotifyTimer = null;
+      if (_disposed) return;
+      notifyListeners();
+      maybeStickChatToBottom(messageScrollController);
+    });
+  }
+
+  /// Tears down streaming state and returns the accumulated reasoning (or null).
+  String? _finishStreaming() {
+    _streamNotifyTimer?.cancel();
+    _streamNotifyTimer = null;
+    final streaming = _streaming;
+    _streaming = null;
+    if (streaming == null) return null;
+    final reasoning = streaming.reasoning.trim();
+    return reasoning.isEmpty ? null : reasoning;
+  }
+
+  void addAssistantMessage(String text, {String? reasoning}) {
     if (_disposed) return;
     appendMessage(
-      ChatMessage(author: 'StudyOS Agent', text: text, isUser: false),
+      ChatMessage(
+        author: 'StudyOS Agent',
+        text: text,
+        isUser: false,
+        reasoning: reasoning,
+      ),
     );
     _status = text;
     _notify();
     unawaited(HapticFeedback.lightImpact());
+    voice.endSpokenReply(text);
   }
 
   Future<void> loadSessions() async {
@@ -476,7 +594,10 @@ class AppShellController extends ChangeNotifier {
       final prompt = await bridge.consumePendingIntentPrompt();
       final text = prompt?.trim();
       if (_disposed || text == null || text.isEmpty) return;
-      onOpenChatRequest?.call(ChatRouteRequest(prompt: text));
+      // A pending intent means another app (assist gesture, voice command, share
+      // sheet) explicitly handed StudyOS a request to act on, so auto-send it —
+      // matching the foreground `voicePrompt` path rather than just prefilling.
+      onOpenChatRequest?.call(ChatRouteRequest(prompt: text, autosend: true));
     } on MissingPluginException {
       // Non-iOS platforms do not expose App Intents.
     } on PlatformException catch (error) {

@@ -19,6 +19,19 @@ class CampusCanteen {
       menus: menus.where((menu) => menu.matches(preference)).toList(),
     );
   }
+
+  CampusCanteen forWeek(DateTime day) {
+    final start = _weekStart(day);
+    final end = start.add(const Duration(days: 7));
+    final weekMenus = menus.where((menu) {
+      final date = menu.parsedDate;
+      return date != null && !date.isBefore(start) && date.isBefore(end);
+    }).toList();
+    weekMenus.sort((first, second) {
+      return first.parsedDate!.compareTo(second.parsedDate!);
+    });
+    return CampusCanteen(id: id, name: name, menus: weekMenus);
+  }
 }
 
 class CampusMenuEntry {
@@ -45,7 +58,11 @@ class CampusMenu {
   final List<String> icons;
   final String? studentPrice;
 
-  DateTime? get parsedDate => DateTime.tryParse(date);
+  DateTime? get parsedDate {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
 
   bool matches(FoodPreference preference) {
     final normalized = icons.map((icon) => icon.toLowerCase()).toSet();
@@ -123,4 +140,9 @@ CampusCanteenAction _action({
       'destination': destination,
     }),
   );
+}
+
+DateTime _weekStart(DateTime day) {
+  final date = DateTime(day.year, day.month, day.day);
+  return date.subtract(Duration(days: date.weekday - DateTime.monday));
 }

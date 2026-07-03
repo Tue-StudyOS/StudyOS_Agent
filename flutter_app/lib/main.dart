@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -61,9 +62,11 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
 
   Future<void> _handleLogin(UserSession session, String password) async {
     final profileClient = TuebingenProfileClient();
-    final prefill = await profileClient
-        .fetch(username: session.username, password: password)
-        .whenComplete(profileClient.close);
+    final prefill = await _fetchLoginPrefill(
+      profileClient: profileClient,
+      username: session.username,
+      password: password,
+    );
     final enrichedSession = UserSession(
       username: session.username,
       displayName: prefill.displayName,
@@ -75,6 +78,30 @@ class _StudyOsAgentAppState extends State<StudyOsAgentApp> {
     if (!mounted) return;
     setState(() => _session = enrichedSession);
     _syncAuthState();
+  }
+
+  Future<StudentProfilePrefill> _fetchLoginPrefill({
+    required TuebingenProfileClient profileClient,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      return await profileClient.fetch(username: username, password: password);
+    } on Object catch (error) {
+      if (!kIsWeb || !_isBrowserFetchFailure(error)) rethrow;
+      throw const TuebingenProfileException(
+        'ALMA sign-in needs a backend on web because browsers block direct '
+        'requests to alma.uni-tuebingen.de.',
+      );
+    } finally {
+      await profileClient.close();
+    }
+  }
+
+  bool _isBrowserFetchFailure(Object error) {
+    final message = error.toString();
+    return message.contains('ClientException') &&
+        message.contains('Failed to fetch');
   }
 
   Future<void> _handleOnboardingComplete(OnboardingProfile profile) async {

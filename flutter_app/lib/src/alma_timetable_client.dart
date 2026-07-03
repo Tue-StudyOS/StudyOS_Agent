@@ -1,6 +1,7 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import 'alma_login_form.dart';
 import 'ics_parser.dart';
 import 'timetable_models.dart';
 
@@ -67,9 +68,10 @@ class AlmaTimetableClient {
     required String password,
   }) async {
     final start = await _get(Uri.parse('$_baseUrl$_startPath'));
-    final form = _LoginForm.fromHtml(
-      start.body,
-      start.request?.url ?? Uri.parse('$_baseUrl$_startPath'),
+    final form = extractAlmaLoginForm(
+      html: start.body,
+      pageUrl: start.request?.url ?? Uri.parse('$_baseUrl$_startPath'),
+      exception: AlmaTimetableException.new,
     );
     final payload = <String, String>{
       ...form.payload,
@@ -77,7 +79,7 @@ class AlmaTimetableClient {
       'fdsa': password,
     };
     payload.putIfAbsent('submit', () => '');
-    final response = await _post(form.actionUrl, payload);
+    final response = await _post(form.action, payload);
     if (_looksLoggedOut(response.body)) {
       throw const AlmaTimetableException('ALMA login failed.');
     }
@@ -125,37 +127,6 @@ class AlmaTimetableClient {
             .trim();
       }
     }
-  }
-}
-
-class _LoginForm {
-  const _LoginForm({required this.actionUrl, required this.payload});
-
-  final Uri actionUrl;
-  final Map<String, String> payload;
-
-  static _LoginForm fromHtml(String html, Uri pageUrl) {
-    final document = html_parser.parse(html);
-    final form =
-        document.querySelector('form#loginForm') ??
-        document.querySelector('form#mobileLoginForm');
-    if (form == null) {
-      throw const AlmaTimetableException('Could not find ALMA login form.');
-    }
-    final action = form.attributes['action'] ?? '';
-    final payload = <String, String>{};
-    for (final input in form.querySelectorAll('input')) {
-      final name = input.attributes['name'];
-      final type = input.attributes['type']?.toLowerCase();
-      if (name == null ||
-          name.isEmpty ||
-          type == 'checkbox' ||
-          type == 'button') {
-        continue;
-      }
-      payload[name] = input.attributes['value'] ?? '';
-    }
-    return _LoginForm(actionUrl: pageUrl.resolve(action), payload: payload);
   }
 }
 

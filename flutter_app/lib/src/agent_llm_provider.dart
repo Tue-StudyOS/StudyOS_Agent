@@ -22,6 +22,8 @@ class AgentLlmRequest {
     required this.readSchedule,
     required this.mailTools,
     required this.onToolTrace,
+    this.onDelta,
+    this.cancelToken,
   });
 
   final AgentConfig config;
@@ -34,6 +36,14 @@ class AgentLlmRequest {
   final Future<String> Function() readSchedule;
   final MailToolRunner mailTools;
   final void Function(ToolTrace trace) onToolTrace;
+
+  /// Optional sink for streamed reply fragments. Cloud uses it for SSE; the
+  /// local provider streams via the native EventChannel instead and ignores it.
+  final AgentStreamSink? onDelta;
+
+  /// Optional handle to abort the request mid-flight. Cloud aborts its HTTP
+  /// stream; the local provider is cancelled via the native bridge instead.
+  final AgentCancelToken? cancelToken;
 }
 
 abstract class AgentLlmProvider {
@@ -116,6 +126,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       systemPrompt: systemPrompt,
       memory: request.memoryText,
       localModelPath: request.config.localModelPath,
+      localBackend: request.config.localBackend.name,
     );
     final toolContext = StudyOsToolContext(
       promptContext: request.context,
@@ -165,6 +176,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
         systemPrompt: systemPrompt,
         memory: request.memoryText,
         localModelPath: request.config.localModelPath,
+        localBackend: request.config.localBackend.name,
       );
     }
     return response;
@@ -299,6 +311,8 @@ class CloudLlmProvider implements AgentLlmProvider {
       readSchedule: request.readSchedule,
       mailTools: request.mailTools,
       onToolTrace: request.onToolTrace,
+      onDelta: request.onDelta,
+      cancelToken: request.cancelToken,
     );
   }
 }

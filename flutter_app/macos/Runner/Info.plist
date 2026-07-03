@@ -26,7 +26,11 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>StudyOS Agent uses the microphone for speech input when voice features are enabled.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>StudyOS Agent uses speech recognition to transcribe spoken assistant requests.</string>
 </dict>
 </plist>

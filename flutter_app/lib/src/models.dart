@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'tool_trace.dart';
@@ -7,12 +8,74 @@ export 'mail_models.dart';
 export 'timetable_models.dart';
 export 'tool_trace.dart';
 
+/// A fragment of a streamed assistant turn. [content] carries answer text,
+/// [reasoning] carries a "thinking" fragment, and [reset] signals the live
+/// buffer should be cleared (e.g. pre-tool content is discarded before the
+/// follow-up answer streams).
+class AgentStreamDelta {
+  const AgentStreamDelta({this.content, this.reasoning, this.reset = false});
+
+  final String? content;
+  final String? reasoning;
+  final bool reset;
+}
+
+/// Sink that receives [AgentStreamDelta]s as an assistant reply streams in.
+typedef AgentStreamSink = void Function(AgentStreamDelta delta);
+
+/// Raised when an in-flight reply is cancelled by the user (Stop button).
+class AgentCancelledException implements Exception {
+  const AgentCancelledException();
+
+  @override
+  String toString() => 'The request was cancelled.';
+}
+
+/// Cooperative cancellation handle for an in-flight assistant request. The
+/// controller holds one per send and calls [cancel] when the user taps Stop;
+/// the cloud client aborts its streaming subscription via [whenCancelled].
+class AgentCancelToken {
+  final Completer<void> _completer = Completer<void>();
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  /// Completes the moment [cancel] is first called.
+  Future<void> get whenCancelled => _completer.future;
+
+  void cancel() {
+    if (_cancelled) return;
+    _cancelled = true;
+    if (!_completer.isCompleted) _completer.complete();
+  }
+}
+
+/// Mutable accumulator for the in-progress assistant reply. The controller
+/// owns one while a reply streams; the UI renders a live bubble from it.
+class StreamingAssistantMessage {
+  final StringBuffer _text = StringBuffer();
+  final StringBuffer _reasoning = StringBuffer();
+
+  String get text => _text.toString();
+  String get reasoning => _reasoning.toString();
+  bool get hasText => _text.isNotEmpty;
+  bool get hasReasoning => _reasoning.isNotEmpty;
+
+  void addContent(String fragment) => _text.write(fragment);
+  void addReasoning(String fragment) => _reasoning.write(fragment);
+
+  /// Discards accumulated answer text (e.g. a pre-tool turn) while keeping any
+  /// reasoning gathered so far.
+  void resetContent() => _text.clear();
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.author,
     required this.text,
     required this.isUser,
     this.trace,
+    this.reasoning,
   });
 
   ChatMessage.toolTrace({
@@ -23,6 +86,7 @@ class ChatMessage {
   }) : author = 'Tool',
        text = summary,
        isUser = false,
+       reasoning = null,
        trace = ToolTrace(
          toolName: toolName,
          status: status,
@@ -35,6 +99,9 @@ class ChatMessage {
   final bool isUser;
   final ToolTrace? trace;
 
+  /// Optional model "thinking"/reasoning trace, shown in a collapsed panel.
+  final String? reasoning;
+
   bool get isTrace => trace != null;
 
   Map<String, Object?> toJson() {
@@ -43,6 +110,7 @@ class ChatMessage {
       'text': text,
       'isUser': isUser,
       if (trace != null) 'trace': trace!.toJson(),
+      if (reasoning != null && reasoning!.isNotEmpty) 'reasoning': reasoning,
     };
   }
 
@@ -51,16 +119,27 @@ class ChatMessage {
     final trace = rawTrace is Map
         ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
         : null;
+    final reasoning = json['reasoning']?.toString();
     return ChatMessage(
       author: json['author']?.toString() ?? 'StudyOS Agent',
       text: json['text']?.toString() ?? '',
       isUser: json['isUser'] == true,
       trace: trace,
+      reasoning: reasoning == null || reasoning.isEmpty ? null : reasoning,
     );
   }
 }
 
 enum AgentProvider { local, cloud }
+
+/// Accelerator preference for the on-device (LiteRT-LM) model. [gpu] prefers the
+/// GPU and falls back to CPU when GPU init fails; [cpu] forces CPU only.
+enum LocalBackend { gpu, cpu }
+
+/// Parses a persisted/native backend name, defaulting to [LocalBackend.gpu].
+LocalBackend localBackendFromName(String? name) {
+  return name == LocalBackend.cpu.name ? LocalBackend.cpu : LocalBackend.gpu;
+}
 
 class AgentConfig {
   const AgentConfig({
@@ -70,6 +149,7 @@ class AgentConfig {
     required this.hasApiKey,
     required this.localModelId,
     required this.localModelPath,
+    this.localBackend = LocalBackend.gpu,
   });
 
   const AgentConfig.defaults()
@@ -78,7 +158,8 @@ class AgentConfig {
       cloudModel = '',
       hasApiKey = false,
       localModelId = 'gemma-4-e2b-it',
-      localModelPath = '';
+      localModelPath = '',
+      localBackend = LocalBackend.gpu;
 
   final AgentProvider provider;
   final String cloudEndpoint;
@@ -86,6 +167,7 @@ class AgentConfig {
   final bool hasApiKey;
   final String localModelId;
   final String localModelPath;
+  final LocalBackend localBackend;
 
   bool get usesCloud => provider == AgentProvider.cloud;
 
@@ -96,6 +178,7 @@ class AgentConfig {
     bool? hasApiKey,
     String? localModelId,
     String? localModelPath,
+    LocalBackend? localBackend,
   }) {
     return AgentConfig(
       provider: provider ?? this.provider,
@@ -104,6 +187,7 @@ class AgentConfig {
       hasApiKey: hasApiKey ?? this.hasApiKey,
       localModelId: localModelId ?? this.localModelId,
       localModelPath: localModelPath ?? this.localModelPath,
+      localBackend: localBackend ?? this.localBackend,
     );
   }
 }
@@ -201,6 +285,7 @@ class NativeEvent {
     this.bytesReceived,
     this.totalBytes,
     this.trace,
+    this.reset = false,
   });
 
   factory NativeEvent.fromMap(Map<String, Object?> map) {
@@ -216,6 +301,7 @@ class NativeEvent {
       trace: rawTrace is Map
           ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
           : null,
+      reset: map['reset'] == true,
     );
   }
 
@@ -227,6 +313,10 @@ class NativeEvent {
   final int? bytesReceived;
   final int? totalBytes;
   final ToolTrace? trace;
+
+  /// For `assistantDelta` events: clear the live streaming buffer before
+  /// applying [message] (used between tool rounds).
+  final bool reset;
 
   static double? _toDouble(Object? value) {
     return switch (value) {

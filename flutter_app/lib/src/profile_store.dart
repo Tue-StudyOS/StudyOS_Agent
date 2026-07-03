@@ -10,10 +10,14 @@ class ProfileStore {
     SharedPreferencesAsync? preferences,
     FlutterSecureStorage? secureStorage,
   }) : _preferences = preferences ?? SharedPreferencesAsync(),
-       _secureStorage = secureStorage ?? const FlutterSecureStorage();
+       _secureStorage = secureStorage ?? _defaultSecureStorage;
 
   static const String _profileKey = 'studyos.profile.v1';
   static const String _passwordKey = 'studyos.credentials.password.v1';
+  static const FlutterSecureStorage _defaultSecureStorage =
+      FlutterSecureStorage(
+        mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+      );
 
   final SharedPreferencesAsync _preferences;
   final FlutterSecureStorage _secureStorage;
