@@ -7,13 +7,21 @@ import '../widgets/secondary_destinations_drawer.dart';
 import '../widgets/shell_app_bar.dart';
 import '../widgets/study_bottom_bar.dart';
 
-class ShellScaffold extends StatelessWidget {
+class ShellScaffold extends StatefulWidget {
   const ShellScaffold({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
+  State<ShellScaffold> createState() => _ShellScaffoldState();
+}
+
+class _ShellScaffoldState extends State<ShellScaffold> {
+  Offset _contentOffset = Offset.zero;
+
+  @override
   Widget build(BuildContext context) {
+    final navigationShell = widget.navigationShell;
     final selectedIndex = navigationShell.currentIndex;
     return ListenableBuilder(
       listenable: AppShellScope.of(context),
@@ -30,12 +38,7 @@ class ShellScaffold extends StatelessWidget {
               FloatingActionButtonLocation.centerDocked,
           bottomNavigationBar: StudyBottomBar(
             selectedIndex: selectedIndex,
-            onDestinationSelected: (index) {
-              navigationShell.goBranch(
-                index,
-                initialLocation: index == navigationShell.currentIndex,
-              );
-            },
+            onDestinationSelected: _goBranch,
           ),
           body: SafeArea(
             child: Center(
@@ -48,7 +51,29 @@ class ShellScaffold extends StatelessWidget {
                   child: Column(
                     children: <Widget>[
                       ShellAppBar(title: _titleForIndex(selectedIndex)),
-                      Expanded(child: navigationShell),
+                      Expanded(
+                        child: GestureDetector(
+                          key: const ValueKey<String>('shell-swipe-area'),
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragEnd: (details) {
+                            final velocity =
+                                details.primaryVelocity?.round() ?? 0;
+                            if (velocity.abs() < 250) return;
+                            final direction = velocity < 0 ? 1 : -1;
+                            final nextIndex = selectedIndex + direction;
+                            if (nextIndex < 0 || nextIndex > 3) return;
+                            _goBranch(nextIndex);
+                          },
+                          child: ClipRect(
+                            child: AnimatedSlide(
+                              offset: _contentOffset,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeOutCubic,
+                              child: navigationShell,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -58,6 +83,24 @@ class ShellScaffold extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _goBranch(int index) {
+    final currentIndex = widget.navigationShell.currentIndex;
+    if (index != currentIndex) {
+      setState(() {
+        _contentOffset = Offset(index > currentIndex ? 1 : -1, 0);
+      });
+    }
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == currentIndex,
+    );
+    if (index == currentIndex) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _contentOffset = Offset.zero);
+    });
   }
 
   String _titleForIndex(int index) {

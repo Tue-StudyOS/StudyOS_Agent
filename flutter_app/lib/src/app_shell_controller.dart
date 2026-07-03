@@ -91,6 +91,12 @@ class AppShellController extends ChangeNotifier {
   AgentConfig get agentConfig => _agentConfig;
   String get memoryText => _memoryText;
   TimetableSnapshot? get timetable => _timetable;
+  DailyBriefingState get dailyBriefing => DailyBriefingState.fromLocalState(
+    profile: _profile,
+    timetable: _timetable,
+    memoryText: _memoryText,
+    now: DateTime.now(),
+  );
   String? get timetableError => _timetableError;
   Map<String, Object?> get worldState => _worldState;
   String get status => _status;
@@ -564,6 +570,11 @@ class AppShellController extends ChangeNotifier {
         _notify();
       }
     }
+  }
+
+  Future<void> refreshHomeFeed() async {
+    await refreshTimetable();
+    await _loadMemory();
   }
 
   Future<String> readScheduleForAgent() async {

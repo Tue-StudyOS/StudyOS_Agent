@@ -87,16 +87,21 @@ void main() {
               foodPreference: FoodPreference.vegan,
             ),
             config: const AgentConfig.defaults(),
+            briefing: _testBriefing(),
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedTarget = 'mail',
             onOpenMaps: () => selectedTarget = 'maps',
             onOpenCampus: () => selectedTarget = 'campus',
             onOpenSchedule: () => selectedTarget = 'schedule',
+            onRefresh: () async {},
           ),
         ),
       ),
     );
+
+    expect(find.text('Hi Ada'), findsOneWidget);
+    expect(find.text('M.Sc. AI · Semester 2'), findsOneWidget);
 
     final campusCard = find.byKey(const ValueKey<String>('home-campus-card'));
     await tester.scrollUntilVisible(
@@ -119,17 +124,24 @@ void main() {
           body: HomeView(
             profile: null,
             config: const AgentConfig.defaults(),
+            briefing: _testBriefing(),
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedTarget = 'mail',
             onOpenMaps: () => selectedTarget = 'maps',
             onOpenCampus: () => selectedTarget = 'campus',
             onOpenSchedule: () => selectedTarget = 'schedule',
+            onRefresh: () async {},
           ),
         ),
       ),
     );
 
+    await tester.scrollUntilVisible(
+      find.text('Inbox'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Inbox'));
 
     expect(selectedTarget, 'mail');
@@ -147,12 +159,14 @@ void main() {
           body: HomeView(
             profile: null,
             config: const AgentConfig.defaults(),
+            briefing: _testBriefing(),
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedTarget = 'mail',
             onOpenMaps: () => selectedTarget = 'maps',
             onOpenCampus: () => selectedTarget = 'campus',
             onOpenSchedule: () => selectedTarget = 'schedule',
+            onRefresh: () async {},
           ),
         ),
       ),
@@ -167,6 +181,138 @@ void main() {
     await tester.tap(mapsCard);
 
     expect(selectedTarget, 'maps');
+  });
+
+  testWidgets('home renders fallback daily briefing before cards', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: null,
+            config: const AgentConfig.defaults(),
+            briefing: DailyBriefingState.fromLocalState(
+              profile: null,
+              timetable: null,
+              memoryText: '',
+              now: DateTime(2026, 7, 1, 9),
+            ),
+            memoryText: '',
+            timetable: null,
+            onOpenMail: () {},
+            onOpenMaps: () {},
+            onOpenCampus: () {},
+            onOpenSchedule: () {},
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Nothing from my side right now.'), findsOneWidget);
+    expect(
+      find.textContaining('No assistant update is available'),
+      findsOneWidget,
+    );
+    expect(find.byType(RefreshIndicator), findsOneWidget);
+  });
+
+  test('daily briefing summarizes the next lecture from structured state', () {
+    final now = DateTime(2026, 7, 1, 9);
+    final briefing = DailyBriefingState.fromLocalState(
+      profile: const OnboardingProfile(
+        displayName: 'Ada',
+        username: 'ada42',
+        email: null,
+        degreeProgram: 'M.Sc. AI',
+        semester: 2,
+        livesInTuebingen: true,
+      ),
+      timetable: TimetableSnapshot(
+        refreshedAt: now,
+        sourceTerm: 'Sommer 2026',
+        events: <LectureEvent>[
+          LectureEvent(
+            id: 'algorithms',
+            title: 'Algorithms',
+            start: now.add(const Duration(minutes: 45)),
+            end: now.add(const Duration(hours: 2)),
+            location: 'Room 101',
+          ),
+        ],
+      ),
+      memoryText: '',
+      now: now,
+    );
+
+    expect(briefing.headline, 'Assistant summary');
+    expect(briefing.messages.first.title, 'Next lecture');
+    expect(briefing.messages.first.body, contains('Algorithms'));
+    expect(briefing.messages.first.body, contains('in 45 min'));
+    expect(briefing.messages.last.title, 'Daily plan');
+  });
+
+  testWidgets('shell swipes between primary tabs and updates location', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
+
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: null,
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+    );
+    final authState = AuthRouterState(
+      initialSession: const UserSession(username: 'ada42'),
+      initialProfile: profile,
+      initialLoading: false,
+    );
+    final controller = AppShellController(
+      initialProfile: profile,
+      initialOnLogout: () {},
+      initialOnSaveProfile: (_) async {},
+    );
+    final router = buildAppRouter(
+      authState: authState,
+      shellController: () => controller,
+      onLogin: (_, _) async {},
+      onOnboardingComplete: (_) async {},
+    );
+    addTearDown(router.dispose);
+    addTearDown(controller.dispose);
+    addTearDown(authState.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: buildStudyOsTheme(), routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/home');
+
+    await tester.fling(
+      find.byKey(const ValueKey<String>('shell-swipe-area')),
+      const Offset(-500, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/schedule');
+
+    await tester.fling(
+      find.byKey(const ValueKey<String>('shell-swipe-area')),
+      const Offset(500, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/home');
   });
 
   testWidgets('chat route prompt is applied after route build', (
@@ -219,4 +365,13 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(controller.inputController.text, 'Campus Library');
   });
+}
+
+DailyBriefingState _testBriefing() {
+  return DailyBriefingState.fromLocalState(
+    profile: null,
+    timetable: null,
+    memoryText: '',
+    now: DateTime(2026, 7, 1, 9),
+  );
 }
