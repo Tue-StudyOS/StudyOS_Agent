@@ -276,11 +276,9 @@ class _FakeNativeBridge extends NativeBridge {
   }) : responses = null,
        prompts = null;
 
-  _FakeNativeBridge.sequence(
-    this.responses, {
-    this.prompts,
-    this.nativeTools = const <Map<String, Object?>>[],
-  }) : response = '';
+  _FakeNativeBridge.sequence(this.responses, {this.prompts})
+    : response = '',
+      nativeTools = const <Map<String, Object?>>[];
 
   final String response;
   final List<String>? responses;
