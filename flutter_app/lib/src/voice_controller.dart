@@ -455,8 +455,11 @@ class VoiceController extends ChangeNotifier {
 
   @override
   void dispose() {
-    unawaited(_speech.cancel());
-    unawaited(_tts.stop());
+    // Best-effort teardown: swallow platform errors (e.g. a missing plugin in
+    // tests, or an unavailable engine) so dispose never emits an unhandled
+    // async exception.
+    unawaited(_speech.cancel().catchError((_) {}));
+    unawaited(_tts.stop().catchError((_) {}));
     super.dispose();
   }
 }

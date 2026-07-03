@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/agent_config_store.dart';
 import 'package:studyos_agent/src/agent_llm_provider.dart';
 import 'package:studyos_agent/src/agent_request_runner.dart';
+import 'package:studyos_agent/src/agent_exception.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/memory_store.dart';
@@ -91,6 +92,7 @@ void main() {
           ),
           memoryText: '',
           appendMemory: (_) async {},
+          readMemory: () async => '',
           readSchedule: () async => 'No schedule.',
           mailTools: MailToolRunner(
             repository: MailRepository.test(),
@@ -147,6 +149,7 @@ void main() {
         ),
         memoryText: '',
         appendMemory: (_) async {},
+        readMemory: () async => '',
         readSchedule: () async => 'No schedule.',
         mailTools: MailToolRunner(
           repository: MailRepository.test(),
@@ -160,6 +163,87 @@ void main() {
     expect(
       bridge.lastSystemPrompt,
       isNot(contains(nativeSetFlashlightToolName)),
+    );
+  });
+
+  test('local provider reads fresh memory during tool execution', () async {
+    final prompts = <String>[];
+    final bridge = _FakeNativeBridge.sequence(<String>[
+      '[TOOL:read_memories:{}]',
+      'I used fresh memory.',
+    ], prompts: prompts);
+    final provider = LocalNativeLlmProvider(bridge);
+
+    final response = await provider.send(
+      AgentLlmRequest(
+        config: const AgentConfig(
+          provider: AgentProvider.local,
+          cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+          cloudModel: 'test-model',
+          hasApiKey: false,
+          localModelId: 'test-local',
+          localModelPath: '/tmp/model.litertlm',
+        ),
+        sessions: const <ChatSession>[],
+        activeSessionId: null,
+        userText: 'What should I remember?',
+        context: const PromptContext(
+          profile: null,
+          memory: 'Stale memory snapshot',
+          worldState: <String, Object?>{},
+        ),
+        memoryText: 'Stale memory snapshot',
+        appendMemory: (_) async {},
+        readMemory: () async => 'Fresh memory from disk',
+        readSchedule: () async => 'No schedule.',
+        mailTools: MailToolRunner(
+          repository: MailRepository.test(),
+          profile: null,
+        ),
+        onToolTrace: (_) {},
+      ),
+    );
+
+    expect(response, 'I used fresh memory.');
+    expect(prompts.last, contains('Fresh memory from disk'));
+    expect(prompts.last, isNot(contains('Stale memory snapshot')));
+  });
+
+  test('local provider throws when tool rounds are exhausted', () async {
+    final bridge = _FakeNativeBridge('[TOOL:read_memories:{}]');
+    final provider = LocalNativeLlmProvider(bridge);
+
+    await expectLater(
+      provider.send(
+        AgentLlmRequest(
+          config: const AgentConfig(
+            provider: AgentProvider.local,
+            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+            cloudModel: 'test-model',
+            hasApiKey: false,
+            localModelId: 'test-local',
+            localModelPath: '/tmp/model.litertlm',
+          ),
+          sessions: const <ChatSession>[],
+          activeSessionId: null,
+          userText: 'Loop forever',
+          context: const PromptContext(
+            profile: null,
+            memory: '',
+            worldState: <String, Object?>{},
+          ),
+          memoryText: '',
+          appendMemory: (_) async {},
+          readMemory: () async => '',
+          readSchedule: () async => 'No schedule.',
+          mailTools: MailToolRunner(
+            repository: MailRepository.test(),
+            profile: null,
+          ),
+          onToolTrace: (_) {},
+        ),
+      ),
+      throwsA(isA<AgentException>()),
     );
   });
 }
@@ -189,11 +273,19 @@ class _FakeNativeBridge extends NativeBridge {
   _FakeNativeBridge(
     this.response, {
     this.nativeTools = const <Map<String, Object?>>[],
-  });
+  }) : responses = null,
+       prompts = null;
+
+  _FakeNativeBridge.sequence(this.responses, {this.prompts})
+    : response = '',
+      nativeTools = const <Map<String, Object?>>[];
 
   final String response;
+  final List<String>? responses;
+  final List<String>? prompts;
   final List<Map<String, Object?>> nativeTools;
   String? lastSystemPrompt;
+  int _responseIndex = 0;
 
   @override
   Future<Map<String, Object?>> getNativeToolCapabilities() async {
@@ -209,6 +301,11 @@ class _FakeNativeBridge extends NativeBridge {
     String? localBackend,
   }) async {
     lastSystemPrompt = systemPrompt;
-    return response;
+    prompts?.add(text);
+    final queued = responses;
+    if (queued == null) return response;
+    final index = _responseIndex.clamp(0, queued.length - 1).toInt();
+    _responseIndex += 1;
+    return queued[index];
   }
 }

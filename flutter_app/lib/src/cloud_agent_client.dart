@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'agent_exception.dart';
 import 'cloud_tool_definitions.dart';
 import 'mail_tools.dart';
 import 'models.dart';
@@ -25,6 +26,7 @@ class CloudAgentClient {
   final http.Client _httpClient;
   final StudyOsToolExecutor _toolExecutor;
   final NativeToolRunner? _nativeTools;
+  static const int _maxToolRounds = 3;
 
   Future<String> sendMessage({
     required AgentConfig config,
@@ -42,41 +44,28 @@ class CloudAgentClient {
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
     if (endpoint == null || !endpoint.hasScheme || !endpoint.hasAuthority) {
-      throw const CloudAgentException('Custom AI server URL is not valid.');
+      throw const AgentException('Custom AI server URL is not valid.');
     }
     if (config.cloudModel.trim().isEmpty) {
-      throw const CloudAgentException('Model name is required.');
+      throw const AgentException('Model name is required.');
     }
     if (apiKey.trim().isEmpty) {
-      throw const CloudAgentException('API key is required.');
+      throw const AgentException('API key is required.');
     }
 
     final supportedNativeToolNames =
         await _nativeTools?.supportedToolNames() ?? const <String>{};
-    final request = _requestBody(
+    var request = _requestBody(
       config: config,
       history: history,
       userText: userText,
       context: context,
       supportedNativeToolNames: supportedNativeToolNames,
     );
-    final message = await _fetchTurn(
-      endpoint,
-      apiKey,
-      request,
-      onDelta,
-      cancelToken,
+    final messages = List<Map<String, Object?>>.from(
+      request['messages'] as List,
     );
-    final toolCalls = _toolCalls(message);
-    if (toolCalls.isEmpty) {
-      return _contentFromMessage(message);
-    }
 
-    // A streamed turn that resolved into tool calls carries no user-facing
-    // answer yet; clear the live buffer before the follow-up answer streams.
-    onDelta?.call(const AgentStreamDelta(reset: true));
-
-    final toolMessages = <Map<String, Object?>>[];
     final toolContext = StudyOsToolContext(
       promptContext: context,
       appendMemory: appendMemory,
@@ -85,47 +74,71 @@ class CloudAgentClient {
       mailTools: mailTools,
       nativeTools: _nativeTools,
     );
-    for (final call in toolCalls) {
-      if (cancelToken?.isCancelled ?? false) {
-        throw const AgentCancelledException();
+    for (var round = 0; ; round += 1) {
+      final message = await _fetchTurn(
+        endpoint,
+        apiKey,
+        request,
+        onDelta,
+        cancelToken,
+      );
+      final toolCalls = _toolCalls(message);
+      if (toolCalls.isEmpty) {
+        return _contentFromMessage(message);
       }
-      onToolTrace?.call(_traceForCall(call, 'running'));
-      final String output;
-      try {
-        output = await _toolExecutor.execute(
-          call.name,
-          call.arguments,
-          toolContext,
+      if (round >= _maxToolRounds) {
+        throw const AgentException(
+          'Cloud tool loop exceeded the maximum number of tool rounds.',
         );
-      } on Object catch (error) {
-        onToolTrace?.call(
-          _traceForCall(call, 'failed', output: error.toString()),
-        );
-        rethrow;
       }
-      onToolTrace?.call(_traceForCall(call, 'done', output: output));
-      toolMessages.add(<String, Object?>{
-        'role': 'tool',
-        'tool_call_id': call.id,
-        'content': output,
-      });
-    }
 
-    final followUp = await _fetchTurn(
-      endpoint,
-      apiKey,
-      <String, Object?>{
+      // A streamed turn that resolved into tool calls carries no user-facing
+      // answer yet; clear the live buffer before the follow-up answer streams.
+      onDelta?.call(const AgentStreamDelta(reset: true));
+
+      final toolMessages = <Map<String, Object?>>[];
+      for (final call in toolCalls) {
+        if (cancelToken?.isCancelled ?? false) {
+          throw const AgentCancelledException();
+        }
+        onToolTrace?.call(_traceForCall(call, 'running'));
+        final String output;
+        try {
+          output = await _toolExecutor.execute(
+            call.name,
+            call.arguments,
+            toolContext,
+          );
+        } on Object catch (error) {
+          final failure = _toolFailureOutput(error);
+          onToolTrace?.call(_traceForCall(call, 'failed', output: failure));
+          toolMessages.add(<String, Object?>{
+            'role': 'tool',
+            'tool_call_id': call.id,
+            'content': failure,
+          });
+          continue;
+        }
+        onToolTrace?.call(_traceForCall(call, 'done', output: output));
+        toolMessages.add(<String, Object?>{
+          'role': 'tool',
+          'tool_call_id': call.id,
+          'content': output,
+        });
+      }
+
+      messages
+        ..add(message)
+        ..addAll(toolMessages);
+      request = <String, Object?>{
         'model': config.cloudModel.trim(),
-        'messages': <Map<String, Object?>>[
-          ...List<Map<String, Object?>>.from(request['messages'] as List),
-          message,
-          ...toolMessages,
-        ],
-      },
-      onDelta,
-      cancelToken,
-    );
-    return _contentFromMessage(followUp);
+        'messages': messages,
+        'tools': cloudToolDefinitions(
+          supportedNativeToolNames: supportedNativeToolNames,
+        ),
+        'tool_choice': 'auto',
+      };
+    }
   }
 
   /// Fetches one assistant turn, returning a message map shaped like
@@ -142,10 +155,29 @@ class CloudAgentClient {
       throw const AgentCancelledException();
     }
     if (onDelta == null) {
-      final response = await _post(endpoint, apiKey, body);
+      final response = await _awaitCancellable(
+        _post(endpoint, apiKey, body),
+        cancelToken,
+      );
       return _messageFromResponse(_decodeResponse(response));
     }
     return _streamTurn(endpoint, apiKey, body, onDelta, cancelToken);
+  }
+
+  /// Awaits [future] but abandons it the moment the request is cancelled, so a
+  /// stalled connect (e.g. a misconfigured or unreachable endpoint) unblocks
+  /// Stop immediately instead of hanging until the socket times out. The
+  /// abandoned request keeps running in the background; [Future.any] swallows
+  /// its late completion so it never surfaces as an unhandled error.
+  Future<T> _awaitCancellable<T>(
+    Future<T> future,
+    AgentCancelToken? cancelToken,
+  ) {
+    if (cancelToken == null) return future;
+    final cancelled = cancelToken.whenCancelled.then<T>(
+      (_) => throw const AgentCancelledException(),
+    );
+    return Future.any<T>(<Future<T>>[future, cancelled]);
   }
 
   Future<Map<String, Object?>> _streamTurn(
@@ -161,10 +193,13 @@ class CloudAgentClient {
       ..headers['Accept'] = 'text/event-stream'
       ..body = jsonEncode(<String, Object?>{...body, 'stream': true});
 
-    final response = await _httpClient.send(request);
+    final response = await _awaitCancellable(
+      _httpClient.send(request),
+      cancelToken,
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       await response.stream.drain<void>();
-      throw CloudAgentException(
+      throw AgentException(
         'Custom AI service returned HTTP ${response.statusCode}.',
       );
     }
@@ -331,14 +366,14 @@ class CloudAgentClient {
 
   Map<String, Object?> _decodeResponse(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw CloudAgentException(
+      throw AgentException(
         'Custom AI service returned HTTP ${response.statusCode}.',
       );
     }
 
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, Object?>) {
-      throw const CloudAgentException('Cloud response was not a JSON object.');
+      throw const AgentException('Cloud response was not a JSON object.');
     }
     return decoded;
   }
@@ -346,16 +381,12 @@ class CloudAgentClient {
   Map<String, Object?> _messageFromResponse(Map<String, Object?> decoded) {
     final choices = decoded['choices'];
     if (choices is! List || choices.isEmpty || choices.first is! Map) {
-      throw const CloudAgentException(
-        'Cloud response did not include choices.',
-      );
+      throw const AgentException('Cloud response did not include choices.');
     }
     final choice = Map<String, Object?>.from(choices.first as Map);
     final message = choice['message'];
     if (message is! Map) {
-      throw const CloudAgentException(
-        'Cloud response did not include content.',
-      );
+      throw const AgentException('Cloud response did not include content.');
     }
     return Map<String, Object?>.from(message);
   }
@@ -363,7 +394,7 @@ class CloudAgentClient {
   String _contentFromMessage(Map<String, Object?> message) {
     final content = message['content']?.toString();
     if (content == null || content.trim().isEmpty) {
-      throw const CloudAgentException('Cloud response content was empty.');
+      throw const AgentException('Cloud response content was empty.');
     }
     return content;
   }
@@ -425,11 +456,7 @@ class _StreamingToolCall {
   final StringBuffer arguments = StringBuffer();
 }
 
-class CloudAgentException implements Exception {
-  const CloudAgentException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
+String _toolFailureOutput(Object error) {
+  final message = error.toString().trim();
+  return message.isEmpty ? 'Tool failed.' : 'Tool failed: $message';
 }

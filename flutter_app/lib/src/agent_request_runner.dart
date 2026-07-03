@@ -58,6 +58,7 @@ class AgentRequestRunner {
         context: context,
         memoryText: memoryText,
         appendMemory: appendMemory,
+        readMemory: memoryStore.read,
         readSchedule: readSchedule,
         mailTools: mailTools,
         onToolTrace: onToolTrace,

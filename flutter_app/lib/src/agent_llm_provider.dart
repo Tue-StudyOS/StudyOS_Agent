@@ -1,4 +1,5 @@
 import 'agent_config_store.dart';
+import 'agent_exception.dart';
 import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
 import 'mail_tools.dart';
@@ -19,6 +20,7 @@ class AgentLlmRequest {
     required this.context,
     required this.memoryText,
     required this.appendMemory,
+    required this.readMemory,
     required this.readSchedule,
     required this.mailTools,
     required this.onToolTrace,
@@ -33,6 +35,7 @@ class AgentLlmRequest {
   final PromptContext context;
   final String memoryText;
   final Future<void> Function(String text) appendMemory;
+  final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
   final MailToolRunner mailTools;
   final void Function(ToolTrace trace) onToolTrace;
@@ -131,7 +134,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
     final toolContext = StudyOsToolContext(
       promptContext: request.context,
       appendMemory: request.appendMemory,
-      readMemory: () async => request.memoryText,
+      readMemory: request.readMemory,
       readSchedule: request.readSchedule,
       mailTools: request.mailTools,
       nativeTools: nativeTools,
@@ -155,15 +158,12 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
             toolContext,
           );
         } on Object catch (error) {
+          final failedOutput = _toolFailureOutput(error);
           request.onToolTrace(
-            _traceForCall(
-              call,
-              'failed',
-              callId: callId,
-              output: error.toString(),
-            ),
+            _traceForCall(call, 'failed', callId: callId, output: failedOutput),
           );
-          rethrow;
+          feedback.add('- ${call.name}: $failedOutput');
+          continue;
         }
         request.onToolTrace(
           _traceForCall(call, 'done', callId: callId, output: output),
@@ -177,6 +177,14 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
         memory: request.memoryText,
         localModelPath: request.config.localModelPath,
         localBackend: request.config.localBackend.name,
+      );
+    }
+    // Mirror the cloud client: a turn that still requests tools after the
+    // round budget is exhausted is a stuck loop, not an answer. Surface it as
+    // an error instead of returning raw tool directives to the user.
+    if (_toolCalls(response).isNotEmpty) {
+      throw const AgentException(
+        'Local tool loop exceeded the maximum number of tool rounds.',
       );
     }
     return response;
@@ -262,6 +270,11 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
   }
 }
 
+String _toolFailureOutput(Object error) {
+  final message = error.toString().trim();
+  return message.isEmpty ? 'Tool failed.' : 'Tool failed: $message';
+}
+
 class _LocalToolCall {
   const _LocalToolCall({required this.name, required this.arguments});
 
@@ -295,7 +308,7 @@ class CloudLlmProvider implements AgentLlmProvider {
   Future<String> send(AgentLlmRequest request) async {
     final apiKey = await _configStore.readApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      throw const CloudAgentException('Cloud API key is required.');
+      throw const AgentException('Cloud API key is required.');
     }
     return _cloudClient.sendMessage(
       config: request.config,
