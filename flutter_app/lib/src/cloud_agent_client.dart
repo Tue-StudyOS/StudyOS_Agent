@@ -108,11 +108,17 @@ class CloudAgentClient {
             call.arguments,
             toolContext,
           );
-          onToolTrace?.call(_traceForCall(call, 'done', output: output));
         } on Object catch (error) {
-          output = _toolFailureOutput(error);
-          onToolTrace?.call(_traceForCall(call, 'failed', output: output));
+          final failure = _toolFailureOutput(error);
+          onToolTrace?.call(_traceForCall(call, 'failed', output: failure));
+          toolMessages.add(<String, Object?>{
+            'role': 'tool',
+            'tool_call_id': call.id,
+            'content': failure,
+          });
+          continue;
         }
+        onToolTrace?.call(_traceForCall(call, 'done', output: output));
         toolMessages.add(<String, Object?>{
           'role': 'tool',
           'tool_call_id': call.id,
