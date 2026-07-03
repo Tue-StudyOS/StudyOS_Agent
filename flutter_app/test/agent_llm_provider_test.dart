@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/agent_config_store.dart';
 import 'package:studyos_agent/src/agent_llm_provider.dart';
 import 'package:studyos_agent/src/agent_request_runner.dart';
+import 'package:studyos_agent/src/agent_exception.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/memory_store.dart';
@@ -206,6 +207,44 @@ void main() {
     expect(response, 'I used fresh memory.');
     expect(prompts.last, contains('Fresh memory from disk'));
     expect(prompts.last, isNot(contains('Stale memory snapshot')));
+  });
+
+  test('local provider throws when tool rounds are exhausted', () async {
+    final bridge = _FakeNativeBridge('[TOOL:read_memories:{}]');
+    final provider = LocalNativeLlmProvider(bridge);
+
+    await expectLater(
+      provider.send(
+        AgentLlmRequest(
+          config: const AgentConfig(
+            provider: AgentProvider.local,
+            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+            cloudModel: 'test-model',
+            hasApiKey: false,
+            localModelId: 'test-local',
+            localModelPath: '/tmp/model.litertlm',
+          ),
+          sessions: const <ChatSession>[],
+          activeSessionId: null,
+          userText: 'Loop forever',
+          context: const PromptContext(
+            profile: null,
+            memory: '',
+            worldState: <String, Object?>{},
+          ),
+          memoryText: '',
+          appendMemory: (_) async {},
+          readMemory: () async => '',
+          readSchedule: () async => 'No schedule.',
+          mailTools: MailToolRunner(
+            repository: MailRepository.test(),
+            profile: null,
+          ),
+          onToolTrace: (_) {},
+        ),
+      ),
+      throwsA(isA<AgentException>()),
+    );
   });
 }
 

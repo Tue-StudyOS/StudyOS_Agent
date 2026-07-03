@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'agent_exception.dart';
 import 'cloud_tool_definitions.dart';
 import 'mail_tools.dart';
 import 'models.dart';
@@ -43,13 +44,13 @@ class CloudAgentClient {
   }) async {
     final endpoint = Uri.tryParse(config.cloudEndpoint.trim());
     if (endpoint == null || !endpoint.hasScheme || !endpoint.hasAuthority) {
-      throw const CloudAgentException('Custom AI server URL is not valid.');
+      throw const AgentException('Custom AI server URL is not valid.');
     }
     if (config.cloudModel.trim().isEmpty) {
-      throw const CloudAgentException('Model name is required.');
+      throw const AgentException('Model name is required.');
     }
     if (apiKey.trim().isEmpty) {
-      throw const CloudAgentException('API key is required.');
+      throw const AgentException('API key is required.');
     }
 
     final supportedNativeToolNames =
@@ -86,7 +87,7 @@ class CloudAgentClient {
         return _contentFromMessage(message);
       }
       if (round >= _maxToolRounds) {
-        throw const CloudAgentException(
+        throw const AgentException(
           'Cloud tool loop exceeded the maximum number of tool rounds.',
         );
       }
@@ -176,7 +177,7 @@ class CloudAgentClient {
     final response = await _httpClient.send(request);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       await response.stream.drain<void>();
-      throw CloudAgentException(
+      throw AgentException(
         'Custom AI service returned HTTP ${response.statusCode}.',
       );
     }
@@ -343,14 +344,14 @@ class CloudAgentClient {
 
   Map<String, Object?> _decodeResponse(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw CloudAgentException(
+      throw AgentException(
         'Custom AI service returned HTTP ${response.statusCode}.',
       );
     }
 
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, Object?>) {
-      throw const CloudAgentException('Cloud response was not a JSON object.');
+      throw const AgentException('Cloud response was not a JSON object.');
     }
     return decoded;
   }
@@ -358,14 +359,14 @@ class CloudAgentClient {
   Map<String, Object?> _messageFromResponse(Map<String, Object?> decoded) {
     final choices = decoded['choices'];
     if (choices is! List || choices.isEmpty || choices.first is! Map) {
-      throw const CloudAgentException(
+      throw const AgentException(
         'Cloud response did not include choices.',
       );
     }
     final choice = Map<String, Object?>.from(choices.first as Map);
     final message = choice['message'];
     if (message is! Map) {
-      throw const CloudAgentException(
+      throw const AgentException(
         'Cloud response did not include content.',
       );
     }
@@ -375,7 +376,7 @@ class CloudAgentClient {
   String _contentFromMessage(Map<String, Object?> message) {
     final content = message['content']?.toString();
     if (content == null || content.trim().isEmpty) {
-      throw const CloudAgentException('Cloud response content was empty.');
+      throw const AgentException('Cloud response content was empty.');
     }
     return content;
   }
@@ -440,13 +441,4 @@ class _StreamingToolCall {
 String _toolFailureOutput(Object error) {
   final message = error.toString().trim();
   return message.isEmpty ? 'Tool failed.' : 'Tool failed: $message';
-}
-
-class CloudAgentException implements Exception {
-  const CloudAgentException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
 }

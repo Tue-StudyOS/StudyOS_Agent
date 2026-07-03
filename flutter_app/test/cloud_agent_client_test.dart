@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:studyos_agent/src/agent_exception.dart';
 import 'package:studyos_agent/src/cloud_agent_client.dart';
 import 'package:studyos_agent/src/cloud_tool_definitions.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
@@ -264,6 +265,46 @@ void main() {
       'running',
       'failed',
     ]);
+  });
+
+  test('throws when cloud tool rounds are exhausted', () async {
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) async {
+        return _toolCallResponse(
+          request,
+          id: 'call_memory',
+          name: 'read_memories',
+          arguments: '{}',
+        );
+      }),
+    );
+
+    await expectLater(
+      client.sendMessage(
+        config: const AgentConfig(
+          provider: AgentProvider.cloud,
+          cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+          cloudModel: 'openai/gpt-4.1-mini',
+          hasApiKey: true,
+          localModelId: 'gemma-4-e2b-it',
+          localModelPath: '',
+        ),
+        apiKey: 'secret',
+        history: const <ChatMessage>[],
+        userText: 'Loop forever',
+        context: const PromptContext(
+          profile: null,
+          memory: '',
+          worldState: <String, Object?>{},
+        ),
+        appendMemory: (_) async {},
+        readMemory: () async => '',
+        readSchedule: () async => 'No schedule.',
+        mailTools: _fakeMailTools(),
+        onToolTrace: (_) {},
+      ),
+      throwsA(isA<AgentException>()),
+    );
   });
 
   test('accepts cloud responses that skip tools', () async {

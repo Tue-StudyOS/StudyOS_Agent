@@ -1,10 +1,10 @@
 import 'package:flutter/services.dart';
 
-import 'cloud_agent_client.dart';
+import 'agent_exception.dart';
 
 String? sendErrorMessage(Object error) {
   return switch (error) {
-    CloudAgentException(:final message) => message,
+    AgentException(:final message) => message,
     MissingPluginException() =>
       'This device cannot use the built-in assistant yet.',
     PlatformException(:final message) =>

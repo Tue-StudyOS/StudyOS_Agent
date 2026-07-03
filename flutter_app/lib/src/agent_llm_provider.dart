@@ -1,4 +1,5 @@
 import 'agent_config_store.dart';
+import 'agent_exception.dart';
 import 'chat_session_mutation.dart';
 import 'cloud_agent_client.dart';
 import 'mail_tools.dart';
@@ -183,6 +184,14 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
         localBackend: request.config.localBackend.name,
       );
     }
+    // Mirror the cloud client: a turn that still requests tools after the
+    // round budget is exhausted is a stuck loop, not an answer. Surface it as
+    // an error instead of returning raw tool directives to the user.
+    if (_toolCalls(response).isNotEmpty) {
+      throw const AgentException(
+        'Local tool loop exceeded the maximum number of tool rounds.',
+      );
+    }
     return response;
   }
 
@@ -304,7 +313,7 @@ class CloudLlmProvider implements AgentLlmProvider {
   Future<String> send(AgentLlmRequest request) async {
     final apiKey = await _configStore.readApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      throw const CloudAgentException('Cloud API key is required.');
+      throw const AgentException('Cloud API key is required.');
     }
     return _cloudClient.sendMessage(
       config: request.config,
