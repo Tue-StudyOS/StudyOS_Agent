@@ -28,9 +28,23 @@ const List<LocalModelOption> localModelCatalog = <LocalModelOption>[
     label: 'Gemma 4 E2B Instruct',
     fileName: 'gemma-4-e2b-it.litertlm',
     description: 'Balanced default for mid-range Android phones.',
-    downloadUrl: 'https://huggingface.co/litert-community/'
+    downloadUrl:
+        'https://huggingface.co/litert-community/'
         'gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
-    expectedSizeBytes: 2588147712,
+    // No integrity check for now: the resolver did not expose a stable
+    // SHA-256, and pinning the advertised size is too brittle (a re-upload
+    // would break every download). The native download path still verifies
+    // expectedSizeBytes/expectedSha256 when a future entry supplies them.
+  ),
+  LocalModelOption(
+    id: 'qwen3-1-7b',
+    label: 'Qwen3 1.7B',
+    fileName: 'qwen3-1-7b.litertlm',
+    description: 'Small agentic model for tool routing and RAG.',
+    downloadUrl:
+        'https://huggingface.co/litert-community/'
+        'Qwen3-1.7B/resolve/main/Qwen3_1.7B.litertlm',
+    // No integrity check for now (see gemma entry above).
   ),
   LocalModelOption(
     id: 'custom',
