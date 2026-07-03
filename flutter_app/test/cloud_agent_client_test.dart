@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -427,6 +428,44 @@ void main() {
     );
 
     expect(response, 'Your next lecture is Algorithms.');
+  });
+
+  test('cancels promptly while the connection is still stalling', () async {
+    // Simulate a misconfigured/unreachable endpoint: the connection never
+    // resolves, so the client would otherwise hang until the socket times out.
+    final cancelToken = AgentCancelToken();
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) => Completer<http.Response>().future),
+    );
+
+    final future = client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://unreachable.invalid/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+        localModelId: 'gemma-4-e2b-it',
+        localModelPath: '',
+      ),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'Are you there?',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => '',
+      readSchedule: () async => '',
+      mailTools: _fakeMailTools(),
+      onDelta: (_) {},
+      cancelToken: cancelToken,
+    );
+
+    cancelToken.cancel();
+
+    await expectLater(future, throwsA(isA<AgentCancelledException>()));
   });
 
   test('executes read-only mail tool calls', () async {

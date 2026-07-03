@@ -155,10 +155,29 @@ class CloudAgentClient {
       throw const AgentCancelledException();
     }
     if (onDelta == null) {
-      final response = await _post(endpoint, apiKey, body);
+      final response = await _awaitCancellable(
+        _post(endpoint, apiKey, body),
+        cancelToken,
+      );
       return _messageFromResponse(_decodeResponse(response));
     }
     return _streamTurn(endpoint, apiKey, body, onDelta, cancelToken);
+  }
+
+  /// Awaits [future] but abandons it the moment the request is cancelled, so a
+  /// stalled connect (e.g. a misconfigured or unreachable endpoint) unblocks
+  /// Stop immediately instead of hanging until the socket times out. The
+  /// abandoned request keeps running in the background; [Future.any] swallows
+  /// its late completion so it never surfaces as an unhandled error.
+  Future<T> _awaitCancellable<T>(
+    Future<T> future,
+    AgentCancelToken? cancelToken,
+  ) {
+    if (cancelToken == null) return future;
+    final cancelled = cancelToken.whenCancelled.then<T>(
+      (_) => throw const AgentCancelledException(),
+    );
+    return Future.any<T>(<Future<T>>[future, cancelled]);
   }
 
   Future<Map<String, Object?>> _streamTurn(
@@ -174,7 +193,10 @@ class CloudAgentClient {
       ..headers['Accept'] = 'text/event-stream'
       ..body = jsonEncode(<String, Object?>{...body, 'stream': true});
 
-    final response = await _httpClient.send(request);
+    final response = await _awaitCancellable(
+      _httpClient.send(request),
+      cancelToken,
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       await response.stream.drain<void>();
       throw AgentException(
