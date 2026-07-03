@@ -11,6 +11,9 @@ class MailClient {
     this.timeout = const Duration(seconds: 20),
   });
 
+  static const int summaryPreviewBytes = 4096;
+  static const int detailBodyBytes = 65536;
+
   final String host;
   final int port;
   final Duration timeout;
@@ -122,7 +125,7 @@ class MailClient {
     }
     await _requireConnection().command('EXAMINE ${_quote(mailbox)}');
     final unreadIds = (await _searchUids('UNSEEN')).toSet();
-    final raw = await _fetchRawMessage(uid);
+    final raw = await _fetchRawMessagePreview(uid);
     return parseMailDetail(
       raw,
       uid: uid,
@@ -165,17 +168,38 @@ class MailClient {
     String mailbox,
     bool isUnread,
   ) async {
-    final raw = await _fetchRawMessage(uid);
-    return parseMailSummary(raw, uid: uid, isUnread: isUnread);
+    final rawHeaders = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE CONTENT-TYPE)])',
+    );
+    final rawPreview = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[TEXT]<0.$summaryPreviewBytes>)',
+      allowEmpty: true,
+    );
+    return parseMailSummaryPreview(
+      rawHeaders: rawHeaders,
+      rawPreview: rawPreview,
+      uid: uid,
+      isUnread: isUnread,
+    );
   }
 
-  Future<List<int>> _fetchRawMessage(String uid) async {
+  Future<List<int>> _fetchRawMessagePreview(String uid) async {
+    final rawHeaders = await _fetchLiteral('UID FETCH $uid (BODY.PEEK[HEADER])');
+    final rawBody = await _fetchLiteral(
+      'UID FETCH $uid (BODY.PEEK[TEXT]<0.$detailBodyBytes>)',
+      allowEmpty: true,
+    );
+    return combineMailHeaderAndBodyPreview(rawHeaders, rawBody);
+  }
+
+  Future<List<int>> _fetchLiteral(String command, {bool allowEmpty = false}) async {
     final response = await _requireConnection().command(
-      'UID FETCH $uid (BODY.PEEK[])',
+      command,
     );
     final literal = response.firstLiteral;
     if (literal == null) {
-      throw MailException('IMAP fetch returned no message body for UID $uid.');
+      if (allowEmpty) return const <int>[];
+      throw const MailException('IMAP fetch returned no message body.');
     }
     return literal;
   }

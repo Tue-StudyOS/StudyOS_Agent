@@ -73,6 +73,8 @@ class NativeBridge {
     required String label,
     required String fileName,
     required String url,
+    int? expectedSizeBytes,
+    String? expectedSha256,
   }) async {
     final result = await _methods.invokeMapMethod<String, Object?>(
       'downloadLocalModel',
@@ -81,6 +83,9 @@ class NativeBridge {
         'label': label,
         'fileName': fileName,
         'url': url,
+        if (expectedSizeBytes != null) 'expectedSizeBytes': expectedSizeBytes,
+        if (expectedSha256 != null && expectedSha256.isNotEmpty)
+          'expectedSha256': expectedSha256,
       },
     );
     return result ?? const {};

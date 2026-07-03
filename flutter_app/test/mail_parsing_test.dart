@@ -54,4 +54,23 @@ Content-Type: text/html; charset=utf-8
     expect(summary.preview, 'The deadline is 2026-06-20.');
     expect(summary.isUnread, isTrue);
   });
+
+  test('summary preview parses headers without requiring full message body', () {
+    final summary = parseMailSummaryPreview(
+      rawHeaders: utf8.encode('''
+From: Prof X <prof@example.edu>
+Subject: Office hour
+Date: Tue, 16 Jun 2026 10:00:00 +0200
+Content-Type: text/plain; charset=utf-8
+'''),
+      rawPreview: utf8.encode('Please bring your draft.'),
+      uid: '9',
+      isUnread: false,
+    );
+
+    expect(summary.subject, 'Office hour');
+    expect(summary.fromAddress, 'prof@example.edu');
+    expect(summary.preview, 'Please bring your draft.');
+    expect(summary.isUnread, isFalse);
+  });
 }

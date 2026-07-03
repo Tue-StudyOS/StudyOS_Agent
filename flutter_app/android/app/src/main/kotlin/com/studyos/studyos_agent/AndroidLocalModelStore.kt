@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 class AndroidLocalModelStore(context: Context) {
     private val appContext = context.applicationContext
@@ -33,6 +34,8 @@ class AndroidLocalModelStore(context: Context) {
         label: String,
         fileName: String,
         url: String,
+        expectedSizeBytes: Long = -1L,
+        expectedSha256: String = "",
         onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): Map<String, Any?> {
         require(id.isNotBlank()) { "Model id is required." }
@@ -46,7 +49,13 @@ class AndroidLocalModelStore(context: Context) {
         val target = File(modelDir, safeFileName)
         val partial = File(modelDir, "$safeFileName.download")
         cancelRequested = false
-        downloadToFile(url, partial, onProgress)
+        val verified = downloadToFile(
+            url = url,
+            target = partial,
+            expectedSizeBytes = expectedSizeBytes,
+            expectedSha256 = expectedSha256,
+            onProgress = onProgress,
+        )
         if (target.exists()) {
             target.delete()
         }
@@ -59,6 +68,10 @@ class AndroidLocalModelStore(context: Context) {
                 .put("label", label)
                 .put("fileName", safeFileName)
                 .put("url", url)
+                .put("sizeBytes", verified.sizeBytes)
+                .put("sha256", verified.sha256)
+                .put("expectedSizeBytes", expectedSizeBytes.takeIf { it > 0 })
+                .put("expectedSha256", expectedSha256.ifBlank { null })
                 .put("downloadedAt", System.currentTimeMillis()),
         )
         writeMetadata(metadata)
@@ -94,14 +107,22 @@ class AndroidLocalModelStore(context: Context) {
             "downloadedAt" to item.optLong("downloadedAt"),
             "exists" to file.exists(),
             "sizeBytes" to if (file.exists()) file.length() else 0L,
+            "sha256" to item.optString("sha256"),
+            "expectedSizeBytes" to item.optLong("expectedSizeBytes").takeIf { it > 0 },
+            "expectedSha256" to item.optString("expectedSha256").takeIf { it.isNotBlank() },
         )
     }
 
     private fun downloadToFile(
         url: String,
         target: File,
+        expectedSizeBytes: Long,
+        expectedSha256: String,
         onProgress: (Long, Long) -> Unit,
-    ) {
+    ): DownloadVerification {
+        if (target.exists()) {
+            target.delete()
+        }
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
         connection.readTimeout = 60_000
@@ -113,7 +134,14 @@ class AndroidLocalModelStore(context: Context) {
                 throw IllegalStateException("Download failed with HTTP ${connection.responseCode}.")
             }
             val totalBytes = connection.contentLengthLong.takeIf { it > 0 } ?: -1L
+            if (expectedSizeBytes > 0 && totalBytes > 0 && totalBytes != expectedSizeBytes) {
+                throw IllegalStateException(
+                    "Download size mismatch before transfer: expected " +
+                        "$expectedSizeBytes bytes, got $totalBytes.",
+                )
+            }
             var receivedBytes = 0L
+            val digest = MessageDigest.getInstance("SHA-256")
             try {
                 connection.inputStream.use { input ->
                     target.outputStream().use { output ->
@@ -126,18 +154,34 @@ class AndroidLocalModelStore(context: Context) {
                             val read = input.read(buffer)
                             if (read < 0) break
                             output.write(buffer, 0, read)
+                            digest.update(buffer, 0, read)
                             receivedBytes += read
                             onProgress(receivedBytes, totalBytes)
                         }
                     }
                 }
             } catch (error: Exception) {
+                target.delete()
                 if (cancelRequested) {
-                    target.delete()
                     throw InterruptedException("Download cancelled.")
                 }
                 throw error
             }
+            if (expectedSizeBytes > 0 && receivedBytes != expectedSizeBytes) {
+                target.delete()
+                throw IllegalStateException(
+                    "Download size mismatch: expected $expectedSizeBytes " +
+                        "bytes, got $receivedBytes.",
+                )
+            }
+            val sha256 = digest.digest().joinToString("") {
+                "%02x".format(it.toInt() and 0xff)
+            }
+            if (expectedSha256.isNotBlank() && !sha256.equals(expectedSha256, ignoreCase = true)) {
+                target.delete()
+                throw IllegalStateException("Download checksum mismatch.")
+            }
+            return DownloadVerification(receivedBytes, sha256)
         } finally {
             activeConnection = null
             connection.disconnect()
@@ -166,4 +210,9 @@ class AndroidLocalModelStore(context: Context) {
         val cleaned = value.trim().replace(Regex("[^A-Za-z0-9._-]"), "-")
         return cleaned.ifBlank { "local-model.task" }
     }
+
+    private data class DownloadVerification(
+        val sizeBytes: Long,
+        val sha256: String,
+    )
 }

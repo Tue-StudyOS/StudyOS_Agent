@@ -35,6 +35,27 @@ void main() {
     expect(client.summaryCount, 1);
     expect(client.closeCount, 1);
   });
+
+  test('mail summaries are cached until force refreshed', () async {
+    final client = _CountingMailClient();
+    final repository = MailRepository.test(
+      profileStore: _FakeProfileStore(),
+      clientFactory: () => client,
+    );
+
+    await repository.fetchMailboxSummary(_profile, mailbox: 'INBOX', limit: 5);
+    await repository.fetchMailboxSummary(_profile, mailbox: 'INBOX', limit: 5);
+    await repository.fetchMailboxSummary(
+      _profile,
+      mailbox: 'INBOX',
+      limit: 5,
+      forceRefresh: true,
+    );
+
+    expect(client.loginCount, 2);
+    expect(client.summaryCount, 2);
+    expect(client.closeCount, 2);
+  });
 }
 
 const _profile = OnboardingProfile(
@@ -90,8 +111,7 @@ class _CountingMailClient extends MailClient {
   }) async {
     summaryCount += 1;
     expect(mailbox, 'INBOX');
-    expect(limit, 20);
-    expect(unreadOnly, isTrue);
+    expect(limit, greaterThan(0));
     return const MailInboxSummary(
       account: 'ada42',
       mailbox: 'INBOX',

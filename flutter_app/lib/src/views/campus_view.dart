@@ -30,10 +30,12 @@ class _CampusViewState extends State<CampusView> {
     _canteens = _fetch();
   }
 
-  Future<List<CampusCanteen>> _fetch() async {
+  Future<List<CampusCanteen>> _fetch({bool forceRefresh = false}) async {
     final client = widget.client ?? CampusClient();
     try {
-      final canteens = await client.fetchTuebingenCanteens();
+      final canteens = await client.fetchTuebingenCanteens(
+        forceRefresh: forceRefresh,
+      );
       return canteens
           .map((canteen) => canteen.filteredFor(_preference))
           .map((canteen) => canteen.forWeek(_today))
@@ -45,7 +47,7 @@ class _CampusViewState extends State<CampusView> {
   }
 
   void _refresh() {
-    setState(() => _canteens = _fetch());
+    setState(() => _canteens = _fetch(forceRefresh: true));
   }
 
   @override

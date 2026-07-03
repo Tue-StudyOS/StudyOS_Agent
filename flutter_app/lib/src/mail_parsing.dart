@@ -37,6 +37,28 @@ MailMessageSummary parseMailSummary(
   );
 }
 
+MailMessageSummary parseMailSummaryPreview({
+  required List<int> rawHeaders,
+  required List<int> rawPreview,
+  required String uid,
+  required bool isUnread,
+}) {
+  final parsed = ParsedMail.fromBytes(_messageBytes(rawHeaders, rawPreview));
+  final body = parsed.bodyText;
+  final cleanedBody = stripBroadcastBoilerplate(body);
+  final sender = _parseAddress(parsed.header('from'));
+  return MailMessageSummary(
+    uid: uid,
+    subject: decodeMimeHeader(parsed.header('subject')) ?? '(No subject)',
+    fromName: sender.name,
+    fromAddress: sender.address,
+    receivedAt: parsed.header('date'),
+    preview: previewFromText(cleanedBody),
+    isUnread: isUnread,
+    approvalNotice: hasBroadcastApproval(body) ? approvedBroadcastNotice : null,
+  );
+}
+
 MailMessageDetail parseMailDetail(
   List<int> rawMessage, {
   required String uid,
@@ -62,6 +84,13 @@ MailMessageDetail parseMailDetail(
     isUnread: isUnread,
     approvalNotice: hasBroadcastApproval(body) ? approvedBroadcastNotice : null,
   );
+}
+
+List<int> combineMailHeaderAndBodyPreview(
+  List<int> rawHeaders,
+  List<int> rawBody,
+) {
+  return _messageBytes(rawHeaders, rawBody);
 }
 
 bool hasBroadcastApproval(String? value) {
@@ -330,4 +359,10 @@ class _MailAddress {
 
   final String? name;
   final String? address;
+}
+
+List<int> _messageBytes(List<int> rawHeaders, List<int> rawBody) {
+  final normalizedHeaders = latin1.decode(rawHeaders, allowInvalid: true).trim();
+  final normalizedBody = latin1.decode(rawBody, allowInvalid: true);
+  return latin1.encode('$normalizedHeaders\r\n\r\n$normalizedBody');
 }

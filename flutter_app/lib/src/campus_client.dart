@@ -5,8 +5,10 @@ import 'package:http/http.dart' as http;
 import 'campus_models.dart';
 
 class CampusClient {
-  CampusClient({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  CampusClient({
+    http.Client? httpClient,
+    this.cacheTtl = const Duration(hours: 6),
+  }) : _httpClient = httpClient ?? http.Client();
 
   static const _mealplanUrl =
       'https://www.my-stuwe.de/wp-json/mealplans/v1/canteens?lang=de';
@@ -19,8 +21,19 @@ class CampusClient {
   };
 
   final http.Client _httpClient;
+  final Duration cacheTtl;
+  static List<CampusCanteen>? _cachedCanteens;
+  static DateTime? _cachedAt;
 
-  Future<List<CampusCanteen>> fetchTuebingenCanteens() async {
+  Future<List<CampusCanteen>> fetchTuebingenCanteens({
+    bool forceRefresh = false,
+  }) async {
+    final cached = _cachedCanteens;
+    final cachedAt = _cachedAt;
+    if (!forceRefresh && cached != null && cachedAt != null) {
+      final age = DateTime.now().difference(cachedAt);
+      if (age <= cacheTtl) return cached;
+    }
     final response = await _httpClient.get(Uri.parse(_mealplanUrl));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw CampusException('Mensa data returned HTTP ${response.statusCode}.');
@@ -29,11 +42,14 @@ class CampusClient {
     if (decoded is! Map<String, Object?>) {
       throw const CampusException('Mensa data has an unexpected format.');
     }
-    return _tuebingenCanteenIds
+    final canteens = _tuebingenCanteenIds
         .where(decoded.containsKey)
         .map((id) => _canteenFromJson(id, decoded[id]))
         .whereType<CampusCanteen>()
         .toList();
+    _cachedCanteens = canteens;
+    _cachedAt = DateTime.now();
+    return canteens;
   }
 
   void close() => _httpClient.close();
