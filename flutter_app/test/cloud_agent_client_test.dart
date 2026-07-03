@@ -261,10 +261,7 @@ void main() {
 
     expect(response, 'I could not read the schedule, but can still help.');
     expect(bodies, hasLength(2));
-    expect(traces.map((trace) => trace.status), <String>[
-      'running',
-      'failed',
-    ]);
+    expect(traces.map((trace) => trace.status), <String>['running', 'failed']);
   });
 
   test('throws when cloud tool rounds are exhausted', () async {
@@ -545,10 +542,7 @@ http.Response _contentResponse(http.BaseRequest request, String content) {
     jsonEncode(<String, Object?>{
       'choices': <Object?>[
         <String, Object?>{
-          'message': <String, Object?>{
-            'role': 'assistant',
-            'content': content,
-          },
+          'message': <String, Object?>{'role': 'assistant', 'content': content},
         },
       ],
     }),

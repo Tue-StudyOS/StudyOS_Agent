@@ -168,10 +168,10 @@ void main() {
 
   test('local provider reads fresh memory during tool execution', () async {
     final prompts = <String>[];
-    final bridge = _FakeNativeBridge.sequence(
-      <String>['[TOOL:read_memories:{}]', 'I used fresh memory.'],
-      prompts: prompts,
-    );
+    final bridge = _FakeNativeBridge.sequence(<String>[
+      '[TOOL:read_memories:{}]',
+      'I used fresh memory.',
+    ], prompts: prompts);
     final provider = LocalNativeLlmProvider(bridge);
 
     final response = await provider.send(

@@ -160,12 +160,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
         } on Object catch (error) {
           final failedOutput = _toolFailureOutput(error);
           request.onToolTrace(
-            _traceForCall(
-              call,
-              'failed',
-              callId: callId,
-              output: failedOutput,
-            ),
+            _traceForCall(call, 'failed', callId: callId, output: failedOutput),
           );
           feedback.add('- ${call.name}: $failedOutput');
           continue;

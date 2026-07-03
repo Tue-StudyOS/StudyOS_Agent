@@ -359,16 +359,12 @@ class CloudAgentClient {
   Map<String, Object?> _messageFromResponse(Map<String, Object?> decoded) {
     final choices = decoded['choices'];
     if (choices is! List || choices.isEmpty || choices.first is! Map) {
-      throw const AgentException(
-        'Cloud response did not include choices.',
-      );
+      throw const AgentException('Cloud response did not include choices.');
     }
     final choice = Map<String, Object?>.from(choices.first as Map);
     final message = choice['message'];
     if (message is! Map) {
-      throw const AgentException(
-        'Cloud response did not include content.',
-      );
+      throw const AgentException('Cloud response did not include content.');
     }
     return Map<String, Object?>.from(message);
   }
