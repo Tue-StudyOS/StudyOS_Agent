@@ -25,6 +25,7 @@ class CloudAgentClient {
   final http.Client _httpClient;
   final StudyOsToolExecutor _toolExecutor;
   final NativeToolRunner? _nativeTools;
+  static const int _maxToolRounds = 3;
 
   Future<String> sendMessage({
     required AgentConfig config,
@@ -53,30 +54,17 @@ class CloudAgentClient {
 
     final supportedNativeToolNames =
         await _nativeTools?.supportedToolNames() ?? const <String>{};
-    final request = _requestBody(
+    var request = _requestBody(
       config: config,
       history: history,
       userText: userText,
       context: context,
       supportedNativeToolNames: supportedNativeToolNames,
     );
-    final message = await _fetchTurn(
-      endpoint,
-      apiKey,
-      request,
-      onDelta,
-      cancelToken,
+    final messages = List<Map<String, Object?>>.from(
+      request['messages'] as List,
     );
-    final toolCalls = _toolCalls(message);
-    if (toolCalls.isEmpty) {
-      return _contentFromMessage(message);
-    }
 
-    // A streamed turn that resolved into tool calls carries no user-facing
-    // answer yet; clear the live buffer before the follow-up answer streams.
-    onDelta?.call(const AgentStreamDelta(reset: true));
-
-    final toolMessages = <Map<String, Object?>>[];
     final toolContext = StudyOsToolContext(
       promptContext: context,
       appendMemory: appendMemory,
@@ -85,47 +73,65 @@ class CloudAgentClient {
       mailTools: mailTools,
       nativeTools: _nativeTools,
     );
-    for (final call in toolCalls) {
-      if (cancelToken?.isCancelled ?? false) {
-        throw const AgentCancelledException();
+    for (var round = 0; ; round += 1) {
+      final message = await _fetchTurn(
+        endpoint,
+        apiKey,
+        request,
+        onDelta,
+        cancelToken,
+      );
+      final toolCalls = _toolCalls(message);
+      if (toolCalls.isEmpty) {
+        return _contentFromMessage(message);
       }
-      onToolTrace?.call(_traceForCall(call, 'running'));
-      final String output;
-      try {
-        output = await _toolExecutor.execute(
-          call.name,
-          call.arguments,
-          toolContext,
+      if (round >= _maxToolRounds) {
+        throw const CloudAgentException(
+          'Cloud tool loop exceeded the maximum number of tool rounds.',
         );
-      } on Object catch (error) {
-        onToolTrace?.call(
-          _traceForCall(call, 'failed', output: error.toString()),
-        );
-        rethrow;
       }
-      onToolTrace?.call(_traceForCall(call, 'done', output: output));
-      toolMessages.add(<String, Object?>{
-        'role': 'tool',
-        'tool_call_id': call.id,
-        'content': output,
-      });
-    }
 
-    final followUp = await _fetchTurn(
-      endpoint,
-      apiKey,
-      <String, Object?>{
+      // A streamed turn that resolved into tool calls carries no user-facing
+      // answer yet; clear the live buffer before the follow-up answer streams.
+      onDelta?.call(const AgentStreamDelta(reset: true));
+
+      final toolMessages = <Map<String, Object?>>[];
+      for (final call in toolCalls) {
+        if (cancelToken?.isCancelled ?? false) {
+          throw const AgentCancelledException();
+        }
+        onToolTrace?.call(_traceForCall(call, 'running'));
+        final String output;
+        try {
+          output = await _toolExecutor.execute(
+            call.name,
+            call.arguments,
+            toolContext,
+          );
+          onToolTrace?.call(_traceForCall(call, 'done', output: output));
+        } on Object catch (error) {
+          output = _toolFailureOutput(error);
+          onToolTrace?.call(_traceForCall(call, 'failed', output: output));
+        }
+        toolMessages.add(<String, Object?>{
+          'role': 'tool',
+          'tool_call_id': call.id,
+          'content': output,
+        });
+      }
+
+      messages
+        ..add(message)
+        ..addAll(toolMessages);
+      request = <String, Object?>{
         'model': config.cloudModel.trim(),
-        'messages': <Map<String, Object?>>[
-          ...List<Map<String, Object?>>.from(request['messages'] as List),
-          message,
-          ...toolMessages,
-        ],
-      },
-      onDelta,
-      cancelToken,
-    );
-    return _contentFromMessage(followUp);
+        'messages': messages,
+        'tools': cloudToolDefinitions(
+          supportedNativeToolNames: supportedNativeToolNames,
+        ),
+        'tool_choice': 'auto',
+      };
+    }
   }
 
   /// Fetches one assistant turn, returning a message map shaped like
@@ -423,6 +429,11 @@ class _StreamingToolCall {
   String id = '';
   String name = '';
   final StringBuffer arguments = StringBuffer();
+}
+
+String _toolFailureOutput(Object error) {
+  final message = error.toString().trim();
+  return message.isEmpty ? 'Tool failed.' : 'Tool failed: $message';
 }
 
 class CloudAgentException implements Exception {

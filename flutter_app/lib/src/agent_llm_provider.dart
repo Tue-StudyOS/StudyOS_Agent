@@ -19,6 +19,7 @@ class AgentLlmRequest {
     required this.context,
     required this.memoryText,
     required this.appendMemory,
+    required this.readMemory,
     required this.readSchedule,
     required this.mailTools,
     required this.onToolTrace,
@@ -33,6 +34,7 @@ class AgentLlmRequest {
   final PromptContext context;
   final String memoryText;
   final Future<void> Function(String text) appendMemory;
+  final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
   final MailToolRunner mailTools;
   final void Function(ToolTrace trace) onToolTrace;
@@ -131,7 +133,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
     final toolContext = StudyOsToolContext(
       promptContext: request.context,
       appendMemory: request.appendMemory,
-      readMemory: () async => request.memoryText,
+      readMemory: request.readMemory,
       readSchedule: request.readSchedule,
       mailTools: request.mailTools,
       nativeTools: nativeTools,
@@ -155,15 +157,17 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
             toolContext,
           );
         } on Object catch (error) {
+          final failedOutput = _toolFailureOutput(error);
           request.onToolTrace(
             _traceForCall(
               call,
               'failed',
               callId: callId,
-              output: error.toString(),
+              output: failedOutput,
             ),
           );
-          rethrow;
+          feedback.add('- ${call.name}: $failedOutput');
+          continue;
         }
         request.onToolTrace(
           _traceForCall(call, 'done', callId: callId, output: output),
@@ -260,6 +264,11 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       callId: callId,
     );
   }
+}
+
+String _toolFailureOutput(Object error) {
+  final message = error.toString().trim();
+  return message.isEmpty ? 'Tool failed.' : 'Tool failed: $message';
 }
 
 class _LocalToolCall {

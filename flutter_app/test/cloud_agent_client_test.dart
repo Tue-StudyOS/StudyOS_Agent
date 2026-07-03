@@ -141,7 +141,129 @@ void main() {
     expect(traces.every((trace) => trace.toolName == 'read_memories'), isTrue);
     expect(bodies.first['tool_choice'], 'auto');
     expect(bodies.first['tools'], isA<List>());
-    expect(bodies.last.containsKey('tools'), isFalse);
+    expect(bodies.last['tools'], isA<List>());
+  });
+
+  test('runs multiple bounded cloud tool rounds', () async {
+    var requestCount = 0;
+    final bodies = <Map<String, Object?>>[];
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) async {
+        requestCount += 1;
+        bodies.add(jsonDecode(request.body) as Map<String, Object?>);
+        if (requestCount == 1) {
+          return _toolCallResponse(
+            request,
+            id: 'call_memory',
+            name: 'read_memories',
+            arguments: '{}',
+          );
+        }
+        if (requestCount == 2) {
+          expect(request.body, contains('Fresh memory'));
+          return _toolCallResponse(
+            request,
+            id: 'call_schedule',
+            name: 'get_schedule',
+            arguments: '{}',
+          );
+        }
+        expect(request.body, contains('Algorithms 10:00'));
+        return _contentResponse(request, 'Use memory and attend Algorithms.');
+      }),
+    );
+    final traces = <ToolTrace>[];
+
+    final response = await client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+        localModelId: 'gemma-4-e2b-it',
+        localModelPath: '',
+      ),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'Plan my morning',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => 'Fresh memory',
+      readSchedule: () async => 'Algorithms 10:00',
+      mailTools: _fakeMailTools(),
+      onToolTrace: traces.add,
+    );
+
+    expect(response, 'Use memory and attend Algorithms.');
+    expect(bodies, hasLength(3));
+    expect(bodies[1]['tools'], isA<List>());
+    expect(bodies[2]['tools'], isA<List>());
+    expect(traces.map((trace) => trace.toolName), <String>[
+      'read_memories',
+      'read_memories',
+      'get_schedule',
+      'get_schedule',
+    ]);
+  });
+
+  test('returns failed cloud tool results to the model', () async {
+    var requestCount = 0;
+    final bodies = <Map<String, Object?>>[];
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) async {
+        requestCount += 1;
+        bodies.add(jsonDecode(request.body) as Map<String, Object?>);
+        if (requestCount == 1) {
+          return _toolCallResponse(
+            request,
+            id: 'call_schedule',
+            name: 'get_schedule',
+            arguments: '{}',
+          );
+        }
+        expect(request.body, contains('Tool failed:'));
+        return _contentResponse(
+          request,
+          'I could not read the schedule, but can still help.',
+        );
+      }),
+    );
+    final traces = <ToolTrace>[];
+
+    final response = await client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+        localModelId: 'gemma-4-e2b-it',
+        localModelPath: '',
+      ),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'What is next?',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => '',
+      readSchedule: () async => throw StateError('schedule unavailable'),
+      mailTools: _fakeMailTools(),
+      onToolTrace: traces.add,
+    );
+
+    expect(response, 'I could not read the schedule, but can still help.');
+    expect(bodies, hasLength(2));
+    expect(traces.map((trace) => trace.status), <String>[
+      'running',
+      'failed',
+    ]);
   });
 
   test('accepts cloud responses that skip tools', () async {
@@ -343,6 +465,55 @@ void main() {
 
     expect(response, 'You got a response from Prof. X.');
   });
+}
+
+http.Response _toolCallResponse(
+  http.BaseRequest request, {
+  required String id,
+  required String name,
+  required String arguments,
+}) {
+  return http.Response(
+    jsonEncode(<String, Object?>{
+      'choices': <Object?>[
+        <String, Object?>{
+          'message': <String, Object?>{
+            'role': 'assistant',
+            'content': null,
+            'tool_calls': <Object?>[
+              <String, Object?>{
+                'id': id,
+                'type': 'function',
+                'function': <String, Object?>{
+                  'name': name,
+                  'arguments': arguments,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    }),
+    200,
+    request: request,
+  );
+}
+
+http.Response _contentResponse(http.BaseRequest request, String content) {
+  return http.Response(
+    jsonEncode(<String, Object?>{
+      'choices': <Object?>[
+        <String, Object?>{
+          'message': <String, Object?>{
+            'role': 'assistant',
+            'content': content,
+          },
+        },
+      ],
+    }),
+    200,
+    request: request,
+  );
 }
 
 MailToolRunner _fakeMailTools() {
