@@ -83,7 +83,7 @@ class NativeBridge {
         'label': label,
         'fileName': fileName,
         'url': url,
-        if (expectedSizeBytes != null) 'expectedSizeBytes': expectedSizeBytes,
+        'expectedSizeBytes': ?expectedSizeBytes,
         if (expectedSha256 != null && expectedSha256.isNotEmpty)
           'expectedSha256': expectedSha256,
       },
