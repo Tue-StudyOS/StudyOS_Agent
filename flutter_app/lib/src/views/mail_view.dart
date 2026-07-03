@@ -19,8 +19,10 @@ class MailView extends StatefulWidget {
 
 class _MailViewState extends State<MailView> {
   late final MailRepository _repository = widget.repository ?? MailRepository();
-  late Future<_MailState> _state;
+  late Future<MailMailboxSnapshot> _state;
   MailMessageDetail? _selectedMessage;
+  String? _openingMessageUid;
+  String? _messageError;
   String _mailbox = 'INBOX';
   bool _unreadOnly = false;
 
@@ -33,34 +35,41 @@ class _MailViewState extends State<MailView> {
   void _refresh() {
     setState(() {
       _selectedMessage = null;
+      _openingMessageUid = null;
+      _messageError = null;
       _state = _load();
     });
   }
 
-  Future<_MailState> _load() async {
-    final results = await Future.wait<dynamic>(<Future<dynamic>>[
-      _repository.listMailboxes(widget.profile),
-      _repository.fetchMailboxSummary(
-        widget.profile,
-        mailbox: _mailbox,
-        limit: 20,
-        unreadOnly: _unreadOnly,
-      ),
-    ]);
-    return _MailState(
-      mailboxes: results[0] as List<MailboxSummary>,
-      inbox: results[1] as MailInboxSummary,
+  Future<MailMailboxSnapshot> _load() {
+    return _repository.fetchMailboxSnapshot(
+      widget.profile,
+      mailbox: _mailbox,
+      limit: 20,
+      unreadOnly: _unreadOnly,
     );
   }
 
   Future<void> _openMessage(MailMessageSummary message) async {
-    final detail = await _repository.fetchMessageDetail(
-      widget.profile,
-      uid: message.uid,
-      mailbox: _mailbox,
-    );
-    if (!mounted) return;
-    setState(() => _selectedMessage = detail);
+    setState(() {
+      _selectedMessage = null;
+      _openingMessageUid = message.uid;
+      _messageError = null;
+    });
+    try {
+      final detail = await _repository.fetchMessageDetail(
+        widget.profile,
+        uid: message.uid,
+        mailbox: _mailbox,
+      );
+      if (!mounted) return;
+      setState(() => _selectedMessage = detail);
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() => _messageError = error.toString());
+    } finally {
+      if (mounted) setState(() => _openingMessageUid = null);
+    }
   }
 
   @override
@@ -94,7 +103,7 @@ class _MailViewState extends State<MailView> {
           ],
         ),
         const SizedBox(height: StudyOsSpacing.lg),
-        FutureBuilder<_MailState>(
+        FutureBuilder<MailMailboxSnapshot>(
           future: _state,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
@@ -129,6 +138,22 @@ class _MailViewState extends State<MailView> {
                   _MailDetailCard(message: _selectedMessage!),
                   const SizedBox(height: StudyOsSpacing.md),
                 ],
+                if (_openingMessageUid != null) ...<Widget>[
+                  const _MailMessageCard(
+                    icon: Icons.hourglass_top_rounded,
+                    title: 'Opening message',
+                    body: 'Loading the selected message...',
+                  ),
+                  const SizedBox(height: StudyOsSpacing.md),
+                ],
+                if (_messageError != null) ...<Widget>[
+                  _MailMessageCard(
+                    icon: Icons.error_outline_rounded,
+                    title: 'Could not open message',
+                    body: _messageError!,
+                  ),
+                  const SizedBox(height: StudyOsSpacing.md),
+                ],
                 if (state.inbox.messages.isEmpty)
                   const _MailMessageCard(
                     icon: Icons.inbox_outlined,
@@ -139,7 +164,9 @@ class _MailViewState extends State<MailView> {
                   for (final message in state.inbox.messages)
                     _MailSummaryCard(
                       message: message,
-                      selected: _selectedMessage?.uid == message.uid,
+                      selected:
+                          _selectedMessage?.uid == message.uid ||
+                          _openingMessageUid == message.uid,
                       onTap: () => _openMessage(message),
                     ),
               ],
@@ -149,11 +176,4 @@ class _MailViewState extends State<MailView> {
       ],
     );
   }
-}
-
-class _MailState {
-  const _MailState({required this.mailboxes, required this.inbox});
-
-  final List<MailboxSummary> mailboxes;
-  final MailInboxSummary inbox;
 }

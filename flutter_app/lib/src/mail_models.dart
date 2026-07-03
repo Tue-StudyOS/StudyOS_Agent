@@ -97,6 +97,13 @@ class MailInboxSummary {
   }
 }
 
+class MailMailboxSnapshot {
+  const MailMailboxSnapshot({required this.mailboxes, required this.inbox});
+
+  final List<MailboxSummary> mailboxes;
+  final MailInboxSummary inbox;
+}
+
 class MailMessageDetail extends MailMessageSummary {
   const MailMessageDetail({
     required super.uid,

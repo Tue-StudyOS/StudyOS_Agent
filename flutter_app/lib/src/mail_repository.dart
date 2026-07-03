@@ -10,8 +10,10 @@ class MailRepository {
     return MailRepository._(profileStore, clientFactory ?? MailClient.new);
   }
 
-  MailRepository.test({MailClient Function()? clientFactory})
-    : this._(null, clientFactory ?? MailClient.new);
+  MailRepository.test({
+    ProfileStore? profileStore,
+    MailClient Function()? clientFactory,
+  }) : this._(profileStore, clientFactory ?? MailClient.new);
 
   MailRepository._(this._profileStore, this._clientFactory);
 
@@ -48,6 +50,26 @@ class MailRepository {
         since: since,
         scanLimit: scanLimit,
       );
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<MailMailboxSnapshot> fetchMailboxSnapshot(
+    OnboardingProfile? profile, {
+    String mailbox = 'INBOX',
+    int limit = 12,
+    bool unreadOnly = false,
+  }) async {
+    final client = await _authenticatedClient(profile);
+    try {
+      final mailboxes = await client.listMailboxes();
+      final inbox = await client.fetchMailboxSummary(
+        mailbox: mailbox,
+        limit: limit,
+        unreadOnly: unreadOnly,
+      );
+      return MailMailboxSnapshot(mailboxes: mailboxes, inbox: inbox);
     } finally {
       client.close();
     }
