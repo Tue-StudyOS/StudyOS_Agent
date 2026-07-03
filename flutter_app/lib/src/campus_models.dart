@@ -34,6 +34,13 @@ class CampusCanteen {
   }
 }
 
+class CampusMenuEntry {
+  const CampusMenuEntry({required this.canteen, required this.menu});
+
+  final CampusCanteen canteen;
+  final CampusMenu menu;
+}
+
 class CampusMenu {
   const CampusMenu({
     required this.id,
@@ -68,6 +75,71 @@ class CampusMenu {
       FoodPreference.vegan => normalized.contains('vegan'),
     };
   }
+}
+
+List<CampusMenuEntry> sortedCampusMenuEntries(List<CampusCanteen> canteens) {
+  final entries = <CampusMenuEntry>[
+    for (final canteen in canteens)
+      for (final menu in canteen.menus)
+        CampusMenuEntry(canteen: canteen, menu: menu),
+  ];
+  entries.sort((a, b) {
+    final aDate = a.menu.parsedDate;
+    final bDate = b.menu.parsedDate;
+    if (aDate == null && bDate != null) return 1;
+    if (aDate != null && bDate == null) return -1;
+    if (aDate != null && bDate != null) {
+      final dateCompare = aDate.compareTo(bDate);
+      if (dateCompare != 0) return dateCompare;
+    }
+    final canteenCompare = a.canteen.name.compareTo(b.canteen.name);
+    if (canteenCompare != 0) return canteenCompare;
+    return a.menu.line.compareTo(b.menu.line);
+  });
+  return entries;
+}
+
+class CampusCanteenAction {
+  const CampusCanteenAction({required this.website, required this.navigation});
+
+  final Uri website;
+  final Uri navigation;
+}
+
+CampusCanteenAction? actionForCanteen(CampusCanteen canteen) {
+  final normalized = canteen.name.toLowerCase();
+  if (normalized.contains('wilhelm')) {
+    return _action(
+      website: 'https://www.my-stuwe.de/mensa/mensa-wilhelmstrasse-tuebingen/',
+      destination: 'Mensa Wilhelmstraße Tübingen',
+    );
+  }
+  if (normalized.contains('morgenstelle')) {
+    return _action(
+      website: 'https://www.my-stuwe.de/mensa/mensa-morgenstelle-tuebingen/',
+      destination: 'Mensa Morgenstelle Tübingen',
+    );
+  }
+  if (normalized.contains('prinz')) {
+    return _action(
+      website: 'https://www.my-stuwe.de/mensa/mensa-prinz-karl-tuebingen/',
+      destination: 'Mensa Prinz Karl Tübingen',
+    );
+  }
+  return null;
+}
+
+CampusCanteenAction _action({
+  required String website,
+  required String destination,
+}) {
+  return CampusCanteenAction(
+    website: Uri.parse(website),
+    navigation: Uri.https('www.google.com', '/maps/dir/', <String, String>{
+      'api': '1',
+      'destination': destination,
+    }),
+  );
 }
 
 DateTime _weekStart(DateTime day) {
