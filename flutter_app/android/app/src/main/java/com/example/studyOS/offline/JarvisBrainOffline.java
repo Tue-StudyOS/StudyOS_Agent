@@ -44,6 +44,10 @@ public class JarvisBrainOffline implements Brain {
 
     private static final String TAG = "JarvisBrainOffline";
     private static volatile JarvisBrainOffline instance;
+    private static final int TOOL_SAMPLER_TOP_K = 10;
+    private static final double TOOL_SAMPLER_TOP_P = 0.95;
+    private static final double TOOL_SAMPLER_TEMPERATURE = 0.2;
+    private static final int TOOL_SAMPLER_RANDOM_SEED = 0;
 
     private Context context;
     private Tools tools;
@@ -127,7 +131,12 @@ public class JarvisBrainOffline implements Brain {
                         Contents.Companion.of(currentSystemMessage + "\n " + worldState.toString()),
                         List.of(Message.Companion.user("System-Check eingeleitet.")),
                         List.of(),
-                        new SamplerConfig(10, 0.95, 0.8, 0)
+                        new SamplerConfig(
+                                TOOL_SAMPLER_TOP_K,
+                                TOOL_SAMPLER_TOP_P,
+                                TOOL_SAMPLER_TEMPERATURE,
+                                TOOL_SAMPLER_RANDOM_SEED
+                        )
                 );
 
                 conversation = engine.createConversation(config);
