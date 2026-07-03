@@ -26,6 +26,10 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
     private static final String TAG = "LiteRtLocalPrompt";
     private static final Pattern TOOL_CALL_PATTERN = Pattern.compile("\\[TOOL:([^:\\]]+):?([^\\]]*)\\]");
     private static final int MAX_TOOL_ROUNDS = 3;
+    private static final int TOOL_SAMPLER_TOP_K = 10;
+    private static final double TOOL_SAMPLER_TOP_P = 0.95;
+    private static final double TOOL_SAMPLER_TEMPERATURE = 0.2;
+    private static final int TOOL_SAMPLER_RANDOM_SEED = 0;
 
     /** Prefer the GPU backend, falling back to CPU when GPU init fails. */
     public static final String BACKEND_GPU = "gpu";
@@ -230,7 +234,12 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
                 Contents.Companion.of("You are StudyOS Agent. Answer from the provided context."),
                 List.of(Message.Companion.user("System ready.")),
                 List.of(),
-                new SamplerConfig(10, 0.95, 0.8, 0)
+                new SamplerConfig(
+                        TOOL_SAMPLER_TOP_K,
+                        TOOL_SAMPLER_TOP_P,
+                        TOOL_SAMPLER_TEMPERATURE,
+                        TOOL_SAMPLER_RANDOM_SEED
+                )
         );
         conversation = engine.createConversation(config);
         activeModelPath = modelFile.getAbsolutePath();

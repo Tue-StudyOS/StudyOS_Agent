@@ -152,7 +152,6 @@ class MainActivity : FlutterActivity() {
         try {
             val prompt = localPrompt(
                 systemPrompt = systemPrompt,
-                memory = memory,
                 userText = text,
                 supportsLiteRtTools = localModelPath.isNotBlank(),
             )
@@ -209,7 +208,6 @@ class MainActivity : FlutterActivity() {
 
     private fun localPrompt(
         systemPrompt: String,
-        memory: String,
         userText: String,
         supportsLiteRtTools: Boolean,
     ): String {
@@ -276,11 +274,6 @@ class MainActivity : FlutterActivity() {
                         "does not expose tool calling in this app. Answer from " +
                         "provided context and say what is missing.",
                 )
-            }
-            if (memory.isNotBlank()) {
-                appendLine()
-                appendLine("Local StudyOS memory:")
-                appendLine(memory.trim())
             }
             appendLine()
             appendLine("User request:")
