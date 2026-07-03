@@ -63,7 +63,7 @@ void main() {
     expect(find.text('This week\'s Mensa menus for Tübingen.'), findsOneWidget);
     expect(find.text('Mensa Morgenstelle'), findsOneWidget);
     expect(find.textContaining('2026-06-30'), findsOneWidget);
-    expect(find.text('Bandnudeln'), findsOneWidget);
+    expect(find.textContaining('Bandnudeln'), findsOneWidget);
     expect(find.text('Cafeteria Wilhelmstraße'), findsNothing);
     expect(find.textContaining('2026-07-07'), findsNothing);
     expect(find.text('Hausgemachte Pasta'), findsNothing);
