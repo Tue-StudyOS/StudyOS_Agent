@@ -216,7 +216,7 @@ class _HomeRoute extends StatelessWidget {
       builder: (context, _) => HomeView(
         profile: controller.profile,
         config: controller.agentConfig,
-        briefing: controller.dailyBriefing,
+        snapshot: controller.homeFeedSnapshot,
         memoryText: controller.memoryText,
         timetable: controller.timetable,
         onOpenMail: () => context.go('/mail'),

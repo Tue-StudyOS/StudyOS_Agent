@@ -2,25 +2,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:studyos_agent/src/models.dart';
 
 void main() {
-  test('daily briefing falls back when no local state needs attention', () {
-    final briefing = DailyBriefingState.fromLocalState(
+  test('home feed snapshot falls back when no local state needs attention', () {
+    final snapshot = HomeFeedSnapshot.fromLocalState(
       profile: null,
       timetable: null,
       memoryText: '',
       now: DateTime(2026, 7, 1, 9),
     );
 
-    expect(briefing.headline, 'Assistant summary');
-    expect(briefing.messages.single.title, 'Nothing from my side right now.');
+    expect(snapshot.summary.title, 'Set up your StudyOS');
     expect(
-      briefing.messages.single.body,
-      contains('No assistant update is available yet.'),
+      snapshot.summary.body,
+      contains('Connect your profile'),
     );
+    expect(snapshot.nextAction.title, 'Complete profile');
+    expect(snapshot.sources.first.status, HomeFeedSourceStatus.unavailable);
   });
 
-  test('daily briefing summarizes next lecture and today count', () {
+  test('home feed snapshot summarizes next lecture and freshness', () {
     final now = DateTime(2026, 7, 1, 9);
-    final snapshot = TimetableSnapshot(
+    final timetable = TimetableSnapshot(
       refreshedAt: now,
       sourceTerm: 'Summer 2026',
       events: <LectureEvent>[
@@ -34,7 +35,7 @@ void main() {
       ],
     );
 
-    final briefing = DailyBriefingState.fromLocalState(
+    final snapshot = HomeFeedSnapshot.fromLocalState(
       profile: const OnboardingProfile(
         displayName: 'Ada',
         username: 'ada42',
@@ -43,18 +44,47 @@ void main() {
         semester: 2,
         livesInTuebingen: true,
       ),
-      timetable: snapshot,
+      timetable: timetable,
       memoryText: '',
       now: now,
     );
 
-    expect(briefing.headline, 'Assistant summary');
-    expect(briefing.messages.first.title, 'Next lecture');
-    expect(briefing.messages.first.body, 'Machine Learning in 1 h in Room A');
-    expect(
-      briefing.messages.last.body,
-      'You have 1 lecture on the schedule today.',
+    expect(snapshot.summary.title, 'Today at a glance');
+    expect(snapshot.summary.body, contains('Machine Learning in 1 h'));
+    expect(snapshot.nextAction.title, 'Prepare for next lecture');
+    expect(snapshot.nextAction.body, 'Machine Learning in 1 h in Room A');
+    expect(snapshot.sources.first.status, HomeFeedSourceStatus.fresh);
+  });
+
+  test('home feed marks soon lectures as urgent', () {
+    final now = DateTime(2026, 7, 1, 9);
+    final snapshot = HomeFeedSnapshot.fromLocalState(
+      profile: const OnboardingProfile(
+        displayName: 'Ada',
+        username: 'ada42',
+        email: null,
+        degreeProgram: 'M.Sc. AI',
+        semester: 2,
+        livesInTuebingen: true,
+      ),
+      timetable: TimetableSnapshot(
+        refreshedAt: now,
+        sourceTerm: 'Summer 2026',
+        events: <LectureEvent>[
+          LectureEvent(
+            id: 'seminar',
+            title: 'Seminar',
+            start: now.add(const Duration(minutes: 20)),
+            end: now.add(const Duration(hours: 2)),
+          ),
+        ],
+      ),
+      memoryText: '',
+      now: now,
     );
+
+    expect(snapshot.hasUrgentItems, isTrue);
+    expect(snapshot.urgentItems.single.title, 'Lecture soon');
   });
 
   test('lecture relative time labels cover upcoming and terminal states', () {

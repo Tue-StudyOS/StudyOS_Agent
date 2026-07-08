@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/proactive_feed_section.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({
     required this.profile,
     required this.config,
-    required this.briefing,
+    required this.snapshot,
     required this.memoryText,
     required this.timetable,
     required this.onOpenMail,
@@ -21,7 +22,7 @@ class HomeView extends StatelessWidget {
 
   final OnboardingProfile? profile;
   final AgentConfig config;
-  final DailyBriefingState briefing;
+  final HomeFeedSnapshot snapshot;
   final String memoryText;
   final TimetableSnapshot? timetable;
   final VoidCallback onOpenMail;
@@ -41,7 +42,7 @@ class HomeView extends StatelessWidget {
         children: <Widget>[
           _HomeHeader(profile: profile),
           const SizedBox(height: StudyOsSpacing.lg),
-          _DailyBriefingSection(briefing: briefing),
+          ProactiveFeedSection(snapshot: snapshot, onRefresh: onRefresh),
           const SizedBox(height: StudyOsSpacing.xl),
           _StatusGrid(
             items: <_HomeStatusItem>[
@@ -177,36 +178,6 @@ class _HomeHeader extends StatelessWidget {
       if (profile.semester != null) 'Semester ${profile.semester}',
     ];
     return parts.join(' · ');
-  }
-}
-
-class _DailyBriefingSection extends StatelessWidget {
-  const _DailyBriefingSection({required this.briefing});
-
-  final DailyBriefingState briefing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            briefing.headline,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: StudyOsSpacing.md),
-          for (final message in briefing.messages) ...<Widget>[
-            Text(message.title, style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: StudyOsSpacing.xs),
-            Text(message.body, style: Theme.of(context).textTheme.bodyMedium),
-            if (message != briefing.messages.last)
-              const SizedBox(height: StudyOsSpacing.md),
-          ],
-        ],
-      ),
-    );
   }
 }
 

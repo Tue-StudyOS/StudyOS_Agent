@@ -87,7 +87,7 @@ void main() {
               foodPreference: FoodPreference.vegan,
             ),
             config: const AgentConfig.defaults(),
-            briefing: _testBriefing(),
+            snapshot: _testSnapshot(),
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedTarget = 'mail',
@@ -124,7 +124,7 @@ void main() {
           body: HomeView(
             profile: null,
             config: const AgentConfig.defaults(),
-            briefing: _testBriefing(),
+            snapshot: _testSnapshot(),
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedTarget = 'mail',
@@ -159,7 +159,7 @@ void main() {
           body: HomeView(
             profile: null,
             config: const AgentConfig.defaults(),
-            briefing: _testBriefing(),
+            snapshot: _testSnapshot(),
             memoryText: '',
             timetable: null,
             onOpenMail: () => selectedTarget = 'mail',
@@ -183,7 +183,7 @@ void main() {
     expect(selectedTarget, 'maps');
   });
 
-  testWidgets('home renders fallback daily briefing before cards', (
+  testWidgets('home renders proactive snapshot before cards', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -193,7 +193,7 @@ void main() {
           body: HomeView(
             profile: null,
             config: const AgentConfig.defaults(),
-            briefing: DailyBriefingState.fromLocalState(
+            snapshot: HomeFeedSnapshot.fromLocalState(
               profile: null,
               timetable: null,
               memoryText: '',
@@ -211,17 +211,18 @@ void main() {
       ),
     );
 
-    expect(find.text('Nothing from my side right now.'), findsOneWidget);
+    expect(find.text('Set up your StudyOS'), findsOneWidget);
     expect(
-      find.textContaining('No assistant update is available'),
+      find.textContaining('Connect your profile'),
       findsOneWidget,
     );
+    expect(find.text('Timetable: Unavailable'), findsOneWidget);
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 
-  test('daily briefing summarizes the next lecture from structured state', () {
+  test('home feed snapshot summarizes the next lecture from structured state', () {
     final now = DateTime(2026, 7, 1, 9);
-    final briefing = DailyBriefingState.fromLocalState(
+    final snapshot = HomeFeedSnapshot.fromLocalState(
       profile: const OnboardingProfile(
         displayName: 'Ada',
         username: 'ada42',
@@ -247,11 +248,10 @@ void main() {
       now: now,
     );
 
-    expect(briefing.headline, 'Assistant summary');
-    expect(briefing.messages.first.title, 'Next lecture');
-    expect(briefing.messages.first.body, contains('Algorithms'));
-    expect(briefing.messages.first.body, contains('in 45 min'));
-    expect(briefing.messages.last.title, 'Daily plan');
+    expect(snapshot.summary.title, 'Today at a glance');
+    expect(snapshot.summary.body, contains('Algorithms'));
+    expect(snapshot.summary.body, contains('in 45 min'));
+    expect(snapshot.nextAction.title, 'Prepare for next lecture');
   });
 
   testWidgets('shell swipes between primary tabs and updates location', (
@@ -367,8 +367,8 @@ void main() {
   });
 }
 
-DailyBriefingState _testBriefing() {
-  return DailyBriefingState.fromLocalState(
+HomeFeedSnapshot _testSnapshot() {
+  return HomeFeedSnapshot.fromLocalState(
     profile: null,
     timetable: null,
     memoryText: '',
