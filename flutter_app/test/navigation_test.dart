@@ -22,6 +22,7 @@ void main() {
 
     var selectedIndex = 0;
     var askPressed = false;
+    var askLongPressed = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -31,7 +32,7 @@ void main() {
             return Scaffold(
               floatingActionButton: AskFab(
                 onPressed: () => askPressed = true,
-                onLongPress: () {},
+                onLongPress: () => askLongPressed = true,
               ),
               floatingActionButtonLocation:
                   FloatingActionButtonLocation.centerDocked,
@@ -64,6 +65,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(askPressed, isTrue);
+
+    await tester.longPress(
+      find.byKey(const ValueKey<String>('ask-fab-surface')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(askLongPressed, isTrue);
   });
 
   testWidgets('home campus card opens campus view', (
@@ -389,6 +397,58 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/home');
+  });
+
+  testWidgets('ask button long press opens voice input spike', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
+
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: null,
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+    );
+    final authState = AuthRouterState(
+      initialSession: const UserSession(username: 'ada42'),
+      initialProfile: profile,
+      initialLoading: false,
+    );
+    final controller = AppShellController(
+      initialProfile: profile,
+      initialOnLogout: () {},
+      initialOnSaveProfile: (_) async {},
+    );
+    final router = buildAppRouter(
+      authState: authState,
+      shellController: () => controller,
+      onLogin: (_, _) async {},
+      onOnboardingComplete: (_) async {},
+    );
+    addTearDown(router.dispose);
+    addTearDown(controller.dispose);
+    addTearDown(authState.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: buildStudyOsTheme(), routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.longPress(
+      find.byKey(const ValueKey<String>('ask-fab-surface')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, '/voice');
+    expect(find.text('Voice input spike'), findsOneWidget);
+    expect(find.text('Push-to-talk'), findsOneWidget);
+    expect(find.text('Custom hotword'), findsOneWidget);
+    expect(find.text('Passive listener'), findsOneWidget);
   });
 
   testWidgets('chat route prompt is applied after route build', (

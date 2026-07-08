@@ -15,6 +15,7 @@ import 'views/profile_edit_view.dart';
 import 'views/schedule_view.dart';
 import 'views/settings_view.dart';
 import 'views/shell_scaffold.dart';
+import 'views/voice_assist_view.dart';
 
 class AuthRouterState extends ChangeNotifier {
   AuthRouterState({
@@ -179,8 +180,9 @@ GoRouter buildAppRouter({
       ),
       GoRoute(
         path: '/voice',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Voice assist coming soon')),
+        builder: (context, state) => _ScopedAppRoute(
+          controller: shellController(),
+          child: const VoiceAssistView(),
         ),
       ),
     ],

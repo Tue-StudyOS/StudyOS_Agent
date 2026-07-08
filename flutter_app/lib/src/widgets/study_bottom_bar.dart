@@ -81,12 +81,33 @@ class AskFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: const ValueKey<String>('ask-fab-surface'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onPressed,
       onLongPress: onLongPress,
-      child: FloatingActionButton.extended(
-        tooltip: 'Ask StudyOS',
-        onPressed: onPressed,
-        icon: const Icon(Icons.auto_awesome),
-        label: const Text('Ask'),
+      child: Semantics(
+        button: true,
+        label: 'Ask StudyOS',
+        child: Material(
+          elevation: 6,
+          color: StudyOsColors.accentStrong,
+          borderRadius: BorderRadius.circular(StudyOsRadii.lg),
+          clipBehavior: Clip.antiAlias,
+          child: const SizedBox(
+            height: 56,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: StudyOsSpacing.lg),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(Icons.auto_awesome),
+                  SizedBox(width: StudyOsSpacing.sm),
+                  Text('Ask'),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
