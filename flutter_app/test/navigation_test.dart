@@ -283,6 +283,13 @@ void main() {
     expect(find.text('Set up your StudyOS'), findsOneWidget);
     expect(find.textContaining('Connect your profile'), findsOneWidget);
     expect(find.text('Timetable: Unavailable'), findsOneWidget);
+    expect(find.text('Generated component preview'), findsOneWidget);
+    expect(find.text('Leave for class'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Next component'));
+    await tester.pump();
+
+    expect(find.text('Compact day'), findsOneWidget);
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 

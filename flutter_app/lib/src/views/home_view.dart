@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/generated_ui_preview_section.dart';
 import '../widgets/proactive_feed_section.dart';
 
 class HomeView extends StatelessWidget {
@@ -49,6 +50,8 @@ class HomeView extends StatelessWidget {
           _HomeHeader(profile: profile),
           const SizedBox(height: StudyOsSpacing.lg),
           ProactiveFeedSection(snapshot: snapshot, onRefresh: onRefresh),
+          const SizedBox(height: StudyOsSpacing.xl),
+          const GeneratedUiPreviewSection(),
           const SizedBox(height: StudyOsSpacing.xl),
           _StatusGrid(
             items: <_HomeStatusItem>[
