@@ -20,7 +20,9 @@ class ProactiveFeedSection extends StatelessWidget {
       color: StudyOsColors.surfaceRaised,
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: snapshot.isStale ? StudyOsColors.warning : StudyOsColors.border,
+          color: snapshot.isStale
+              ? StudyOsColors.warning
+              : StudyOsColors.border,
         ),
         borderRadius: BorderRadius.circular(StudyOsRadii.md),
       ),
@@ -93,7 +95,10 @@ class _NextActionTile extends StatelessWidget {
         padding: const EdgeInsets.all(StudyOsSpacing.md),
         child: Row(
           children: <Widget>[
-            const Icon(Icons.arrow_forward_rounded, color: StudyOsColors.accent),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              color: StudyOsColors.accent,
+            ),
             const SizedBox(width: StudyOsSpacing.md),
             Expanded(
               child: Column(
@@ -215,4 +220,3 @@ class _TimeLeftPill extends StatelessWidget {
     );
   }
 }
-
