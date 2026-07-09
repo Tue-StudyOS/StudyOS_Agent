@@ -19,6 +19,9 @@ import java.util.Locale
 class AndroidNativeToolExecutor(context: Context) {
     private val appContext = context.applicationContext
     private val tools: Tools by lazy { Tools(appContext) }
+    private val calendarBridge: AndroidCalendarBridge by lazy {
+        AndroidCalendarBridge(appContext)
+    }
 
     fun canControlFlashlight(): Boolean {
         return appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH)
@@ -40,6 +43,8 @@ class AndroidNativeToolExecutor(context: Context) {
                 canCreateReminder(),
                 reminderUnsupportedReason(),
             ),
+            supported("list_calendar_events"),
+            supported("create_calendar_event"),
         )
     }
 
@@ -58,12 +63,22 @@ class AndroidNativeToolExecutor(context: Context) {
             }
             "open_system_setting" -> openSystemSetting(stringArgument(arguments, "setting"))
             "create_reminder" -> createReminder(arguments)
+            "list_calendar_events" -> calendarBridge.listEvents(arguments)
+            "create_calendar_event" -> calendarBridge.createEvent(arguments)
             else -> throw IllegalArgumentException("Native tool is not available: $name")
         }
     }
 
     fun canCreateReminder(): Boolean {
         return hasNotificationPermission()
+    }
+
+    fun canReadCalendar(): Boolean = calendarBridge.canReadCalendar()
+
+    fun canWriteCalendar(): Boolean = calendarBridge.canWriteCalendar()
+
+    fun syncScheduleToCalendar(arguments: Map<*, *>): String {
+        return calendarBridge.syncSchedule(arguments)
     }
 
     private fun openSystemSetting(setting: String): String {

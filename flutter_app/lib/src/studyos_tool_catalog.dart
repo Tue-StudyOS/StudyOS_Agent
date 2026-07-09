@@ -248,6 +248,62 @@ const createReminderTool = StudyOsToolSpec(
   required: <String>['title', 'time'],
 );
 
+const listCalendarEventsTool = StudyOsToolSpec(
+  name: nativeListCalendarEventsToolName,
+  description:
+      'List native calendar events in an ISO-8601 time window after the user asks to inspect their calendar.',
+  traceSummary: 'Reading native calendar events.',
+  properties: <String, Object?>{
+    'start': <String, Object?>{
+      'type': 'string',
+      'description':
+          'Inclusive ISO-8601 window start, for example 2026-07-10T08:00:00+02:00.',
+    },
+    'end': <String, Object?>{
+      'type': 'string',
+      'description':
+          'Exclusive ISO-8601 window end, for example 2026-07-10T18:00:00+02:00.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum events to return. Capped at 50.',
+    },
+  },
+  required: <String>['start', 'end'],
+);
+
+const createCalendarEventTool = StudyOsToolSpec(
+  name: nativeCreateCalendarEventToolName,
+  description:
+      'Create a native calendar event after the user asks or confirms the event details.',
+  traceSummary: 'Creating a native calendar event.',
+  properties: <String, Object?>{
+    'title': <String, Object?>{
+      'type': 'string',
+      'description': 'Calendar event title.',
+    },
+    'start': <String, Object?>{
+      'type': 'string',
+      'description':
+          'ISO-8601 event start, for example 2026-07-10T14:00:00+02:00.',
+    },
+    'end': <String, Object?>{
+      'type': 'string',
+      'description':
+          'ISO-8601 event end, for example 2026-07-10T16:00:00+02:00.',
+    },
+    'location': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional event location.',
+    },
+    'notes': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional event notes.',
+    },
+  },
+  required: <String>['title', 'start', 'end'],
+);
+
 const studyOsTools = <StudyOsToolSpec>[
   appendMemoryTool,
   readMemoriesTool,
@@ -264,6 +320,8 @@ const studyOsTools = <StudyOsToolSpec>[
   searchYoutubeTool,
   openSystemSettingTool,
   createReminderTool,
+  listCalendarEventsTool,
+  createCalendarEventTool,
 ];
 
 List<StudyOsToolSpec> studyOsToolsForNativeSupport(

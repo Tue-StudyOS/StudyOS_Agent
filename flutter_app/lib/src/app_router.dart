@@ -250,6 +250,10 @@ class _ScheduleRoute extends StatelessWidget {
         error: controller.timetableError,
         isRefreshing: controller.isRefreshingTimetable,
         onRefresh: controller.refreshTimetable,
+        calendarSyncMessage: controller.calendarSyncMessage,
+        calendarSyncError: controller.calendarSyncError,
+        isSyncingCalendar: controller.isSyncingCalendar,
+        onSyncCalendar: controller.syncTimetableToCalendar,
       ),
     );
   }

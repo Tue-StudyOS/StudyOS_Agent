@@ -10,6 +10,7 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
   private let eventChannel: FlutterEventChannel
   private let locationManager = CLLocationManager()
   private let speechSynthesizer = AVSpeechSynthesizer()
+  private let calendarBridge = StudyOSCalendarBridge()
   private var eventSink: FlutterEventSink?
   private var lastLocation: CLLocation?
 
@@ -63,6 +64,8 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       result(nativeToolCapabilityMap())
     case "executeNativeTool":
       executeNativeTool(call: call, result: result)
+    case "syncScheduleToCalendar":
+      calendarBridge.syncSchedule(arguments: call.arguments, result: result)
     case "publishIntentSnapshot":
       publishIntentSnapshot(call: call, result: result)
     case "consumePendingIntentPrompt":
@@ -226,12 +229,23 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       return
     }
 
+    guard let toolArgs = args["arguments"] as? [String: Any] else {
+      result(FlutterError(code: "native_tool_invalid_arguments", message: "Expected native tool arguments.", details: nil))
+      return
+    }
+
     if name == "create_reminder" {
-      guard let toolArgs = args["arguments"] as? [String: Any] else {
-        result(FlutterError(code: "invalid_reminder", message: "Expected reminder arguments.", details: nil))
-        return
-      }
       createReminderFromNativeTool(arguments: toolArgs, result: result)
+      return
+    }
+
+    if name == "list_calendar_events" {
+      calendarBridge.listEvents(arguments: toolArgs, result: result)
+      return
+    }
+
+    if name == "create_calendar_event" {
+      calendarBridge.createEvent(arguments: toolArgs, result: result)
       return
     }
 
@@ -313,7 +327,6 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       "canUseBackgroundLocation": false,
       "canCreateExactAlarm": false,
       "canOpenInstalledApps": false,
-      "canReadCalendar": false,
       "canUseOfflineLiteRtModel": false,
       "canControlFlashlight": false,
       "canStartPhoneCall": true,
@@ -322,6 +335,7 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       "canCreateLocalNotificationReminder": true,
       "canUseAppIntents": canUseAppIntents()
     ]
+    values.merge(calendarBridge.capabilityValues()) { _, new in new }
     values["nativeToolContractVersion"] = 1
     values["nativeTools"] = nativeToolCapabilities()
 
@@ -348,7 +362,9 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       ["name": "open_installed_app", "supported": false, "reason": "iOS does not support arbitrary installed-app launching from this app."],
       ["name": "search_youtube", "supported": false, "reason": iosControlReason],
       ["name": "open_system_setting", "supported": false, "reason": iosControlReason],
-      ["name": "create_reminder", "supported": true]
+      ["name": "create_reminder", "supported": true],
+      calendarBridge.calendarToolSupport(name: "list_calendar_events"),
+      calendarBridge.calendarToolSupport(name: "create_calendar_event")
     ]
   }
 

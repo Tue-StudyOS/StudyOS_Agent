@@ -114,6 +114,16 @@ class NativeBridge {
         });
   }
 
+  Future<String> syncScheduleToCalendar(TimetableSnapshot timetable) async {
+    final result = await _methods
+        .invokeMethod<String>('syncScheduleToCalendar', <String, Object?>{
+          'sourceTerm': timetable.sourceTerm,
+          'updatedAt': DateTime.now().toIso8601String(),
+          'lectures': timetable.events.map((event) => event.toJson()).toList(),
+        });
+    return result ?? 'Calendar sync finished.';
+  }
+
   Future<String> sendMessage(
     String text, {
     String? systemPrompt,

@@ -20,12 +20,14 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : FlutterActivity() {
+    private val calendarPermissionRequestCode = 7302
     private var eventSink: EventChannel.EventSink? = null
     private var nativeInitialized = false
     private var localPromptClient: AndroidLocalPromptClient? = null
     private var localModelStore: AndroidLocalModelStore? = null
     private var liteRtToolExecutor: AndroidLiteRtToolExecutor? = null
     private var nativeToolExecutor: AndroidNativeToolExecutor? = null
+    private var pendingCalendarOperation: (() -> Unit)? = null
     private lateinit var intentBridge: AndroidIntentBridge
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +72,7 @@ class MainActivity : FlutterActivity() {
             "getCapabilities" -> result.success(capabilities())
             "getNativeToolCapabilities" -> result.success(nativeToolCapabilities())
             "executeNativeTool" -> executeNativeTool(call, result)
+            "syncScheduleToCalendar" -> syncScheduleToCalendar(call, result)
             "listLocalModels" -> result.success(localModelStore().listModels())
             "downloadLocalModel" -> downloadLocalModel(call, result)
             "cancelLocalModelDownload" -> {
@@ -321,6 +324,20 @@ class MainActivity : FlutterActivity() {
             result.error("native_tool_missing_name", "Native tool name is required.", null)
             return
         }
+        if (name == "list_calendar_events" || name == "create_calendar_event") {
+            runWithCalendarPermission(result) {
+                executeNativeToolAfterPermission(name, arguments, result)
+            }
+            return
+        }
+        executeNativeToolAfterPermission(name, arguments, result)
+    }
+
+    private fun executeNativeToolAfterPermission(
+        name: String,
+        arguments: Map<*, *>,
+        result: MethodChannel.Result,
+    ) {
         try {
             result.success(nativeToolExecutor().execute(name, arguments))
         } catch (error: Throwable) {
@@ -329,6 +346,70 @@ class MainActivity : FlutterActivity() {
                 error.message ?: "Native tool failed.",
                 null,
             )
+        }
+    }
+
+    private fun syncScheduleToCalendar(call: MethodCall, result: MethodChannel.Result) {
+        val arguments = call.arguments as? Map<*, *> ?: emptyMap<String, Any?>()
+        runWithCalendarPermission(result) {
+            try {
+                result.success(nativeToolExecutor().syncScheduleToCalendar(arguments))
+            } catch (error: Throwable) {
+                result.error(
+                    "calendar_sync_failed",
+                    error.message ?: "Calendar sync failed.",
+                    null,
+                )
+            }
+        }
+    }
+
+    private fun runWithCalendarPermission(
+        result: MethodChannel.Result,
+        operation: () -> Unit,
+    ) {
+        if (hasCalendarPermission()) {
+            operation()
+            return
+        }
+        if (pendingCalendarOperation != null) {
+            result.error(
+                "calendar_permission_pending",
+                "Another calendar permission request is already in progress.",
+                null,
+            )
+            return
+        }
+        pendingCalendarOperation = {
+            if (hasCalendarPermission()) {
+                operation()
+            } else {
+                result.error(
+                    "calendar_permission_denied",
+                    "Calendar permission was denied.",
+                    null,
+                )
+            }
+        }
+        requestPermissions(
+            arrayOf(
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_CALENDAR,
+            ),
+            calendarPermissionRequestCode,
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == calendarPermissionRequestCode) {
+            val operation = pendingCalendarOperation
+            pendingCalendarOperation = null
+            operation?.invoke()
         }
     }
 
@@ -427,7 +508,9 @@ class MainActivity : FlutterActivity() {
             "canCreateExactAlarm" to nativeToolExecutor().canScheduleExactAlarms(),
             "canCreateLocalReminder" to nativeToolExecutor().canCreateReminder(),
             "canOpenInstalledApps" to true,
-            "canReadCalendar" to hasPermission(Manifest.permission.READ_CALENDAR),
+            "canReadCalendar" to nativeToolExecutor().canReadCalendar(),
+            "canCreateCalendarEvents" to nativeToolExecutor().canWriteCalendar(),
+            "canSyncScheduleToCalendar" to hasCalendarPermission(),
             "canUseOfflineLiteRtModel" to true,
             "canManageDownloadedLiteRtModels" to true,
             "canUseAndroidGeminiNanoPrompt" to true,
@@ -452,6 +535,11 @@ class MainActivity : FlutterActivity() {
     private fun hasLocationPermission(): Boolean {
         return hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
             hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+
+    private fun hasCalendarPermission(): Boolean {
+        return nativeToolExecutor().canReadCalendar() &&
+            nativeToolExecutor().canWriteCalendar()
     }
 
     private fun hasPermission(permission: String): Boolean {

@@ -11,6 +11,10 @@ class ScheduleView extends StatefulWidget {
     required this.error,
     required this.isRefreshing,
     required this.onRefresh,
+    this.calendarSyncMessage,
+    this.calendarSyncError,
+    this.isSyncingCalendar = false,
+    this.onSyncCalendar,
     super.key,
   });
 
@@ -19,6 +23,10 @@ class ScheduleView extends StatefulWidget {
   final String? error;
   final bool isRefreshing;
   final Future<void> Function() onRefresh;
+  final String? calendarSyncMessage;
+  final String? calendarSyncError;
+  final bool isSyncingCalendar;
+  final Future<void> Function()? onSyncCalendar;
 
   @override
   State<ScheduleView> createState() => _ScheduleViewState();
@@ -35,6 +43,7 @@ class _ScheduleViewState extends State<ScheduleView> {
     final events = selectedDay == null
         ? const <LectureEvent>[]
         : snapshot!.eventsOn(selectedDay);
+    final hasSyncableTimetable = snapshot != null && snapshot.events.isNotEmpty;
     return ListView(
       padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
       children: <Widget>[
@@ -68,12 +77,46 @@ class _ScheduleViewState extends State<ScheduleView> {
             ),
           ],
         ),
+        const SizedBox(height: StudyOsSpacing.sm),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonalIcon(
+            key: const ValueKey<String>('schedule-sync-calendar'),
+            onPressed: hasSyncableTimetable && !widget.isSyncingCalendar
+                ? widget.onSyncCalendar
+                : null,
+            icon: widget.isSyncingCalendar
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.event_available_outlined),
+            label: Text(
+              widget.isSyncingCalendar ? 'Syncing' : 'Sync calendar',
+            ),
+          ),
+        ),
         if (widget.error != null) ...<Widget>[
           const SizedBox(height: StudyOsSpacing.md),
           ScheduleMessageCard(
             icon: Icons.warning_amber_rounded,
             title: 'Could not refresh timetable',
             body: widget.error!,
+          ),
+        ],
+        if (widget.calendarSyncError != null) ...<Widget>[
+          const SizedBox(height: StudyOsSpacing.md),
+          ScheduleMessageCard(
+            icon: Icons.warning_amber_rounded,
+            title: 'Calendar sync failed',
+            body: widget.calendarSyncError!,
+          ),
+        ] else if (widget.calendarSyncMessage != null) ...<Widget>[
+          const SizedBox(height: StudyOsSpacing.md),
+          ScheduleMessageCard(
+            icon: Icons.check_circle_outline_rounded,
+            title: 'Calendar synced',
+            body: widget.calendarSyncMessage!,
           ),
         ],
         const SizedBox(height: StudyOsSpacing.lg),

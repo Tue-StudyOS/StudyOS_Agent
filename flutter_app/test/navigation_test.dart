@@ -9,6 +9,7 @@ import 'package:studyos_agent/src/app_shell_controller.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/views/home_view.dart';
+import 'package:studyos_agent/src/views/schedule_view.dart';
 import 'package:studyos_agent/src/widgets/study_bottom_bar.dart';
 
 void main() {
@@ -72,6 +73,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(askLongPressed, isTrue);
+  });
+
+  testWidgets('schedule view sync button calls calendar sync', (
+    WidgetTester tester,
+  ) async {
+    var synced = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: ScheduleView(
+            profile: null,
+            snapshot: _testTimetable(),
+            error: null,
+            isRefreshing: false,
+            onRefresh: () async {},
+            onSyncCalendar: () async => synced = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('schedule-sync-calendar')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(synced, isTrue);
   });
 
   testWidgets('home campus card opens campus view', (
@@ -509,6 +539,22 @@ HomeFeedSnapshot _testSnapshot() {
     timetable: null,
     memoryText: '',
     now: DateTime(2026, 7, 1, 9),
+  );
+}
+
+TimetableSnapshot _testTimetable() {
+  return TimetableSnapshot(
+    refreshedAt: DateTime(2026, 7, 1, 9),
+    sourceTerm: 'Summer 2026',
+    events: <LectureEvent>[
+      LectureEvent(
+        id: 'algorithms-1',
+        title: 'Algorithms',
+        start: DateTime(2026, 7, 2, 10),
+        end: DateTime(2026, 7, 2, 12),
+        location: 'Room 101',
+      ),
+    ],
   );
 }
 

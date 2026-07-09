@@ -64,6 +64,8 @@ void main() {
     expect(toolNames, contains(nativeSearchYoutubeToolName));
     expect(toolNames, contains(nativeOpenSystemSettingToolName));
     expect(toolNames, contains(nativeCreateReminderToolName));
+    expect(toolNames, contains(nativeListCalendarEventsToolName));
+    expect(toolNames, contains(nativeCreateCalendarEventToolName));
   });
 
   test(

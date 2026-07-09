@@ -10,6 +10,8 @@ const nativeOpenInstalledAppToolName = 'open_installed_app';
 const nativeSearchYoutubeToolName = 'search_youtube';
 const nativeOpenSystemSettingToolName = 'open_system_setting';
 const nativeCreateReminderToolName = 'create_reminder';
+const nativeListCalendarEventsToolName = 'list_calendar_events';
+const nativeCreateCalendarEventToolName = 'create_calendar_event';
 
 const activeNativeToolNames = <String>{
   nativeDeviceStatusToolName,
@@ -18,6 +20,8 @@ const activeNativeToolNames = <String>{
   nativeSearchYoutubeToolName,
   nativeOpenSystemSettingToolName,
   nativeCreateReminderToolName,
+  nativeListCalendarEventsToolName,
+  nativeCreateCalendarEventToolName,
 };
 
 abstract class NativeToolRunner {

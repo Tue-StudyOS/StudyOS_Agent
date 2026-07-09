@@ -75,11 +75,14 @@ class AppShellController extends ChangeNotifier {
   String _memoryText = '';
   TimetableSnapshot? _timetable;
   String? _timetableError;
+  String? _calendarSyncMessage;
+  String? _calendarSyncError;
   Map<String, Object?> _worldState = const {};
   String _status = 'Starting';
   bool _isSending = false;
   bool _compactMessages = false;
   bool _isRefreshingTimetable = false;
+  bool _isSyncingCalendar = false;
   StreamingAssistantMessage? _streaming;
   Timer? _streamNotifyTimer;
   AgentCancelToken? _cancelToken;
@@ -98,11 +101,14 @@ class AppShellController extends ChangeNotifier {
     now: DateTime.now(),
   );
   String? get timetableError => _timetableError;
+  String? get calendarSyncMessage => _calendarSyncMessage;
+  String? get calendarSyncError => _calendarSyncError;
   Map<String, Object?> get worldState => _worldState;
   String get status => _status;
   bool get isSending => _isSending;
   bool get compactMessages => _compactMessages;
   bool get isRefreshingTimetable => _isRefreshingTimetable;
+  bool get isSyncingCalendar => _isSyncingCalendar;
 
   /// The reply currently streaming in, or null when none is in flight. The chat
   /// UI renders a live bubble from this.
@@ -567,6 +573,46 @@ class AppShellController extends ChangeNotifier {
     } finally {
       if (!_disposed) {
         _isRefreshingTimetable = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> syncTimetableToCalendar() async {
+    if (_isSyncingCalendar) return;
+    final snapshot = _timetable;
+    if (snapshot == null || snapshot.events.isEmpty) {
+      _calendarSyncMessage = null;
+      _calendarSyncError = 'Refresh ALMA before syncing calendar.';
+      _notify();
+      return;
+    }
+
+    _isSyncingCalendar = true;
+    _calendarSyncMessage = null;
+    _calendarSyncError = null;
+    _notify();
+
+    try {
+      final message = await bridge.syncScheduleToCalendar(snapshot);
+      if (_disposed) return;
+      _calendarSyncMessage = message;
+      _status = message;
+    } on MissingPluginException {
+      if (!_disposed) {
+        _calendarSyncError = 'Calendar sync is not supported on this platform.';
+      }
+    } on PlatformException catch (error) {
+      if (!_disposed) {
+        _calendarSyncError = error.message ?? 'Calendar sync failed.';
+      }
+    } on Object catch (error) {
+      if (!_disposed) {
+        _calendarSyncError = error.toString();
+      }
+    } finally {
+      if (!_disposed) {
+        _isSyncingCalendar = false;
         _notify();
       }
     }

@@ -72,6 +72,10 @@ void main() {
             'name': nativeCreateReminderToolName,
             'supported': true,
           },
+          <String, Object?>{
+            'name': nativeListCalendarEventsToolName,
+            'supported': true,
+          },
         ],
       },
     );
@@ -80,6 +84,7 @@ void main() {
     expect(await router.supportedToolNames(), <String>{
       nativeDeviceStatusToolName,
       nativeCreateReminderToolName,
+      nativeListCalendarEventsToolName,
     });
   });
 

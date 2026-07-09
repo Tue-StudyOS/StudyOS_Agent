@@ -23,6 +23,8 @@
 		A10000000000000000000005 /* StudyOSFoundationTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* StudyOSFoundationTools.swift */; };
 		A10000000000000000000007 /* StudyOSIntentSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* StudyOSIntentSnapshotStore.swift */; };
 		A10000000000000000000009 /* StudyOSAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* StudyOSAppIntents.swift */; };
+		A1000000000000000000000B /* StudyOSCalendarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* StudyOSCalendarBridge.swift */; };
+		A1000000000000000000000D /* StudyOSCalendarSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000E /* StudyOSCalendarSupport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +80,8 @@
 		A10000000000000000000006 /* StudyOSFoundationTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSFoundationTools.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* StudyOSIntentSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSIntentSnapshotStore.swift; sourceTree = "<group>"; };
 		A1000000000000000000000A /* StudyOSAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSAppIntents.swift; sourceTree = "<group>"; };
+		A1000000000000000000000C /* StudyOSCalendarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSCalendarBridge.swift; sourceTree = "<group>"; };
+		A1000000000000000000000E /* StudyOSCalendarSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyOSCalendarSupport.swift; sourceTree = "<group>"; };
 		D4CD84961EDCA2B116584A4E /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -182,6 +186,8 @@
 				A10000000000000000000006 /* StudyOSFoundationTools.swift */,
 				A10000000000000000000008 /* StudyOSIntentSnapshotStore.swift */,
 				A1000000000000000000000A /* StudyOSAppIntents.swift */,
+				A1000000000000000000000C /* StudyOSCalendarBridge.swift */,
+				A1000000000000000000000E /* StudyOSCalendarSupport.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -395,6 +401,8 @@
 				A10000000000000000000005 /* StudyOSFoundationTools.swift in Sources */,
 				A10000000000000000000007 /* StudyOSIntentSnapshotStore.swift in Sources */,
 				A10000000000000000000009 /* StudyOSAppIntents.swift in Sources */,
+				A1000000000000000000000B /* StudyOSCalendarBridge.swift in Sources */,
+				A1000000000000000000000D /* StudyOSCalendarSupport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
