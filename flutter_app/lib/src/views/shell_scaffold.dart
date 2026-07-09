@@ -30,9 +30,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           drawer: const SecondaryDestinationsDrawer(),
           floatingActionButton: AskFab(
             onPressed: () => context.push('/chat'),
-            onLongPress: () {
-              // TODO(voice): route to /voice when push-to-talk is implemented.
-            },
+            onLongPress: () => context.go('/voice'),
           ),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
