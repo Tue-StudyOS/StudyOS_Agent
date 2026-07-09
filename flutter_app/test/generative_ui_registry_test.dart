@@ -43,7 +43,9 @@ void main() {
     });
 
     expect(validation.isValid, isFalse);
-    expect(validation.errors, contains('Field arguments must be an object when present'));
+    expect(
+      validation.errors,
+      contains('Field arguments must be an object when present'),
+    );
   });
 }
-

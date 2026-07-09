@@ -32,7 +32,10 @@ class GeneratedUiComponent {
 }
 
 class GeneratedUiValidation {
-  const GeneratedUiValidation._({this.component, this.errors = const <String>[]});
+  const GeneratedUiValidation._({
+    this.component,
+    this.errors = const <String>[],
+  });
 
   factory GeneratedUiValidation.valid(GeneratedUiComponent component) {
     return GeneratedUiValidation._(component: component);
@@ -107,10 +110,10 @@ abstract final class GenerativeUiRegistry {
         'destination',
         'mode',
       ]),
-      GeneratedComponentKind.deadlineCard => _requireStrings(arguments, <String>[
-        'course',
-        'due',
-      ]),
+      GeneratedComponentKind.deadlineCard => _requireStrings(
+        arguments,
+        <String>['course', 'due'],
+      ),
       GeneratedComponentKind.quickReply => _requireStrings(arguments, <String>[
         'reply',
       ]),
@@ -118,53 +121,54 @@ abstract final class GenerativeUiRegistry {
   }
 }
 
-const List<Map<String, Object?>> generativeUiFixturePayloads =
-    <Map<String, Object?>>[
-      <String, Object?>{
-        'type': 'next_action',
-        'title': 'Leave for class',
-        'body': 'Machine Learning starts soon in Room A. Open the schedule before you go.',
-        'arguments': <String, Object?>{
-          'action_id': 'open_schedule',
-          'cta': 'Open schedule',
-        },
-      },
-      <String, Object?>{
-        'type': 'schedule_summary',
-        'title': 'Compact day',
-        'body': 'Two lectures today, with a free study block after lunch.',
-        'arguments': <String, Object?>{
-          'source': 'local_timetable',
-          'date': '2026-07-08',
-        },
-      },
-      <String, Object?>{
-        'type': 'route_hint',
-        'title': 'Route hint',
-        'body': 'Leave in 12 minutes to reach the campus library on time.',
-        'arguments': <String, Object?>{
-          'destination': 'Campus Library',
-          'mode': 'walk',
-        },
-      },
-      <String, Object?>{
-        'type': 'deadline_card',
-        'title': 'Deadline tomorrow',
-        'body': 'Submit the ML exercise sheet before 18:00.',
-        'arguments': <String, Object?>{
-          'course': 'Machine Learning',
-          'due': '2026-07-09T18:00:00',
-        },
-      },
-      <String, Object?>{
-        'type': 'quick_reply',
-        'title': 'Quick reply',
-        'body': 'Ask StudyOS to plan a 45 minute review block.',
-        'arguments': <String, Object?>{
-          'reply': 'Plan a 45 minute review block around my next lecture.',
-        },
-      },
-    ];
+const List<Map<String, Object?>>
+generativeUiFixturePayloads = <Map<String, Object?>>[
+  <String, Object?>{
+    'type': 'next_action',
+    'title': 'Leave for class',
+    'body':
+        'Machine Learning starts soon in Room A. Open the schedule before you go.',
+    'arguments': <String, Object?>{
+      'action_id': 'open_schedule',
+      'cta': 'Open schedule',
+    },
+  },
+  <String, Object?>{
+    'type': 'schedule_summary',
+    'title': 'Compact day',
+    'body': 'Two lectures today, with a free study block after lunch.',
+    'arguments': <String, Object?>{
+      'source': 'local_timetable',
+      'date': '2026-07-08',
+    },
+  },
+  <String, Object?>{
+    'type': 'route_hint',
+    'title': 'Route hint',
+    'body': 'Leave in 12 minutes to reach the campus library on time.',
+    'arguments': <String, Object?>{
+      'destination': 'Campus Library',
+      'mode': 'walk',
+    },
+  },
+  <String, Object?>{
+    'type': 'deadline_card',
+    'title': 'Deadline tomorrow',
+    'body': 'Submit the ML exercise sheet before 18:00.',
+    'arguments': <String, Object?>{
+      'course': 'Machine Learning',
+      'due': '2026-07-09T18:00:00',
+    },
+  },
+  <String, Object?>{
+    'type': 'quick_reply',
+    'title': 'Quick reply',
+    'body': 'Ask StudyOS to plan a 45 minute review block.',
+    'arguments': <String, Object?>{
+      'reply': 'Plan a 45 minute review block around my next lecture.',
+    },
+  },
+];
 
 List<String> _requireStrings(
   Map<String, Object?> arguments,
@@ -183,4 +187,3 @@ String? _string(Object? value) {
   final text = value?.toString().trim();
   return text == null || text.isEmpty ? null : text;
 }
-

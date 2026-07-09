@@ -140,4 +140,3 @@ class _InvalidComponentCard extends StatelessWidget {
     );
   }
 }
-
