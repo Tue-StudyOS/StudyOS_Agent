@@ -54,7 +54,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    'Schedule',
+                    'Your schedule',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: StudyOsSpacing.xs),
@@ -65,22 +65,16 @@ class _ScheduleViewState extends State<ScheduleView> {
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Refresh timetable',
-              onPressed: widget.isRefreshing ? null : widget.onRefresh,
-              icon: widget.isRefreshing
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh_rounded),
+            _RefreshButton(
+              isRefreshing: widget.isRefreshing,
+              onPressed: widget.onRefresh,
             ),
           ],
         ),
         const SizedBox(height: StudyOsSpacing.sm),
         Align(
           alignment: Alignment.centerLeft,
-          child: FilledButton.tonalIcon(
+          child: TextButton.icon(
             key: const ValueKey<String>('schedule-sync-calendar'),
             onPressed: hasSyncableTimetable && !widget.isSyncingCalendar
                 ? widget.onSyncCalendar
@@ -91,7 +85,11 @@ class _ScheduleViewState extends State<ScheduleView> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.event_available_outlined),
-            label: Text(widget.isSyncingCalendar ? 'Syncing' : 'Sync calendar'),
+            label: Text(
+              widget.isSyncingCalendar
+                  ? 'Syncing calendar'
+                  : 'Sync to Calendar',
+            ),
           ),
         ),
         if (widget.error != null) ...<Widget>[
@@ -144,12 +142,33 @@ class _ScheduleViewState extends State<ScheduleView> {
               body: 'Pick another day from the strip above.',
             )
           else
-            for (var index = 0; index < events.length; index++)
-              ScheduleLectureCard(
-                event: events[index],
-                isFirst: index == 0,
-                color: scheduleColorFor(events[index].title),
+            Material(
+              color: StudyOsColors.surface,
+              borderRadius: BorderRadius.circular(StudyOsRadii.md),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                child: Column(
+                  children: <Widget>[
+                    for (
+                      var index = 0;
+                      index < events.length;
+                      index++
+                    ) ...<Widget>[
+                      ScheduleLectureCard(
+                        event: events[index],
+                        isFirst: index == 0,
+                        color: scheduleColorFor(events[index].title),
+                      ),
+                      if (index < events.length - 1)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 60),
+                          child: Divider(),
+                        ),
+                    ],
+                  ],
+                ),
               ),
+            ),
         ],
       ],
     );
@@ -179,4 +198,27 @@ class _ScheduleViewState extends State<ScheduleView> {
         ? 'Upcoming lectures from ALMA.'
         : details.join(' · ');
   }
+}
+
+class _RefreshButton extends StatelessWidget {
+  const _RefreshButton({required this.isRefreshing, required this.onPressed});
+
+  final bool isRefreshing;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: 'Refresh timetable',
+    onPressed: isRefreshing ? null : onPressed,
+    style: IconButton.styleFrom(
+      backgroundColor: StudyOsColors.surface,
+      foregroundColor: StudyOsColors.accent,
+    ),
+    icon: isRefreshing
+        ? const SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : const Icon(Icons.refresh_rounded),
+  );
 }

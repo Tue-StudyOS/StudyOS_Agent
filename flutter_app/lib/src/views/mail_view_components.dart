@@ -29,8 +29,11 @@ class _MailControls extends StatelessWidget {
           ]
         : mailboxes;
     return Container(
-      padding: const EdgeInsets.all(StudyOsSpacing.md),
-      decoration: _cardDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.md),
+      decoration: BoxDecoration(
+        color: StudyOsColors.surface,
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
+      ),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -54,11 +57,18 @@ class _MailControls extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(width: StudyOsSpacing.md),
-          FilterChip(
-            label: const Text('Unread'),
-            selected: unreadOnly,
-            onSelected: onUnreadOnlyChanged,
+          const SizedBox(width: StudyOsSpacing.sm),
+          IconButton(
+            tooltip: unreadOnly ? 'Show all messages' : 'Show unread only',
+            onPressed: () => onUnreadOnlyChanged(!unreadOnly),
+            icon: Icon(
+              unreadOnly
+                  ? Icons.mark_email_unread_rounded
+                  : Icons.mark_email_read_outlined,
+              color: unreadOnly
+                  ? StudyOsColors.accent
+                  : StudyOsColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -79,81 +89,74 @@ class _MailSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: StudyOsSpacing.md),
-      child: Material(
-        color: StudyOsColors.surface,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            color: selected ? StudyOsColors.accent : StudyOsColors.border,
+    return Material(
+      color: selected
+          ? StudyOsColors.accent.withValues(alpha: 0.08)
+          : StudyOsColors.surface,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: StudyOsSpacing.md,
+            vertical: StudyOsSpacing.md,
           ),
-          borderRadius: BorderRadius.circular(StudyOsRadii.md),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(StudyOsSpacing.md),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  message.isUnread
-                      ? Icons.mark_email_unread
-                      : Icons.mail_outline,
-                  color: message.isUnread
-                      ? StudyOsColors.accent
-                      : StudyOsColors.textMuted,
-                ),
-                const SizedBox(width: StudyOsSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(
+                message.isUnread ? Icons.mark_email_unread : Icons.mail_outline,
+                color: message.isUnread
+                    ? StudyOsColors.accent
+                    : StudyOsColors.textMuted,
+              ),
+              const SizedBox(width: StudyOsSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      message.subject,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: StudyOsSpacing.xs),
+                    Text(
+                      message.senderLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    if (message.preview != null)
                       Text(
-                        message.subject,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: StudyOsSpacing.xs),
-                      Text(
-                        message.senderLabel,
-                        maxLines: 1,
+                        message.preview!,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      if (message.preview != null)
-                        Text(
-                          message.preview!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      if (message.approvalNotice != null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: StudyOsSpacing.xs),
-                          child: _ApprovalBadge(),
-                        ),
-                    ],
-                  ),
-                ),
-                if (message.receivedAt?.isNotEmpty == true) ...<Widget>[
-                  const SizedBox(width: StudyOsSpacing.sm),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 72),
-                    child: Text(
-                      message.receivedAt!,
-                      maxLines: 2,
-                      textAlign: TextAlign.right,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: StudyOsColors.textMuted,
+                    if (message.approvalNotice != null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: StudyOsSpacing.xs),
+                        child: _ApprovalBadge(),
                       ),
+                  ],
+                ),
+              ),
+              if (message.receivedAt?.isNotEmpty == true) ...<Widget>[
+                const SizedBox(width: StudyOsSpacing.sm),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 72),
+                  child: Text(
+                    message.receivedAt!,
+                    maxLines: 2,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: StudyOsColors.textMuted,
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -258,6 +261,5 @@ class _MailMessageCard extends StatelessWidget {
 
 final _cardDecoration = BoxDecoration(
   color: StudyOsColors.surface,
-  border: Border.all(color: StudyOsColors.border),
   borderRadius: BorderRadius.circular(StudyOsRadii.md),
 );

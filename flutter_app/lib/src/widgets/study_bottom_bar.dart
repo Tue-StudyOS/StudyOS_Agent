@@ -6,107 +6,60 @@ class StudyBottomBar extends StatelessWidget {
   const StudyBottomBar({
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.onAssistantPressed,
+    required this.onAssistantLongPress,
     super.key,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final VoidCallback onAssistantPressed;
+  final VoidCallback onAssistantLongPress;
 
   @override
   Widget build(BuildContext context) {
     return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 10,
       color: StudyOsColors.surface,
-      clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.xs),
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      padding: EdgeInsets.zero,
       child: SizedBox(
-        height: 72,
+        height: 66,
         child: Row(
           children: <Widget>[
-            Expanded(
-              child: Row(
-                children: <Widget>[
-                  _BarItem(
-                    selected: selectedIndex == 0,
-                    icon: Icons.home_outlined,
-                    selectedIcon: Icons.home_rounded,
-                    label: 'Home',
-                    onTap: () => onDestinationSelected(0),
-                  ),
-                  _BarItem(
-                    selected: selectedIndex == 1,
-                    icon: Icons.calendar_month_outlined,
-                    selectedIcon: Icons.calendar_month_rounded,
-                    label: 'Schedule',
-                    onTap: () => onDestinationSelected(1),
-                  ),
-                ],
-              ),
+            _BarItem(
+              selected: selectedIndex == 0,
+              icon: Icons.home_outlined,
+              selectedIcon: Icons.home_rounded,
+              label: 'Home',
+              onTap: () => onDestinationSelected(0),
             ),
-            const SizedBox(width: 104),
-            Expanded(
-              child: Row(
-                children: <Widget>[
-                  _BarItem(
-                    selected: selectedIndex == 2,
-                    icon: Icons.mail_outline_rounded,
-                    selectedIcon: Icons.mail_rounded,
-                    label: 'Mail',
-                    onTap: () => onDestinationSelected(2),
-                  ),
-                  _BarItem(
-                    selected: selectedIndex == 3,
-                    icon: Icons.restaurant_outlined,
-                    selectedIcon: Icons.restaurant_rounded,
-                    label: 'Campus',
-                    onTap: () => onDestinationSelected(3),
-                  ),
-                ],
-              ),
+            _BarItem(
+              selected: selectedIndex == 1,
+              icon: Icons.calendar_month_outlined,
+              selectedIcon: Icons.calendar_month_rounded,
+              label: 'Schedule',
+              onTap: () => onDestinationSelected(1),
+            ),
+            _BarItem(
+              selected: selectedIndex == 2,
+              icon: Icons.mail_outline_rounded,
+              selectedIcon: Icons.mail_rounded,
+              label: 'Mail',
+              onTap: () => onDestinationSelected(2),
+            ),
+            _BarItem(
+              selected: selectedIndex == 3,
+              icon: Icons.restaurant_outlined,
+              selectedIcon: Icons.restaurant_rounded,
+              label: 'Campus',
+              onTap: () => onDestinationSelected(3),
+            ),
+            _AssistantItem(
+              onTap: onAssistantPressed,
+              onLongPress: onAssistantLongPress,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class AskFab extends StatelessWidget {
-  const AskFab({required this.onPressed, required this.onLongPress, super.key});
-
-  final VoidCallback onPressed;
-  final VoidCallback onLongPress;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      key: const ValueKey<String>('ask-fab-surface'),
-      behavior: HitTestBehavior.opaque,
-      onTap: onPressed,
-      onLongPress: onLongPress,
-      child: Semantics(
-        button: true,
-        label: 'Ask StudyOS',
-        child: Material(
-          elevation: 6,
-          color: StudyOsColors.accentStrong,
-          borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-          clipBehavior: Clip.antiAlias,
-          child: const SizedBox(
-            height: 56,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: StudyOsSpacing.lg),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(Icons.auto_awesome),
-                  SizedBox(width: StudyOsSpacing.sm),
-                  Text('Ask'),
-                ],
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -137,18 +90,18 @@ class _BarItem extends StatelessWidget {
         button: true,
         label: label,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
           child: Material(
             color: selected
                 ? StudyOsColors.accent.withValues(alpha: 0.10)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               onTap: onTap,
               child: SizedBox(
-                height: 56,
+                height: 52,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
@@ -175,4 +128,47 @@ class _BarItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AssistantItem extends StatelessWidget {
+  const _AssistantItem({required this.onTap, required this.onLongPress});
+
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Semantics(
+      button: true,
+      label: 'Open StudyOS assistant',
+      child: InkWell(
+        key: const ValueKey<String>('assistant-tab'),
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: const SizedBox(
+          height: 52,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(
+                Icons.auto_awesome_outlined,
+                color: StudyOsColors.accent,
+                size: 20,
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Assistant',
+                style: TextStyle(
+                  color: StudyOsColors.accent,
+                  fontSize: 10,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
-import '../widgets/generated_ui_preview_section.dart';
 import '../widgets/proactive_feed_section.dart';
 
 class HomeView extends StatelessWidget {
@@ -40,95 +39,87 @@ class HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profile = this.profile;
+    final next = timetable?.nextLectureAt(DateTime.now());
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: StudyOsSpacing.xl, bottom: 96),
+        padding: const EdgeInsets.only(top: StudyOsSpacing.xl, bottom: 100),
         children: <Widget>[
-          _HomeHeader(profile: profile),
-          const SizedBox(height: StudyOsSpacing.lg),
+          _Greeting(profile: profile),
+          const SizedBox(height: StudyOsSpacing.xxl),
+          _TodayFocus(next: next, onTap: onOpenSchedule),
+          const SizedBox(height: StudyOsSpacing.xxl),
+          _SectionLabel(label: 'For you'),
+          const SizedBox(height: StudyOsSpacing.sm),
           ProactiveFeedSection(snapshot: snapshot, onRefresh: onRefresh),
-          const SizedBox(height: StudyOsSpacing.xl),
-          const GeneratedUiPreviewSection(),
-          const SizedBox(height: StudyOsSpacing.xl),
-          _StatusGrid(
-            items: <_HomeStatusItem>[
-              _HomeStatusItem(
-                cardKey: const ValueKey<String>('home-status-profile'),
-                icon: Icons.person_outline_rounded,
-                label: 'Profile',
-                value: profile == null ? 'Not connected' : 'Connected',
-                onTap: onOpenProfile,
-              ),
-              _HomeStatusItem(
-                cardKey: const ValueKey<String>('home-status-assistant'),
-                icon: Icons.auto_awesome_outlined,
-                label: 'Assistant',
-                value: assistantSetupLabel(config),
-                onTap: onOpenAssistant,
-              ),
-              _HomeStatusItem(
-                cardKey: const ValueKey<String>('home-status-notes'),
-                icon: Icons.psychology_alt_outlined,
-                label: 'Notes',
-                value: memoryText.trim().isEmpty ? 'Not yet' : 'Saved',
-                onTap: onOpenNotes,
-              ),
-              _HomeStatusItem(
-                cardKey: const ValueKey<String>('home-status-timetable'),
-                icon: Icons.calendar_month_outlined,
-                label: 'Timetable',
-                value: _timetableStatus,
+          const SizedBox(height: StudyOsSpacing.xxl),
+          _SectionLabel(label: 'Study tools'),
+          const SizedBox(height: StudyOsSpacing.sm),
+          _GroupedList(
+            children: <Widget>[
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-timetable'),
+                icon: Icons.calendar_today_outlined,
+                title: 'Schedule',
+                detail: _timetableStatus,
                 onTap: onOpenSchedule,
               ),
-              _HomeStatusItem(
-                cardKey: const ValueKey<String>('home-status-mail'),
-                icon: Icons.mark_email_unread_outlined,
-                label: 'Mail',
-                value: profile == null ? 'Sign in needed' : 'Local tools ready',
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-mail'),
+                icon: Icons.mail_outline_rounded,
+                title: 'Inbox',
+                detail: profile == null ? 'Sign in needed' : 'University mail',
                 onTap: onOpenMail,
               ),
-              _HomeStatusItem(
-                cardKey: const ValueKey<String>('home-status-map'),
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-campus-card'),
+                icon: Icons.restaurant_outlined,
+                title: 'Campus',
+                detail: _campusLine(profile),
+                onTap: onOpenCampus,
+              ),
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-maps-card'),
+                containerKey: const ValueKey<String>('home-status-map'),
                 icon: Icons.map_outlined,
-                label: 'Map',
-                value: 'Tübingen',
+                title: 'Map',
+                detail: 'Find your way around Tübingen',
                 onTap: onOpenMaps,
               ),
             ],
           ),
-          const SizedBox(height: StudyOsSpacing.lg),
-          _HomeCard(
-            icon: Icons.event_available_outlined,
-            title: 'Next lecture',
-            body: _nextLectureLine(),
-            trailing: _nextLectureCountdown(),
-            onTap: onOpenSchedule,
-          ),
-          const SizedBox(height: StudyOsSpacing.md),
-          _HomeCard(
-            icon: Icons.mail_outline_rounded,
-            title: 'Inbox',
-            body: 'Browse folders or ask the agent to search recent mail.',
-            onTap: onOpenMail,
-          ),
-          const SizedBox(height: StudyOsSpacing.md),
-          _HomeCard(
-            key: const ValueKey<String>('home-maps-card'),
-            icon: Icons.map_outlined,
-            title: 'Navigate',
-            body: 'Search destinations and ask StudyOS about routes.',
-            onTap: onOpenMaps,
-          ),
-          const SizedBox(height: StudyOsSpacing.md),
-          _HomeCard(
-            key: const ValueKey<String>('home-campus-card'),
-            icon: Icons.restaurant_outlined,
-            title: 'Campus',
-            body: _campusLine(profile),
-            onTap: onOpenCampus,
+          const SizedBox(height: StudyOsSpacing.xxl),
+          _SectionLabel(label: 'StudyOS'),
+          const SizedBox(height: StudyOsSpacing.sm),
+          _GroupedList(
+            children: <Widget>[
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-profile'),
+                icon: Icons.person_outline_rounded,
+                title: 'Profile',
+                detail: profile == null
+                    ? 'Complete your student profile'
+                    : 'Your study details',
+                onTap: onOpenProfile,
+              ),
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-assistant'),
+                icon: Icons.auto_awesome_outlined,
+                title: 'Assistant',
+                detail: assistantSetupLabel(config),
+                onTap: onOpenAssistant,
+              ),
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-notes'),
+                icon: Icons.note_alt_outlined,
+                title: 'Notes',
+                detail: memoryText.trim().isEmpty
+                    ? 'Nothing saved yet'
+                    : 'Personal context saved',
+                onTap: onOpenNotes,
+              ),
+            ],
           ),
         ],
       ),
@@ -137,213 +128,270 @@ class HomeView extends StatelessWidget {
 
   String get _timetableStatus {
     final snapshot = timetable;
-    if (snapshot == null) return 'Not synced yet';
-    return snapshot.isStale ? 'Refresh due' : 'Synced';
-  }
-
-  String _nextLectureLine() {
-    final next = timetable?.nextLectureAt(DateTime.now());
-    if (next == null) return 'Refresh your timetable to see upcoming lectures.';
-    final location = next.location == null ? '' : ' · ${next.location}';
-    return '${next.dayLabel} · ${next.timeRangeText}$location';
-  }
-
-  Widget? _nextLectureCountdown() {
-    final now = DateTime.now();
-    final next = timetable?.nextLectureAt(now);
-    if (next == null) return null;
-    return _TimeLeftPill(label: next.relativeTimeLabel(now));
+    if (snapshot == null) return 'Sync your ALMA timetable';
+    return snapshot.isStale ? 'Refresh available' : 'Up to date';
   }
 
   String _campusLine(OnboardingProfile? profile) {
     if (profile?.interests.contains(StudyInterest.mensa) == true) {
       final preference = profile!.foodPreference;
-      if (preference == FoodPreference.noPreference) {
-        return 'Mensa meals will appear here when campus data is connected.';
+      if (preference != FoodPreference.noPreference) {
+        return '${preference.label} Mensa choices';
       }
-      return '${preference.label} Mensa options will appear here.';
     }
-    return 'Mensa, rooms, and campus shortcuts will appear here.';
+    return 'Mensa menus and essentials';
   }
 }
 
-class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.profile});
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.profile});
 
   final OnboardingProfile? profile;
 
   @override
   Widget build(BuildContext context) {
-    final profile = this.profile;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 18
+        ? 'Good afternoon'
+        : 'Good evening';
+    final name = profile?.displayName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          profile == null ? 'Home' : 'Hi ${profile.displayName}',
+          '$greeting${name == null ? '' : ', $name'}',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: StudyOsSpacing.xs),
-        Text(
-          profile == null
-              ? 'Connect your student profile to personalize StudyOS.'
-              : _profileLine(profile),
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
+        Text(_dateLabel(), style: Theme.of(context).textTheme.bodyMedium),
       ],
     );
   }
 
-  String _profileLine(OnboardingProfile profile) {
-    final parts = <String>[
-      profile.degreeProgram,
-      if (profile.semester != null) 'Semester ${profile.semester}',
+  String _dateLabel() {
+    const weekdays = <String>[
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
-    return parts.join(' · ');
+    const months = <String>[
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final now = DateTime.now();
+    return '${weekdays[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
   }
 }
 
-class _StatusGrid extends StatelessWidget {
-  const _StatusGrid({required this.items});
+class _TodayFocus extends StatelessWidget {
+  const _TodayFocus({required this.next, required this.onTap});
 
-  final List<_HomeStatusItem> items;
+  final LectureEvent? next;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: MediaQuery.sizeOf(context).width < 520 ? 2 : 4,
-      childAspectRatio: 1.25,
-      mainAxisSpacing: StudyOsSpacing.md,
-      crossAxisSpacing: StudyOsSpacing.md,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: <Widget>[
-        for (final item in items)
-          _HomeCard(
-            key: item.cardKey,
-            icon: item.icon,
-            title: item.label,
-            body: item.value,
-            onTap: item.onTap,
-          ),
-      ],
+    final now = DateTime.now();
+    final lecture = next;
+    return Material(
+      color: StudyOsColors.text,
+      borderRadius: BorderRadius.circular(StudyOsRadii.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(StudyOsRadii.lg),
+        child: Padding(
+          padding: const EdgeInsets.all(StudyOsSpacing.xl),
+          child: lecture == null
+              ? const _FocusContent(
+                  eyebrow: 'TODAY',
+                  title: 'Your day is clear.',
+                  detail: 'Sync your timetable to see what is next.',
+                  trailing: Icons.calendar_today_outlined,
+                )
+              : _FocusContent(
+                  eyebrow: lecture.relativeTimeLabel(now).toUpperCase(),
+                  title: lecture.title,
+                  detail:
+                      '${lecture.timeRangeText}${lecture.location == null ? '' : ' · ${lecture.location}'}',
+                  trailing: Icons.arrow_forward_rounded,
+                ),
+        ),
+      ),
     );
   }
 }
 
-class _HomeStatusItem {
-  const _HomeStatusItem({
-    required this.cardKey,
+class _FocusContent extends StatelessWidget {
+  const _FocusContent({
+    required this.eyebrow,
+    required this.title,
+    required this.detail,
+    required this.trailing,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String detail;
+  final IconData trailing;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              eyebrow,
+              style: const TextStyle(
+                color: Color(0xFFAEAEB2),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                height: 1.12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            Text(
+              detail,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFFD1D1D6), fontSize: 15),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: StudyOsSpacing.md),
+      Icon(trailing, color: Colors.white, size: 23),
+    ],
+  );
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    label,
+    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 19),
+  );
+}
+
+class _GroupedList extends StatelessWidget {
+  const _GroupedList({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(StudyOsRadii.md),
+    child: Material(
+      color: StudyOsColors.surface,
+      child: Column(children: children),
+    ),
+  );
+}
+
+class _ToolRow extends StatelessWidget {
+  const _ToolRow({
+    required this.itemKey,
+    this.containerKey,
     required this.icon,
-    required this.label,
-    required this.value,
+    required this.title,
+    required this.detail,
     required this.onTap,
   });
 
-  final Key cardKey;
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-}
-
-class _HomeCard extends StatelessWidget {
-  const _HomeCard({
-    required this.icon,
-    required this.title,
-    required this.body,
-    this.trailing,
-    this.onTap,
-    super.key,
-  });
-
+  final Key itemKey;
+  final Key? containerKey;
   final IconData icon;
   final String title;
-  final String body;
-  final Widget? trailing;
-  final VoidCallback? onTap;
+  final String detail;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final effectiveTrailing =
-        trailing ??
-        (onTap == null
-            ? null
-            : const Icon(
-                Icons.chevron_right_rounded,
-                size: 22,
-                color: StudyOsColors.textMuted,
-              ));
-    return Material(
-      color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-        child: Padding(
-          padding: const EdgeInsets.all(StudyOsSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(icon, size: 32, color: StudyOsColors.accent),
-                  const Spacer(),
-                  ?effectiveTrailing,
-                ],
-              ),
-              Column(
+  Widget build(BuildContext context) => Container(
+    key: containerKey,
+    child: InkWell(
+      key: itemKey,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: StudyOsSpacing.md,
+          vertical: StudyOsSpacing.md,
+        ),
+        child: Row(
+          children: <Widget>[
+            _ToolIcon(icon: icon),
+            const SizedBox(width: StudyOsSpacing.md),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(title, style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: StudyOsSpacing.xs),
+                  const SizedBox(height: 2),
                   Text(
-                    body,
-                    maxLines: 2,
+                    detail,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: StudyOsColors.separator,
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _TimeLeftPill extends StatelessWidget {
-  const _TimeLeftPill({required this.label});
-
-  final String label;
+class _ToolIcon extends StatelessWidget {
+  const _ToolIcon({required this.icon});
+  final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: StudyOsColors.accent.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: StudyOsSpacing.sm,
-          vertical: StudyOsSpacing.xs,
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: StudyOsColors.accent,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    width: 34,
+    height: 34,
+    decoration: BoxDecoration(
+      color: StudyOsColors.accent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    alignment: Alignment.center,
+    child: Icon(icon, color: StudyOsColors.accent, size: 19),
+  );
 }

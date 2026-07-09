@@ -61,7 +61,7 @@ class _CampusViewState extends State<CampusView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    'Campus',
+                    'Mensa',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: StudyOsSpacing.xs),
@@ -105,7 +105,29 @@ class _CampusViewState extends State<CampusView> {
             }
             return Column(
               children: <Widget>[
-                for (final canteen in canteens) _CanteenCard(canteen: canteen),
+                Material(
+                  color: StudyOsColors.surface,
+                  borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                    child: Column(
+                      children: <Widget>[
+                        for (
+                          var index = 0;
+                          index < canteens.length;
+                          index++
+                        ) ...<Widget>[
+                          _CanteenCard(canteen: canteens[index]),
+                          if (index < canteens.length - 1)
+                            const Padding(
+                              padding: EdgeInsets.only(left: StudyOsSpacing.lg),
+                              child: Divider(),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
               ],
             );
           },
@@ -123,15 +145,8 @@ class _CanteenCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final menu = canteen.menus.first;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: StudyOsSpacing.md),
+    return Padding(
       padding: const EdgeInsets.all(StudyOsSpacing.lg),
-      decoration: BoxDecoration(
-        color: StudyOsColors.surface,
-        border: Border.all(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -152,13 +167,9 @@ class _CanteenCard extends StatelessWidget {
           ),
           if (menu.icons.isNotEmpty) ...<Widget>[
             const SizedBox(height: StudyOsSpacing.md),
-            Wrap(
-              spacing: StudyOsSpacing.sm,
-              runSpacing: StudyOsSpacing.sm,
-              children: <Widget>[
-                for (final icon in menu.icons.take(4))
-                  Chip(label: Text(icon), visualDensity: VisualDensity.compact),
-              ],
+            Text(
+              menu.icons.take(4).join(' · '),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ],
@@ -191,7 +202,6 @@ class _CampusMessage extends StatelessWidget {
       padding: const EdgeInsets.all(StudyOsSpacing.lg),
       decoration: BoxDecoration(
         color: StudyOsColors.surface,
-        border: Border.all(color: StudyOsColors.border),
         borderRadius: BorderRadius.circular(StudyOsRadii.md),
       ),
       child: Column(

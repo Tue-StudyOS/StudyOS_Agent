@@ -84,12 +84,12 @@ class _MailViewState extends State<MailView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    'Mail',
+                    'Inbox',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: StudyOsSpacing.xs),
                   Text(
-                    'University mailbox, folders, and read-only message access.',
+                    'Your university mail, in one place.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
@@ -161,14 +161,38 @@ class _MailViewState extends State<MailView> {
                     body: 'Try another folder or turn off the unread filter.',
                   )
                 else
-                  for (final message in state.inbox.messages)
-                    _MailSummaryCard(
-                      message: message,
-                      selected:
-                          _selectedMessage?.uid == message.uid ||
-                          _openingMessageUid == message.uid,
-                      onTap: () => _openMessage(message),
+                  Material(
+                    color: StudyOsColors.surface,
+                    borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                      child: Column(
+                        children: <Widget>[
+                          for (
+                            var index = 0;
+                            index < state.inbox.messages.length;
+                            index++
+                          ) ...<Widget>[
+                            _MailSummaryCard(
+                              message: state.inbox.messages[index],
+                              selected:
+                                  _selectedMessage?.uid ==
+                                      state.inbox.messages[index].uid ||
+                                  _openingMessageUid ==
+                                      state.inbox.messages[index].uid,
+                              onTap: () =>
+                                  _openMessage(state.inbox.messages[index]),
+                            ),
+                            if (index < state.inbox.messages.length - 1)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 62),
+                                child: Divider(),
+                              ),
+                          ],
+                        ],
+                      ),
                     ),
+                  ),
               ],
             );
           },

@@ -20,25 +20,55 @@ class ScheduleDayStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 78,
+      height: 70,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemBuilder: (context, index) {
           final day = days[index];
           final selected = scheduleSameDay(day, selectedDay);
           final count = eventsFor(day).length;
-          return ChoiceChip(
-            selected: selected,
-            onSelected: (_) => onSelected(day),
-            label: SizedBox(
-              width: 68,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(scheduleShortWeekday(day), maxLines: 1),
-                  Text('${day.day}.${day.month}.', maxLines: 1),
-                  Text('$count', style: Theme.of(context).textTheme.bodyMedium),
-                ],
+          return Material(
+            color: selected ? StudyOsColors.accent : StudyOsColors.surface,
+            borderRadius: BorderRadius.circular(StudyOsRadii.md),
+            child: InkWell(
+              onTap: () => onSelected(day),
+              borderRadius: BorderRadius.circular(StudyOsRadii.md),
+              child: SizedBox(
+                width: 62,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      scheduleShortWeekday(day),
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : StudyOsColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${day.day}',
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: selected ? Colors.white : StudyOsColors.text,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '$count classes',
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white.withValues(alpha: 0.78)
+                            : StudyOsColors.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -86,20 +116,17 @@ class ScheduleLectureCard extends StatelessWidget {
     final timeLeftColor = event.hasEndedAt(now)
         ? StudyOsColors.textMuted
         : color;
-    return Container(
-      margin: const EdgeInsets.only(bottom: StudyOsSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: StudyOsSpacing.md,
+        vertical: StudyOsSpacing.lg,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Container(
-            width: 6,
-            height: 112,
-            margin: const EdgeInsets.all(StudyOsSpacing.sm),
+            width: 4,
+            height: 82,
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(999),
@@ -107,12 +134,7 @@ class ScheduleLectureCard extends StatelessWidget {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                StudyOsSpacing.sm,
-                StudyOsSpacing.md,
-                StudyOsSpacing.md,
-                StudyOsSpacing.md,
-              ),
+              padding: const EdgeInsets.only(left: StudyOsSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[

@@ -11,10 +11,7 @@ class SettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-      ),
+      borderRadius: BorderRadius.circular(StudyOsRadii.md),
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(StudyOsSpacing.lg),

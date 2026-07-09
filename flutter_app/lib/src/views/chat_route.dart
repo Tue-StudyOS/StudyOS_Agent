@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app_shell_controller.dart';
 import '../app_shell_scope.dart';
 import '../chat_session_mutation.dart';
 import '../studyos_theme.dart';
@@ -62,27 +63,20 @@ class _ChatRouteState extends State<ChatRoute> {
       builder: (context, _) {
         final controller = AppShellScope.of(context);
         return Scaffold(
-          endDrawer: Drawer(
-            backgroundColor: StudyOsColors.background,
-            child: ConversationList(
-              sessions: controller.sessions,
-              activeSessionId: controller.activeSessionId,
-              onSelectSession: controller.selectSession,
-              onCreateSession: controller.createSession,
-              onDeleteSession: controller.deleteSession,
-            ),
-          ),
           body: SafeArea(
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 760),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: StudyOsSpacing.lg,
+                    horizontal: StudyOsSpacing.xl,
                   ),
                   child: Column(
                     children: <Widget>[
-                      _ChatHeader(onCreateSession: controller.createSession),
+                      _ChatHeader(
+                        onCreateSession: controller.createSession,
+                        onShowHistory: () => _showHistory(context, controller),
+                      ),
                       Expanded(
                         child: ChatView(
                           messages: activeSessionFrom(
@@ -111,12 +105,43 @@ class _ChatRouteState extends State<ChatRoute> {
       },
     );
   }
+
+  void _showHistory(BuildContext context, AppShellController controller) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: StudyOsColors.surface,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.72,
+          child: ConversationList(
+            sessions: controller.sessions,
+            activeSessionId: controller.activeSessionId,
+            onSelectSession: (session) {
+              controller.selectSession(session);
+              Navigator.of(context).pop();
+            },
+            onCreateSession: () {
+              controller.createSession();
+              Navigator.of(context).pop();
+            },
+            onDeleteSession: controller.deleteSession,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.onCreateSession});
+  const _ChatHeader({
+    required this.onCreateSession,
+    required this.onShowHistory,
+  });
 
   final VoidCallback onCreateSession;
+  final VoidCallback onShowHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -138,18 +163,16 @@ class _ChatHeader extends StatelessWidget {
           const SizedBox(width: StudyOsSpacing.md),
           Expanded(
             child: Text(
-              'StudyOS Agent',
+              'Assistant',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          Builder(
-            builder: (context) => _HeaderIconButton(
-              tooltip: 'Chat history',
-              icon: Icons.history_rounded,
-              onPressed: Scaffold.of(context).openEndDrawer,
-            ),
+          _HeaderIconButton(
+            tooltip: 'Chat history',
+            icon: Icons.history_rounded,
+            onPressed: onShowHistory,
           ),
           const SizedBox(width: StudyOsSpacing.sm),
           _HeaderIconButton(
