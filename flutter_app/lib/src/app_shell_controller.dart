@@ -91,7 +91,7 @@ class AppShellController extends ChangeNotifier {
   AgentConfig get agentConfig => _agentConfig;
   String get memoryText => _memoryText;
   TimetableSnapshot? get timetable => _timetable;
-  DailyBriefingState get dailyBriefing => DailyBriefingState.fromLocalState(
+  HomeFeedSnapshot get homeFeedSnapshot => HomeFeedSnapshot.fromLocalState(
     profile: _profile,
     timetable: _timetable,
     memoryText: _memoryText,

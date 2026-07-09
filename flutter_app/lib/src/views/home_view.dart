@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 import '../assistant_copy.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import '../widgets/proactive_feed_section.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({
     required this.profile,
     required this.config,
-    required this.briefing,
+    required this.snapshot,
     required this.memoryText,
     required this.timetable,
+    required this.onOpenProfile,
+    required this.onOpenAssistant,
+    required this.onOpenNotes,
     required this.onOpenMail,
     required this.onOpenMaps,
     required this.onOpenCampus,
@@ -21,9 +25,12 @@ class HomeView extends StatelessWidget {
 
   final OnboardingProfile? profile;
   final AgentConfig config;
-  final DailyBriefingState briefing;
+  final HomeFeedSnapshot snapshot;
   final String memoryText;
   final TimetableSnapshot? timetable;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onOpenAssistant;
+  final VoidCallback onOpenNotes;
   final VoidCallback onOpenMail;
   final VoidCallback onOpenMaps;
   final VoidCallback onOpenCampus;
@@ -41,39 +48,51 @@ class HomeView extends StatelessWidget {
         children: <Widget>[
           _HomeHeader(profile: profile),
           const SizedBox(height: StudyOsSpacing.lg),
-          _DailyBriefingSection(briefing: briefing),
+          ProactiveFeedSection(snapshot: snapshot, onRefresh: onRefresh),
           const SizedBox(height: StudyOsSpacing.xl),
           _StatusGrid(
             items: <_HomeStatusItem>[
               _HomeStatusItem(
+                cardKey: const ValueKey<String>('home-status-profile'),
                 icon: Icons.person_outline_rounded,
                 label: 'Profile',
                 value: profile == null ? 'Not connected' : 'Connected',
+                onTap: onOpenProfile,
               ),
               _HomeStatusItem(
+                cardKey: const ValueKey<String>('home-status-assistant'),
                 icon: Icons.auto_awesome_outlined,
                 label: 'Assistant',
                 value: assistantSetupLabel(config),
+                onTap: onOpenAssistant,
               ),
               _HomeStatusItem(
+                cardKey: const ValueKey<String>('home-status-notes'),
                 icon: Icons.psychology_alt_outlined,
                 label: 'Notes',
                 value: memoryText.trim().isEmpty ? 'Not yet' : 'Saved',
+                onTap: onOpenNotes,
               ),
               _HomeStatusItem(
+                cardKey: const ValueKey<String>('home-status-timetable'),
                 icon: Icons.calendar_month_outlined,
                 label: 'Timetable',
                 value: _timetableStatus,
+                onTap: onOpenSchedule,
               ),
               _HomeStatusItem(
+                cardKey: const ValueKey<String>('home-status-mail'),
                 icon: Icons.mark_email_unread_outlined,
                 label: 'Mail',
                 value: profile == null ? 'Sign in needed' : 'Local tools ready',
+                onTap: onOpenMail,
               ),
-              const _HomeStatusItem(
+              _HomeStatusItem(
+                cardKey: const ValueKey<String>('home-status-map'),
                 icon: Icons.map_outlined,
                 label: 'Map',
                 value: 'Tübingen',
+                onTap: onOpenMaps,
               ),
             ],
           ),
@@ -180,36 +199,6 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _DailyBriefingSection extends StatelessWidget {
-  const _DailyBriefingSection({required this.briefing});
-
-  final DailyBriefingState briefing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            briefing.headline,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: StudyOsSpacing.md),
-          for (final message in briefing.messages) ...<Widget>[
-            Text(message.title, style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: StudyOsSpacing.xs),
-            Text(message.body, style: Theme.of(context).textTheme.bodyMedium),
-            if (message != briefing.messages.last)
-              const SizedBox(height: StudyOsSpacing.md),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _StatusGrid extends StatelessWidget {
   const _StatusGrid({required this.items});
 
@@ -226,7 +215,13 @@ class _StatusGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       children: <Widget>[
         for (final item in items)
-          _HomeCard(icon: item.icon, title: item.label, body: item.value),
+          _HomeCard(
+            key: item.cardKey,
+            icon: item.icon,
+            title: item.label,
+            body: item.value,
+            onTap: item.onTap,
+          ),
       ],
     );
   }
@@ -234,14 +229,18 @@ class _StatusGrid extends StatelessWidget {
 
 class _HomeStatusItem {
   const _HomeStatusItem({
+    required this.cardKey,
     required this.icon,
     required this.label,
     required this.value,
+    required this.onTap,
   });
 
+  final Key cardKey;
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback onTap;
 }
 
 class _HomeCard extends StatelessWidget {
@@ -262,6 +261,15 @@ class _HomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTrailing =
+        trailing ??
+        (onTap == null
+            ? null
+            : const Icon(
+                Icons.chevron_right_rounded,
+                size: 22,
+                color: StudyOsColors.textMuted,
+              ));
     return Material(
       color: StudyOsColors.surface,
       shape: RoundedRectangleBorder(
@@ -282,7 +290,7 @@ class _HomeCard extends StatelessWidget {
                 children: <Widget>[
                   Icon(icon, size: 32, color: StudyOsColors.accent),
                   const Spacer(),
-                  ?trailing,
+                  ?effectiveTrailing,
                 ],
               ),
               Column(
