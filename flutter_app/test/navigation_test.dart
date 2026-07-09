@@ -90,6 +90,9 @@ void main() {
             snapshot: _testSnapshot(),
             memoryText: '',
             timetable: null,
+            onOpenProfile: () => selectedTarget = 'profile',
+            onOpenAssistant: () => selectedTarget = 'assistant',
+            onOpenNotes: () => selectedTarget = 'notes',
             onOpenMail: () => selectedTarget = 'mail',
             onOpenMaps: () => selectedTarget = 'maps',
             onOpenCampus: () => selectedTarget = 'campus',
@@ -127,6 +130,9 @@ void main() {
             snapshot: _testSnapshot(),
             memoryText: '',
             timetable: null,
+            onOpenProfile: () => selectedTarget = 'profile',
+            onOpenAssistant: () => selectedTarget = 'assistant',
+            onOpenNotes: () => selectedTarget = 'notes',
             onOpenMail: () => selectedTarget = 'mail',
             onOpenMaps: () => selectedTarget = 'maps',
             onOpenCampus: () => selectedTarget = 'campus',
@@ -150,6 +156,11 @@ void main() {
   testWidgets('home navigation card opens maps view', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     var selectedTarget = 'home';
 
     await tester.pumpWidget(
@@ -162,6 +173,9 @@ void main() {
             snapshot: _testSnapshot(),
             memoryText: '',
             timetable: null,
+            onOpenProfile: () => selectedTarget = 'profile',
+            onOpenAssistant: () => selectedTarget = 'assistant',
+            onOpenNotes: () => selectedTarget = 'notes',
             onOpenMail: () => selectedTarget = 'mail',
             onOpenMaps: () => selectedTarget = 'maps',
             onOpenCampus: () => selectedTarget = 'campus',
@@ -173,14 +187,66 @@ void main() {
     );
 
     final mapsCard = find.byKey(const ValueKey<String>('home-maps-card'));
-    await tester.scrollUntilVisible(
-      mapsCard,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await _bringCardIntoTapArea(tester, mapsCard);
     await tester.tap(mapsCard);
 
     expect(selectedTarget, 'maps');
+  });
+
+  testWidgets('home status grid items open their destinations', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var selectedTarget = 'home';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: const OnboardingProfile(
+              displayName: 'Ada',
+              username: 'ada42',
+              email: null,
+              degreeProgram: 'M.Sc. AI',
+              semester: 2,
+              livesInTuebingen: true,
+            ),
+            config: const AgentConfig.defaults(),
+            snapshot: _testSnapshot(),
+            memoryText: 'Prefers morning study blocks.',
+            timetable: null,
+            onOpenProfile: () => selectedTarget = 'profile',
+            onOpenAssistant: () => selectedTarget = 'assistant',
+            onOpenNotes: () => selectedTarget = 'notes',
+            onOpenMail: () => selectedTarget = 'mail',
+            onOpenMaps: () => selectedTarget = 'maps',
+            onOpenCampus: () => selectedTarget = 'campus',
+            onOpenSchedule: () => selectedTarget = 'schedule',
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    Future<void> tapStatus(String key, String expectedTarget) async {
+      final finder = find.byKey(ValueKey<String>(key));
+      await _bringCardIntoTapArea(tester, finder);
+      await tester.tap(finder);
+      await tester.pump();
+      expect(selectedTarget, expectedTarget);
+    }
+
+    await tapStatus('home-status-profile', 'profile');
+    await tapStatus('home-status-assistant', 'assistant');
+    await tapStatus('home-status-notes', 'notes');
+    await tapStatus('home-status-timetable', 'schedule');
+    await tapStatus('home-status-mail', 'mail');
+    await tapStatus('home-status-map', 'maps');
   });
 
   testWidgets('home renders proactive snapshot before cards', (
@@ -201,6 +267,9 @@ void main() {
             ),
             memoryText: '',
             timetable: null,
+            onOpenProfile: () {},
+            onOpenAssistant: () {},
+            onOpenNotes: () {},
             onOpenMail: () {},
             onOpenMaps: () {},
             onOpenCampus: () {},
@@ -212,47 +281,47 @@ void main() {
     );
 
     expect(find.text('Set up your StudyOS'), findsOneWidget);
-    expect(
-      find.textContaining('Connect your profile'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Connect your profile'), findsOneWidget);
     expect(find.text('Timetable: Unavailable'), findsOneWidget);
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 
-  test('home feed snapshot summarizes the next lecture from structured state', () {
-    final now = DateTime(2026, 7, 1, 9);
-    final snapshot = HomeFeedSnapshot.fromLocalState(
-      profile: const OnboardingProfile(
-        displayName: 'Ada',
-        username: 'ada42',
-        email: null,
-        degreeProgram: 'M.Sc. AI',
-        semester: 2,
-        livesInTuebingen: true,
-      ),
-      timetable: TimetableSnapshot(
-        refreshedAt: now,
-        sourceTerm: 'Sommer 2026',
-        events: <LectureEvent>[
-          LectureEvent(
-            id: 'algorithms',
-            title: 'Algorithms',
-            start: now.add(const Duration(minutes: 45)),
-            end: now.add(const Duration(hours: 2)),
-            location: 'Room 101',
-          ),
-        ],
-      ),
-      memoryText: '',
-      now: now,
-    );
+  test(
+    'home feed snapshot summarizes the next lecture from structured state',
+    () {
+      final now = DateTime(2026, 7, 1, 9);
+      final snapshot = HomeFeedSnapshot.fromLocalState(
+        profile: const OnboardingProfile(
+          displayName: 'Ada',
+          username: 'ada42',
+          email: null,
+          degreeProgram: 'M.Sc. AI',
+          semester: 2,
+          livesInTuebingen: true,
+        ),
+        timetable: TimetableSnapshot(
+          refreshedAt: now,
+          sourceTerm: 'Sommer 2026',
+          events: <LectureEvent>[
+            LectureEvent(
+              id: 'algorithms',
+              title: 'Algorithms',
+              start: now.add(const Duration(minutes: 45)),
+              end: now.add(const Duration(hours: 2)),
+              location: 'Room 101',
+            ),
+          ],
+        ),
+        memoryText: '',
+        now: now,
+      );
 
-    expect(snapshot.summary.title, 'Today at a glance');
-    expect(snapshot.summary.body, contains('Algorithms'));
-    expect(snapshot.summary.body, contains('in 45 min'));
-    expect(snapshot.nextAction.title, 'Prepare for next lecture');
-  });
+      expect(snapshot.summary.title, 'Today at a glance');
+      expect(snapshot.summary.body, contains('Algorithms'));
+      expect(snapshot.summary.body, contains('in 45 min'));
+      expect(snapshot.nextAction.title, 'Prepare for next lecture');
+    },
+  );
 
   testWidgets('shell swipes between primary tabs and updates location', (
     WidgetTester tester,
@@ -374,4 +443,23 @@ HomeFeedSnapshot _testSnapshot() {
     memoryText: '',
     now: DateTime(2026, 7, 1, 9),
   );
+}
+
+Future<void> _bringCardIntoTapArea(WidgetTester tester, Finder finder) async {
+  final scrollable = find.byType(Scrollable).first;
+  await tester.scrollUntilVisible(finder, 300, scrollable: scrollable);
+  final viewportHeight =
+      tester.view.physicalSize.height / tester.view.devicePixelRatio;
+  final centerY = tester.getCenter(finder).dy;
+  const safeInset = 72.0;
+  if (centerY > viewportHeight - safeInset) {
+    await tester.drag(
+      scrollable,
+      Offset(0, -(centerY - viewportHeight + safeInset)),
+    );
+    await tester.pumpAndSettle();
+  } else if (centerY < safeInset) {
+    await tester.drag(scrollable, Offset(0, safeInset - centerY));
+    await tester.pumpAndSettle();
+  }
 }
