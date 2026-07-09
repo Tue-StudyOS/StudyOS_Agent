@@ -155,22 +155,26 @@ class _VoiceFeasibilityMatrix extends StatelessWidget {
       _VoiceFeasibilityRow(
         title: 'Push-to-talk',
         status: 'Prototype path',
-        body: 'Lowest battery risk. Reuses the existing chat pipeline and only records while the user presses the mic.',
+        body:
+            'Lowest battery risk. Reuses the existing chat pipeline and only records while the user presses the mic.',
       ),
       _VoiceFeasibilityRow(
         title: 'Conversation mode',
         status: 'Optional demo',
-        body: 'Hands-free after explicit opt-in. Good for testing turn-taking, but should stay foreground-only.',
+        body:
+            'Hands-free after explicit opt-in. Good for testing turn-taking, but should stay foreground-only.',
       ),
       _VoiceFeasibilityRow(
         title: 'Custom hotword',
         status: 'Research gate',
-        body: 'Needs platform-specific checks for background mic access, battery, model size, and offline wake-word support.',
+        body:
+            'Needs platform-specific checks for background mic access, battery, model size, and offline wake-word support.',
       ),
       _VoiceFeasibilityRow(
         title: 'Passive listener',
         status: 'Defer',
-        body: 'High battery and permission risk. Do not make it the default prototype path.',
+        body:
+            'High battery and permission risk. Do not make it the default prototype path.',
       ),
     ];
     return Column(
@@ -226,7 +230,10 @@ class _FeasibilityTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(row.title, style: Theme.of(context).textTheme.labelLarge),
+                  Text(
+                    row.title,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                   const SizedBox(height: StudyOsSpacing.xs),
                   Text(row.body, style: Theme.of(context).textTheme.bodyMedium),
                 ],
@@ -235,9 +242,9 @@ class _FeasibilityTile extends StatelessWidget {
             const SizedBox(width: StudyOsSpacing.sm),
             Text(
               row.status,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: StudyOsColors.success,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: StudyOsColors.success),
             ),
           ],
         ),
