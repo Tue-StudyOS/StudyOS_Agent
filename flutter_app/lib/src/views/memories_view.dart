@@ -110,8 +110,7 @@ class _MemoryEditor extends StatelessWidget {
       padding: const EdgeInsets.all(StudyOsSpacing.lg),
       decoration: BoxDecoration(
         color: StudyOsColors.surface,
-        border: Border.all(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.lg),
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

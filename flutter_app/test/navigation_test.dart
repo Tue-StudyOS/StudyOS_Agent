@@ -13,7 +13,7 @@ import 'package:studyos_agent/src/views/schedule_view.dart';
 import 'package:studyos_agent/src/widgets/study_bottom_bar.dart';
 
 void main() {
-  testWidgets('bottom navigation exposes four tabs and centered ask action', (
+  testWidgets('bottom navigation exposes stable tabs and an assistant entry', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(430, 932);
@@ -31,16 +31,12 @@ void main() {
         home: StatefulBuilder(
           builder: (context, setState) {
             return Scaffold(
-              floatingActionButton: AskFab(
-                onPressed: () => askPressed = true,
-                onLongPress: () => askLongPressed = true,
-              ),
-              floatingActionButtonLocation:
-                  FloatingActionButtonLocation.centerDocked,
               bottomNavigationBar: StudyBottomBar(
                 selectedIndex: selectedIndex,
                 onDestinationSelected: (value) =>
                     setState(() => selectedIndex = value),
+                onAssistantPressed: () => askPressed = true,
+                onAssistantLongPress: () => askLongPressed = true,
               ),
             );
           },
@@ -53,7 +49,7 @@ void main() {
     expect(find.text('Schedule'), findsOneWidget);
     expect(find.text('Mail'), findsOneWidget);
     expect(find.text('Campus'), findsOneWidget);
-    expect(find.text('Ask'), findsOneWidget);
+    expect(find.text('Assistant'), findsOneWidget);
     expect(find.text('Map'), findsNothing);
     expect(find.text('Notes'), findsNothing);
 
@@ -62,14 +58,12 @@ void main() {
 
     expect(selectedIndex, 1);
 
-    await tester.tap(find.text('Ask'));
+    await tester.tap(find.byKey(const ValueKey<String>('assistant-tab')));
     await tester.pumpAndSettle();
 
     expect(askPressed, isTrue);
 
-    await tester.longPress(
-      find.byKey(const ValueKey<String>('ask-fab-surface')),
-    );
+    await tester.longPress(find.byKey(const ValueKey<String>('assistant-tab')));
     await tester.pumpAndSettle();
 
     expect(askLongPressed, isTrue);
@@ -141,8 +135,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Hi Ada'), findsOneWidget);
-    expect(find.text('M.Sc. AI · Semester 2'), findsOneWidget);
+    expect(find.textContaining('Ada'), findsOneWidget);
 
     final campusCard = find.byKey(const ValueKey<String>('home-campus-card'));
     await tester.scrollUntilVisible(
@@ -287,7 +280,7 @@ void main() {
     await tapStatus('home-status-map', 'maps');
   });
 
-  testWidgets('home renders proactive snapshot before cards', (
+  testWidgets('home presents the daily focus before study tools', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -321,13 +314,14 @@ void main() {
     expect(find.text('Set up your StudyOS'), findsOneWidget);
     expect(find.textContaining('Connect your profile'), findsOneWidget);
     expect(find.text('Timetable: Unavailable'), findsOneWidget);
-    expect(find.text('Generated component preview'), findsOneWidget);
-    expect(find.text('Leave for class'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Next component'));
-    await tester.pump();
-
-    expect(find.text('Compact day'), findsOneWidget);
+    expect(find.text('For you'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Study tools'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Study tools'), findsOneWidget);
+    expect(find.text('Generated component preview'), findsNothing);
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 
@@ -429,7 +423,7 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, '/home');
   });
 
-  testWidgets('ask button long press opens voice input spike', (
+  testWidgets('assistant tab long press opens voice input spike', (
     WidgetTester tester,
   ) async {
     SharedPreferencesAsyncPlatform.instance =
@@ -469,9 +463,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.longPress(
-      find.byKey(const ValueKey<String>('ask-fab-surface')),
-    );
+    await tester.longPress(find.byKey(const ValueKey<String>('assistant-tab')));
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/voice');

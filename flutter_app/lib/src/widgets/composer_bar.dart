@@ -35,9 +35,9 @@ class ComposerBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(StudyOsRadii.lg),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x66000000),
-              blurRadius: 22,
-              offset: Offset(0, 12),
+              color: Color(0x12000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -71,7 +71,7 @@ class ComposerBar extends StatelessWidget {
                   onPressed: isSending ? onStop : onSend,
                   style: FilledButton.styleFrom(
                     backgroundColor: StudyOsColors.accent,
-                    foregroundColor: const Color(0xFF06101F),
+                    foregroundColor: Colors.white,
                     disabledBackgroundColor: StudyOsColors.border,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(StudyOsRadii.md),
@@ -148,15 +148,13 @@ class _MicButton extends StatelessWidget {
           dimension: 46,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: active
-                  ? StudyOsColors.accent
-                  : StudyOsColors.surfaceRaised,
+              color: active ? StudyOsColors.accent : StudyOsColors.background,
               borderRadius: BorderRadius.circular(StudyOsRadii.md),
               border: Border.all(color: StudyOsColors.border),
             ),
             child: Icon(
               icon,
-              color: active ? const Color(0xFF06101F) : StudyOsColors.text,
+              color: active ? Colors.white : StudyOsColors.text,
             ),
           ),
         ),

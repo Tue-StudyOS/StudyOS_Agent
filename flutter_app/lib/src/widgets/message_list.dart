@@ -170,10 +170,7 @@ class _MessageBubble extends StatelessWidget {
           compact ? StudyOsSpacing.sm : StudyOsSpacing.md,
         ),
         decoration: BoxDecoration(
-          color: StudyOsColors.accentStrong,
-          border: Border.all(
-            color: StudyOsColors.accent.withValues(alpha: 0.8),
-          ),
+          color: StudyOsColors.accent,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(StudyOsRadii.lg),
             topRight: const Radius.circular(StudyOsRadii.lg),
@@ -181,7 +178,12 @@ class _MessageBubble extends StatelessWidget {
             bottomRight: const Radius.circular(StudyOsRadii.sm),
           ),
         ),
-        child: Text(message.text, style: Theme.of(context).textTheme.bodyLarge),
+        child: Text(
+          message.text,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: Colors.white),
+        ),
       ),
     );
   }

@@ -7,40 +7,88 @@ import '../models.dart';
 import '../studyos_theme.dart';
 
 class ShellAppBar extends StatelessWidget {
-  const ShellAppBar({required this.title, super.key});
-
-  final String title;
+  const ShellAppBar({super.key});
 
   @override
   Widget build(BuildContext context) {
     final controller = AppShellScope.of(context);
     final profile = controller.profile;
-    final isReady = assistantIsReady(controller.status);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, StudyOsSpacing.lg, 0, 10),
+      padding: const EdgeInsets.fromLTRB(0, StudyOsSpacing.lg, 0, 8),
       child: Row(
         children: <Widget>[
-          _HeaderIconButton(
-            tooltip: 'Open menu',
-            icon: Icons.menu_rounded,
-            onPressed: Scaffold.of(context).openDrawer,
-          ),
-          const SizedBox(width: StudyOsSpacing.md),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge,
+          Text(
+            'StudyOS',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
             ),
           ),
-          _StatusDot(
-            isReady: isReady,
-            label: assistantStatusLabel(controller.status),
-          ),
+          const Spacer(),
+          _MoreMenu(status: controller.status),
           const SizedBox(width: StudyOsSpacing.sm),
           _AvatarMenu(profile: profile, onLogout: controller.onLogout),
         ],
+      ),
+    );
+  }
+}
+
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_MoreAction>(
+      tooltip: 'More',
+      onSelected: (action) {
+        switch (action) {
+          case _MoreAction.notes:
+            context.push('/memories');
+            break;
+          case _MoreAction.map:
+            context.push('/maps');
+            break;
+          case _MoreAction.assistant:
+            context.push('/settings');
+            break;
+        }
+      },
+      itemBuilder: (context) => <PopupMenuEntry<_MoreAction>>[
+        PopupMenuItem<_MoreAction>(
+          value: _MoreAction.notes,
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.notes_outlined),
+            title: Text('Notes'),
+          ),
+        ),
+        const PopupMenuItem<_MoreAction>(
+          value: _MoreAction.map,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.map_outlined),
+            title: Text('Map'),
+          ),
+        ),
+        PopupMenuItem<_MoreAction>(
+          value: _MoreAction.assistant,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              assistantIsReady(status)
+                  ? Icons.auto_awesome_outlined
+                  : Icons.error_outline_rounded,
+            ),
+            title: const Text('Assistant settings'),
+          ),
+        ),
+      ],
+      child: const _HeaderIconButton(
+        tooltip: 'More',
+        icon: Icons.more_horiz_rounded,
       ),
     );
   }
@@ -121,52 +169,30 @@ class _AvatarMenu extends StatelessWidget {
   }
 }
 
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.isReady, required this.label});
-
-  final bool isReady;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isReady ? StudyOsColors.success : StudyOsColors.warning;
-    return Tooltip(
-      message: label,
-      child: Icon(Icons.circle, size: 10, color: color),
-    );
-  }
-}
-
 class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
+  const _HeaderIconButton({required this.tooltip, required this.icon});
 
   final String tooltip;
   final IconData icon;
-  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: 44,
-      child: IconButton(
-        tooltip: tooltip,
-        style: IconButton.styleFrom(
-          backgroundColor: StudyOsColors.surface,
-          foregroundColor: StudyOsColors.text,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(StudyOsRadii.md),
-            side: const BorderSide(color: StudyOsColors.border),
-          ),
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: const BoxDecoration(
+          color: StudyOsColors.surface,
+          shape: BoxShape.circle,
         ),
-        onPressed: onPressed,
-        icon: Icon(icon),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 21, color: StudyOsColors.text),
       ),
     );
   }
 }
 
 enum _AvatarAction { settings, profile, logout }
+
+enum _MoreAction { notes, map, assistant }

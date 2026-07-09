@@ -17,23 +17,20 @@ class ProactiveFeedSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final nextAction = snapshot.nextAction;
     return Material(
-      color: StudyOsColors.surfaceRaised,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: snapshot.isStale
-              ? StudyOsColors.warning
-              : StudyOsColors.border,
-        ),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-      ),
+      color: StudyOsColors.surface,
+      borderRadius: BorderRadius.circular(StudyOsRadii.md),
       child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.lg),
+        padding: const EdgeInsets.all(StudyOsSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
               children: <Widget>[
-                const Icon(Icons.auto_awesome, color: StudyOsColors.accent),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: StudyOsColors.accent,
+                  size: 20,
+                ),
                 const SizedBox(width: StudyOsSpacing.sm),
                 Expanded(
                   child: Text(
@@ -60,7 +57,7 @@ class ProactiveFeedSection extends StatelessWidget {
               for (final item in snapshot.urgentItems)
                 _UrgentItemTile(item: item),
             ],
-            const SizedBox(height: StudyOsSpacing.md),
+            const SizedBox(height: StudyOsSpacing.lg),
             Wrap(
               spacing: StudyOsSpacing.sm,
               runSpacing: StudyOsSpacing.sm,
@@ -86,19 +83,13 @@ class _NextActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isRefresh = action.label == 'Refresh';
     return Material(
-      color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.sm),
-      ),
+      color: StudyOsColors.accent.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(StudyOsRadii.sm),
       child: Padding(
         padding: const EdgeInsets.all(StudyOsSpacing.md),
         child: Row(
           children: <Widget>[
-            const Icon(
-              Icons.arrow_forward_rounded,
-              color: StudyOsColors.accent,
-            ),
+            const Icon(Icons.arrow_upward_rounded, color: StudyOsColors.accent),
             const SizedBox(width: StudyOsSpacing.md),
             Expanded(
               child: Column(
@@ -118,10 +109,12 @@ class _NextActionTile extends StatelessWidget {
             ),
             if (isRefresh) ...<Widget>[
               const SizedBox(width: StudyOsSpacing.sm),
-              IconButton(
-                tooltip: action.label,
+              TextButton(
                 onPressed: () => onRefresh(),
-                icon: const Icon(Icons.refresh_rounded),
+                style: TextButton.styleFrom(
+                  foregroundColor: StudyOsColors.accent,
+                ),
+                child: Text(action.label),
               ),
             ],
           ],
@@ -173,8 +166,8 @@ class _SourceFreshnessPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border.all(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.sm),
+        color: StudyOsColors.background,
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(

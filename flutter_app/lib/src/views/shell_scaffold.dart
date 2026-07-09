@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../app_shell_scope.dart';
 import '../studyos_theme.dart';
-import '../widgets/secondary_destinations_drawer.dart';
 import '../widgets/shell_app_bar.dart';
 import '../widgets/study_bottom_bar.dart';
 
@@ -27,16 +26,11 @@ class _ShellScaffoldState extends State<ShellScaffold> {
       listenable: AppShellScope.of(context),
       builder: (context, _) {
         return Scaffold(
-          drawer: const SecondaryDestinationsDrawer(),
-          floatingActionButton: AskFab(
-            onPressed: () => context.push('/chat'),
-            onLongPress: () => context.go('/voice'),
-          ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerDocked,
           bottomNavigationBar: StudyBottomBar(
             selectedIndex: selectedIndex,
             onDestinationSelected: _goBranch,
+            onAssistantPressed: () => context.push('/chat'),
+            onAssistantLongPress: () => context.go('/voice'),
           ),
           body: SafeArea(
             child: Center(
@@ -44,11 +38,11 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                 constraints: const BoxConstraints(maxWidth: 760),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: StudyOsSpacing.lg,
+                    horizontal: StudyOsSpacing.xl,
                   ),
                   child: Column(
                     children: <Widget>[
-                      ShellAppBar(title: _titleForIndex(selectedIndex)),
+                      const ShellAppBar(),
                       Expanded(
                         child: GestureDetector(
                           key: const ValueKey<String>('shell-swipe-area'),
@@ -99,14 +93,5 @@ class _ShellScaffoldState extends State<ShellScaffold> {
       if (!mounted) return;
       setState(() => _contentOffset = Offset.zero);
     });
-  }
-
-  String _titleForIndex(int index) {
-    return switch (index) {
-      1 => 'Schedule',
-      2 => 'Mail',
-      3 => 'Campus',
-      _ => 'Home',
-    };
   }
 }
