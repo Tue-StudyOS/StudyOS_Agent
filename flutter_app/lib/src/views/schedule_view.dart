@@ -91,9 +91,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.event_available_outlined),
-            label: Text(
-              widget.isSyncingCalendar ? 'Syncing' : 'Sync calendar',
-            ),
+            label: Text(widget.isSyncingCalendar ? 'Syncing' : 'Sync calendar'),
           ),
         ),
         if (widget.error != null) ...<Widget>[
