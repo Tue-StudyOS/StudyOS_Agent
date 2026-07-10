@@ -57,11 +57,14 @@ class _MemoriesViewState extends State<MemoriesView> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
+      padding: const EdgeInsets.only(
+        top: StudyOsSpacing.xl,
+        bottom: StudyOsSpacing.xxl,
+      ),
       children: <Widget>[
         _SectionHeader(
-          title: 'Personal notes',
-          description: 'Things StudyOS can remember for future chats.',
+          title: 'Notes',
+          description: 'Personal context StudyOS can use in future chats.',
         ),
         const SizedBox(height: StudyOsSpacing.lg),
         _MemoryEditor(
@@ -115,7 +118,14 @@ class _MemoryEditor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Saved notes', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'SAVED CONTEXT',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: StudyOsColors.textMuted,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
+          ),
           const SizedBox(height: StudyOsSpacing.sm),
           TextField(
             controller: controller,
@@ -123,7 +133,7 @@ class _MemoryEditor extends StatelessWidget {
             maxLines: 18,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
-              hintText: '- Favorite food: lasagne\n- Studies best in mornings',
+              hintText: 'Add anything that helps StudyOS support you better.',
               alignLabelWithHint: true,
             ),
           ),
@@ -138,7 +148,7 @@ class _MemoryEditor extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_outlined),
-              label: const Text('Save notes'),
+              label: const Text('Save changes'),
             ),
           ),
         ],

@@ -84,6 +84,12 @@ class MapOverlay extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
+        MapSearchBar(
+          controller: controller,
+          isSearching: isSearching,
+          onSearch: onSearch,
+        ),
+        const SizedBox(height: StudyOsSpacing.sm),
         _MapResultStrip(
           results: results,
           selectedLocation: selectedLocation,
@@ -91,12 +97,6 @@ class MapOverlay extends StatelessWidget {
           searchError: searchError,
           hasSearched: hasSearched,
           onSelect: onSelect,
-        ),
-        const SizedBox(height: StudyOsSpacing.sm),
-        MapSearchBar(
-          controller: controller,
-          isSearching: isSearching,
-          onSearch: onSearch,
         ),
       ],
     );
@@ -153,15 +153,10 @@ class _MapResultStrip extends StatelessWidget {
                   for (final result in visibleResults)
                     Padding(
                       padding: const EdgeInsets.only(right: StudyOsSpacing.sm),
-                      child: ChoiceChip(
+                      child: _MapResultButton(
+                        result: result,
                         selected: result == selectedLocation,
-                        label: Text(
-                          result.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        avatar: const Icon(Icons.place_outlined, size: 18),
-                        onSelected: (_) => onSelect(result),
+                        onTap: () => onSelect(result),
                       ),
                     ),
                 ],
@@ -172,6 +167,57 @@ class _MapResultStrip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MapResultButton extends StatelessWidget {
+  const _MapResultButton({
+    required this.result,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final MapLocation result;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: selected ? StudyOsColors.accent : StudyOsColors.background,
+    borderRadius: BorderRadius.circular(999),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: StudyOsSpacing.md,
+          vertical: StudyOsSpacing.sm,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.place_outlined,
+              size: 17,
+              color: selected ? Colors.white : StudyOsColors.accent,
+            ),
+            const SizedBox(width: StudyOsSpacing.xs),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 180),
+              child: Text(
+                result.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? Colors.white : StudyOsColors.text,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _FloatingMapPanel extends StatelessWidget {

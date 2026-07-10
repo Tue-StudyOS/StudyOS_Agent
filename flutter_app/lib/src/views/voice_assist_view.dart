@@ -23,25 +23,43 @@ class VoiceAssistView extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 760),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: StudyOsSpacing.lg,
+                    horizontal: StudyOsSpacing.xl,
                   ),
                   child: ListView(
                     padding: const EdgeInsets.only(
-                      top: StudyOsSpacing.lg,
-                      bottom: 96,
+                      top: StudyOsSpacing.md,
+                      bottom: StudyOsSpacing.xxl,
                     ),
                     children: <Widget>[
                       _VoiceHeader(onBack: () => context.go('/home')),
-                      const SizedBox(height: StudyOsSpacing.lg),
+                      const SizedBox(height: StudyOsSpacing.xxl),
+                      Text(
+                        'Voice',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: StudyOsSpacing.xs),
+                      Text(
+                        'Speak to StudyOS when typing is inconvenient.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: StudyOsSpacing.xxl),
                       VoiceListeningOverlay(voice: voice),
-                      _VoiceControlCard(voice: voice),
-                      const SizedBox(height: StudyOsSpacing.lg),
-                      const _VoiceFeasibilityMatrix(),
-                      const SizedBox(height: StudyOsSpacing.lg),
-                      OutlinedButton.icon(
-                        onPressed: () => context.push('/chat'),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded),
-                        label: const Text('Open chat'),
+                      _VoiceControlSurface(voice: voice),
+                      const SizedBox(height: StudyOsSpacing.xxl),
+                      Text(
+                        'Voice options',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: StudyOsSpacing.sm),
+                      const _VoiceOptions(),
+                      const SizedBox(height: StudyOsSpacing.xl),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push('/chat'),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded),
+                          label: const Text('Continue in chat'),
+                        ),
                       ),
                     ],
                   ),
@@ -57,61 +75,65 @@ class VoiceAssistView extends StatelessWidget {
 
 class _VoiceHeader extends StatelessWidget {
   const _VoiceHeader({required this.onBack});
-
   final VoidCallback onBack;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        IconButton(
-          tooltip: 'Back',
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-        const SizedBox(width: StudyOsSpacing.sm),
-        Expanded(
-          child: Text(
-            'Voice input spike',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: IconButton(
+      tooltip: 'Back',
+      onPressed: onBack,
+      style: IconButton.styleFrom(
+        backgroundColor: StudyOsColors.surface,
+        foregroundColor: StudyOsColors.text,
+      ),
+      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+    ),
+  );
 }
 
-class _VoiceControlCard extends StatelessWidget {
-  const _VoiceControlCard({required this.voice});
-
+class _VoiceControlSurface extends StatelessWidget {
+  const _VoiceControlSurface({required this.voice});
   final VoiceController voice;
 
   @override
   Widget build(BuildContext context) {
     final available = voice.available;
     return Material(
-      color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-      ),
+      color: StudyOsColors.text,
+      borderRadius: BorderRadius.circular(StudyOsRadii.lg),
       child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.lg),
+        padding: const EdgeInsets.all(StudyOsSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              available ? 'Ready for local voice input' : 'Voice unavailable',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: StudyOsSpacing.sm),
-            Text(
-              available
-                  ? 'Hold to dictate one request, or toggle conversation mode for repeated turns.'
-                  : 'Speech recognition is unavailable or permission was denied on this platform.',
-              style: Theme.of(context).textTheme.bodyMedium,
+            Icon(
+              available ? Icons.mic_rounded : Icons.mic_off_rounded,
+              color: Colors.white,
+              size: 28,
             ),
             const SizedBox(height: StudyOsSpacing.lg),
+            Text(
+              available ? 'Ready to listen' : 'Voice is unavailable',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.xs),
+            Text(
+              available
+                  ? 'Hold the button for one request, or start a conversation for repeated turns.'
+                  : 'Speech recognition is unavailable or permission was denied.',
+              style: const TextStyle(
+                color: Color(0xFFD1D1D6),
+                fontSize: 15,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.xl),
             Row(
               children: <Widget>[
                 Expanded(
@@ -122,19 +144,29 @@ class _VoiceControlCard extends StatelessWidget {
                     onLongPressEnd: available ? (_) => voice.stopHold() : null,
                     child: FilledButton.icon(
                       onPressed: available ? () {} : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: StudyOsColors.text,
+                      ),
                       icon: const Icon(Icons.mic_rounded),
                       label: const Text('Hold to talk'),
                     ),
                   ),
                 ),
                 const SizedBox(width: StudyOsSpacing.md),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: available ? voice.toggleConversation : null,
-                    icon: const Icon(Icons.graphic_eq_rounded),
-                    label: Text(
-                      voice.conversationMode ? 'Stop loop' : 'Conversation',
-                    ),
+                IconButton.filled(
+                  tooltip: voice.conversationMode
+                      ? 'Stop conversation'
+                      : 'Start conversation',
+                  onPressed: available ? voice.toggleConversation : null,
+                  style: IconButton.styleFrom(
+                    backgroundColor: StudyOsColors.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: Icon(
+                    voice.conversationMode
+                        ? Icons.stop_rounded
+                        : Icons.graphic_eq_rounded,
                   ),
                 ),
               ],
@@ -146,109 +178,88 @@ class _VoiceControlCard extends StatelessWidget {
   }
 }
 
-class _VoiceFeasibilityMatrix extends StatelessWidget {
-  const _VoiceFeasibilityMatrix();
+class _VoiceOptions extends StatelessWidget {
+  const _VoiceOptions();
 
   @override
   Widget build(BuildContext context) {
-    const rows = <_VoiceFeasibilityRow>[
-      _VoiceFeasibilityRow(
-        title: 'Push-to-talk',
-        status: 'Prototype path',
-        body:
-            'Lowest battery risk. Reuses the existing chat pipeline and only records while the user presses the mic.',
+    const options = <(IconData, String, String)>[
+      (
+        Icons.mic_none_rounded,
+        'Push-to-talk',
+        'Speak while you hold the microphone button.',
       ),
-      _VoiceFeasibilityRow(
-        title: 'Conversation mode',
-        status: 'Optional demo',
-        body:
-            'Hands-free after explicit opt-in. Good for testing turn-taking, but should stay foreground-only.',
+      (
+        Icons.graphic_eq_rounded,
+        'Conversation',
+        'Keep listening for a short, hands-free exchange.',
       ),
-      _VoiceFeasibilityRow(
-        title: 'Custom hotword',
-        status: 'Research gate',
-        body:
-            'Needs platform-specific checks for background mic access, battery, model size, and offline wake-word support.',
+      (
+        Icons.record_voice_over_outlined,
+        'Custom hotword',
+        'Requires additional device support.',
       ),
-      _VoiceFeasibilityRow(
-        title: 'Passive listener',
-        status: 'Defer',
-        body:
-            'High battery and permission risk. Do not make it the default prototype path.',
+      (
+        Icons.privacy_tip_outlined,
+        'Passive listener',
+        'Not enabled to protect battery and privacy.',
       ),
     ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Feasibility gates',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: StudyOsSpacing.md),
-        for (final row in rows) ...<Widget>[
-          _FeasibilityTile(row: row),
-          if (row != rows.last) const SizedBox(height: StudyOsSpacing.sm),
-        ],
-      ],
-    );
-  }
-}
-
-class _VoiceFeasibilityRow {
-  const _VoiceFeasibilityRow({
-    required this.title,
-    required this.status,
-    required this.body,
-  });
-
-  final String title;
-  final String status;
-  final String body;
-}
-
-class _FeasibilityTile extends StatelessWidget {
-  const _FeasibilityTile({required this.row});
-
-  final _VoiceFeasibilityRow row;
-
-  @override
-  Widget build(BuildContext context) {
     return Material(
       color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
+      borderRadius: BorderRadius.circular(StudyOsRadii.md),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(StudyOsRadii.md),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: <Widget>[
-            const Icon(Icons.check_circle_outline, color: StudyOsColors.accent),
-            const SizedBox(width: StudyOsSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    row.title,
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: StudyOsSpacing.xs),
-                  Text(row.body, style: Theme.of(context).textTheme.bodyMedium),
-                ],
+            for (var index = 0; index < options.length; index++) ...<Widget>[
+              _VoiceOption(
+                icon: options[index].$1,
+                title: options[index].$2,
+                body: options[index].$3,
               ),
-            ),
-            const SizedBox(width: StudyOsSpacing.sm),
-            Text(
-              row.status,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: StudyOsColors.success),
-            ),
+              if (index < options.length - 1)
+                const Padding(
+                  padding: EdgeInsets.only(left: StudyOsSpacing.xl),
+                  child: Divider(),
+                ),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+class _VoiceOption extends StatelessWidget {
+  const _VoiceOption({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(StudyOsSpacing.lg),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, color: StudyOsColors.accent, size: 20),
+        const SizedBox(width: StudyOsSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title, style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 2),
+              Text(body, style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

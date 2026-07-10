@@ -38,7 +38,7 @@ class OnboardingScaffold extends StatelessWidget {
               ),
             ),
             const DecoratedBox(
-              decoration: BoxDecoration(color: Color(0x99070A0F)),
+              decoration: BoxDecoration(color: Color(0x4D000000)),
             ),
           ],
           SafeArea(
@@ -48,9 +48,8 @@ class OnboardingScaffold extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 460),
                   child: Material(
-                    color: StudyOsColors.surface.withAlpha(240),
+                    color: StudyOsColors.surface.withValues(alpha: 0.94),
                     shape: RoundedRectangleBorder(
-                      side: const BorderSide(color: StudyOsColors.border),
                       borderRadius: BorderRadius.circular(StudyOsRadii.lg),
                     ),
                     child: Padding(
