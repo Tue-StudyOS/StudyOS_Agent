@@ -124,6 +124,30 @@ class NativeBridge {
     return result ?? 'Calendar sync finished.';
   }
 
+  Future<String> extractPdfText(Uint8List document) async {
+    final text = await _methods.invokeMethod<String>(
+      'extractPdfText',
+      <String, Object?>{'document': document},
+    );
+    if (text == null || text.trim().isEmpty) {
+      throw PlatformException(
+        code: 'pdf_text_empty',
+        message: 'The registration report did not contain extractable text.',
+      );
+    }
+    return text;
+  }
+
+  Future<void> previewPdf({
+    required Uint8List document,
+    required String filename,
+  }) async {
+    await _methods.invokeMethod<String>('previewPdf', <String, Object?>{
+      'document': document,
+      'filename': filename,
+    });
+  }
+
   Future<String> sendMessage(
     String text, {
     String? systemPrompt,

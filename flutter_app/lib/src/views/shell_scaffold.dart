@@ -53,7 +53,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                             if (velocity.abs() < 250) return;
                             final direction = velocity < 0 ? 1 : -1;
                             final nextIndex = selectedIndex + direction;
-                            if (nextIndex < 0 || nextIndex > 3) return;
+                            if (nextIndex < 0 || nextIndex > 1) return;
                             _goBranch(nextIndex);
                           },
                           child: ClipRect(

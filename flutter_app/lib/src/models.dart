@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'tool_trace.dart';
 
 export 'student_profile.dart';
+export 'academic_models.dart';
 export 'mail_models.dart';
 export 'feed_summary.dart';
 export 'generative_ui_registry.dart';

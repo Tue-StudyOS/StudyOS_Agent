@@ -8,6 +8,9 @@ import 'native_bridge.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
 
+Future<String> _unavailableAcademicStatus() async =>
+    'Academic status is not available.';
+
 class AgentRequestRunner {
   AgentRequestRunner({
     required this.bridge,
@@ -44,6 +47,7 @@ class AgentRequestRunner {
     required PromptContext context,
     required String memoryText,
     required Future<String> Function() readSchedule,
+    Future<String> Function() readAcademicStatus = _unavailableAcademicStatus,
     required MailToolRunner mailTools,
     AgentStreamSink? onDelta,
     AgentCancelToken? cancelToken,
@@ -60,6 +64,7 @@ class AgentRequestRunner {
         appendMemory: appendMemory,
         readMemory: memoryStore.read,
         readSchedule: readSchedule,
+        readAcademicStatus: readAcademicStatus,
         mailTools: mailTools,
         onToolTrace: onToolTrace,
         onDelta: onDelta,

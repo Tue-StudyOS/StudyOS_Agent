@@ -5,12 +5,16 @@ import 'memory_store.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
 
+Future<String> _unavailableAcademicStatus() async =>
+    'Academic status is not available.';
+
 class StudyOsToolContext {
   const StudyOsToolContext({
     required this.promptContext,
     required this.appendMemory,
     required this.readMemory,
     required this.readSchedule,
+    this.readAcademicStatus = _unavailableAcademicStatus,
     required this.mailTools,
     required this.nativeTools,
   });
@@ -19,6 +23,7 @@ class StudyOsToolContext {
   final Future<void> Function(String text) appendMemory;
   final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
+  final Future<String> Function() readAcademicStatus;
   final MailToolRunner mailTools;
   final NativeToolRunner? nativeTools;
 }
@@ -36,6 +41,7 @@ class StudyOsToolExecutor {
       'read_memories' => context.readMemory(),
       'get_study_context' => context.promptContext.systemPrompt(),
       'get_schedule' => context.readSchedule(),
+      'get_academic_status' => context.readAcademicStatus(),
       'list_mailboxes' ||
       'get_recent_mail' ||
       'search_mail' ||
@@ -88,6 +94,7 @@ StudyOsToolContext studyOsToolContext({
   required Future<void> Function(String text) appendMemory,
   required MemoryStore memoryStore,
   required Future<String> Function() readSchedule,
+  Future<String> Function() readAcademicStatus = _unavailableAcademicStatus,
   required MailToolRunner mailTools,
   NativeToolRunner? nativeTools,
 }) {
@@ -96,6 +103,7 @@ StudyOsToolContext studyOsToolContext({
     appendMemory: appendMemory,
     readMemory: memoryStore.read,
     readSchedule: readSchedule,
+    readAcademicStatus: readAcademicStatus,
     mailTools: mailTools,
     nativeTools: nativeTools,
   );

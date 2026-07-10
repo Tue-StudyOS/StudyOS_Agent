@@ -54,42 +54,6 @@ class HomeView extends StatelessWidget {
           const SizedBox(height: StudyOsSpacing.sm),
           ProactiveFeedSection(snapshot: snapshot, onRefresh: onRefresh),
           const SizedBox(height: StudyOsSpacing.xxl),
-          _SectionLabel(label: 'Study tools'),
-          const SizedBox(height: StudyOsSpacing.sm),
-          _GroupedList(
-            children: <Widget>[
-              _ToolRow(
-                itemKey: const ValueKey<String>('home-status-timetable'),
-                icon: Icons.calendar_today_outlined,
-                title: 'Schedule',
-                detail: _timetableStatus,
-                onTap: onOpenSchedule,
-              ),
-              _ToolRow(
-                itemKey: const ValueKey<String>('home-status-mail'),
-                icon: Icons.mail_outline_rounded,
-                title: 'Inbox',
-                detail: profile == null ? 'Sign in needed' : 'University mail',
-                onTap: onOpenMail,
-              ),
-              _ToolRow(
-                itemKey: const ValueKey<String>('home-campus-card'),
-                icon: Icons.restaurant_outlined,
-                title: 'Campus',
-                detail: _campusLine(profile),
-                onTap: onOpenCampus,
-              ),
-              _ToolRow(
-                itemKey: const ValueKey<String>('home-maps-card'),
-                containerKey: const ValueKey<String>('home-status-map'),
-                icon: Icons.map_outlined,
-                title: 'Map',
-                detail: 'Find your way around Tübingen',
-                onTap: onOpenMaps,
-              ),
-            ],
-          ),
-          const SizedBox(height: StudyOsSpacing.xxl),
           _SectionLabel(label: 'StudyOS'),
           const SizedBox(height: StudyOsSpacing.sm),
           _GroupedList(
@@ -124,22 +88,6 @@ class HomeView extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String get _timetableStatus {
-    final snapshot = timetable;
-    if (snapshot == null) return 'Sync your ALMA timetable';
-    return snapshot.isStale ? 'Refresh available' : 'Up to date';
-  }
-
-  String _campusLine(OnboardingProfile? profile) {
-    if (profile?.interests.contains(StudyInterest.mensa) == true) {
-      final preference = profile!.foodPreference;
-      if (preference != FoodPreference.noPreference) {
-        return '${preference.label} Mensa choices';
-      }
-    }
-    return 'Mensa menus and essentials';
   }
 }
 
@@ -324,7 +272,6 @@ class _GroupedList extends StatelessWidget {
 class _ToolRow extends StatelessWidget {
   const _ToolRow({
     required this.itemKey,
-    this.containerKey,
     required this.icon,
     required this.title,
     required this.detail,
@@ -332,48 +279,44 @@ class _ToolRow extends StatelessWidget {
   });
 
   final Key itemKey;
-  final Key? containerKey;
   final IconData icon;
   final String title;
   final String detail;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: containerKey,
-    child: InkWell(
-      key: itemKey,
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: StudyOsSpacing.md,
-          vertical: StudyOsSpacing.md,
-        ),
-        child: Row(
-          children: <Widget>[
-            _ToolIcon(icon: icon),
-            const SizedBox(width: StudyOsSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title, style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: 2),
-                  Text(
-                    detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
+  Widget build(BuildContext context) => InkWell(
+    key: itemKey,
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: StudyOsSpacing.md,
+        vertical: StudyOsSpacing.md,
+      ),
+      child: Row(
+        children: <Widget>[
+          _ToolIcon(icon: icon),
+          const SizedBox(width: StudyOsSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(title, style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: StudyOsColors.separator,
-            ),
-          ],
-        ),
+          ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: StudyOsColors.separator,
+          ),
+        ],
       ),
     ),
   );

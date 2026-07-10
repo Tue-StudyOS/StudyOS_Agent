@@ -11,6 +11,9 @@ import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
 
+Future<String> _unavailableAcademicStatus() async =>
+    'Academic status is not available.';
+
 class AgentLlmRequest {
   const AgentLlmRequest({
     required this.config,
@@ -22,6 +25,7 @@ class AgentLlmRequest {
     required this.appendMemory,
     required this.readMemory,
     required this.readSchedule,
+    this.readAcademicStatus = _unavailableAcademicStatus,
     required this.mailTools,
     required this.onToolTrace,
     this.onDelta,
@@ -37,6 +41,7 @@ class AgentLlmRequest {
   final Future<void> Function(String text) appendMemory;
   final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
+  final Future<String> Function() readAcademicStatus;
   final MailToolRunner mailTools;
   final void Function(ToolTrace trace) onToolTrace;
 
@@ -136,6 +141,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       appendMemory: request.appendMemory,
       readMemory: request.readMemory,
       readSchedule: request.readSchedule,
+      readAcademicStatus: request.readAcademicStatus,
       mailTools: request.mailTools,
       nativeTools: nativeTools,
     );

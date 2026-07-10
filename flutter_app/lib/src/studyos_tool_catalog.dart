@@ -53,6 +53,15 @@ const getScheduleTool = StudyOsToolSpec(
   required: <String>[],
 );
 
+const getAcademicStatusTool = StudyOsToolSpec(
+  name: 'get_academic_status',
+  description:
+      'Read the latest ALMA course and exam registration overview. This is read-only and may indicate when the official registration report should be checked.',
+  traceSummary: 'Reading your ALMA academic status.',
+  properties: <String, Object?>{},
+  required: <String>[],
+);
+
 const listMailboxesTool = StudyOsToolSpec(
   name: 'list_mailboxes',
   description: 'List local university mail folders and unread counts.',
@@ -309,6 +318,7 @@ const studyOsTools = <StudyOsToolSpec>[
   readMemoriesTool,
   getStudyContextTool,
   getScheduleTool,
+  getAcademicStatusTool,
   listMailboxesTool,
   getRecentMailTool,
   searchMailTool,

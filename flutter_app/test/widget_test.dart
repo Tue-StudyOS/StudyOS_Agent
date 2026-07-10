@@ -85,7 +85,7 @@ void main() {
     expect(find.text('Back to home'), findsNothing);
     expect(find.text('New'), findsOneWidget);
     expect(find.text(session.title), findsOneWidget);
-    expect(find.textContaining('Active ID:'), findsOneWidget);
+    expect(find.text('Chats are stored on this device.'), findsOneWidget);
     expect(find.text('Capabilities'), findsNothing);
     expect(find.text('World State'), findsNothing);
 
@@ -175,20 +175,17 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(Icons.cloud_outlined));
+    await tester.tap(find.text('Custom'));
     await tester.pump();
     await tester.enterText(
-      find.widgetWithText(TextField, 'Custom AI server'),
+      find.widgetWithText(TextField, 'Server URL'),
       'https://api.example.com/v1/chat/completions',
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Model name'),
-      'studyos',
-    );
+    await tester.enterText(find.widgetWithText(TextField, 'Model'), 'studyos');
     await tester.enterText(find.widgetWithText(TextField, 'API key'), 'secret');
     final saveButton = find.widgetWithText(
       FilledButton,
-      'Save assistant setup',
+      'Save custom assistant',
     );
     await tester.ensureVisible(saveButton);
     await tester.pumpAndSettle();
@@ -240,7 +237,7 @@ void main() {
     await tester.tap(find.byTooltip('Edit profile'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit profile'), findsOneWidget);
+    expect(find.text('Your profile'), findsOneWidget);
     await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Ada L.');
     await tester.enterText(
       find.widgetWithText(TextField, 'Degree program'),
@@ -442,13 +439,13 @@ void main() {
       find.byType(TextField),
       '- Favorite food: lasagne\n- Prefers focused mornings',
     );
-    await tester.tap(find.text('Save notes'));
+    await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
 
     expect(savedText, contains('Favorite food: lasagne'));
     expect(savedText, contains('Prefers focused mornings'));
     expect(find.text('Notes saved.'), findsOneWidget);
-    expect(find.text('Personal notes'), findsOneWidget);
+    expect(find.text('Notes'), findsOneWidget);
   });
 }
 

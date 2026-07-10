@@ -46,14 +46,12 @@ void main() {
 
     expect(find.byType(BottomAppBar), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Schedule'), findsOneWidget);
-    expect(find.text('Mail'), findsOneWidget);
-    expect(find.text('Campus'), findsOneWidget);
+    expect(find.text('Plan'), findsOneWidget);
     expect(find.text('Assistant'), findsOneWidget);
     expect(find.text('Map'), findsNothing);
     expect(find.text('Notes'), findsNothing);
 
-    await tester.tap(find.text('Schedule'));
+    await tester.tap(find.text('Plan'));
     await tester.pumpAndSettle();
 
     expect(selectedIndex, 1);
@@ -98,189 +96,7 @@ void main() {
     expect(synced, isTrue);
   });
 
-  testWidgets('home campus card opens campus view', (
-    WidgetTester tester,
-  ) async {
-    var selectedTarget = 'home';
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildStudyOsTheme(),
-        home: Scaffold(
-          body: HomeView(
-            profile: const OnboardingProfile(
-              displayName: 'Ada',
-              username: 'ada42',
-              email: null,
-              degreeProgram: 'M.Sc. AI',
-              semester: 2,
-              livesInTuebingen: true,
-              interests: <StudyInterest>{StudyInterest.mensa},
-              foodPreference: FoodPreference.vegan,
-            ),
-            config: const AgentConfig.defaults(),
-            snapshot: _testSnapshot(),
-            memoryText: '',
-            timetable: null,
-            onOpenProfile: () => selectedTarget = 'profile',
-            onOpenAssistant: () => selectedTarget = 'assistant',
-            onOpenNotes: () => selectedTarget = 'notes',
-            onOpenMail: () => selectedTarget = 'mail',
-            onOpenMaps: () => selectedTarget = 'maps',
-            onOpenCampus: () => selectedTarget = 'campus',
-            onOpenSchedule: () => selectedTarget = 'schedule',
-            onRefresh: () async {},
-          ),
-        ),
-      ),
-    );
-
-    expect(find.textContaining('Ada'), findsOneWidget);
-
-    final campusCard = find.byKey(const ValueKey<String>('home-campus-card'));
-    await tester.scrollUntilVisible(
-      campusCard,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(campusCard);
-
-    expect(selectedTarget, 'campus');
-  });
-
-  testWidgets('home inbox card opens mail view', (WidgetTester tester) async {
-    var selectedTarget = 'home';
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildStudyOsTheme(),
-        home: Scaffold(
-          body: HomeView(
-            profile: null,
-            config: const AgentConfig.defaults(),
-            snapshot: _testSnapshot(),
-            memoryText: '',
-            timetable: null,
-            onOpenProfile: () => selectedTarget = 'profile',
-            onOpenAssistant: () => selectedTarget = 'assistant',
-            onOpenNotes: () => selectedTarget = 'notes',
-            onOpenMail: () => selectedTarget = 'mail',
-            onOpenMaps: () => selectedTarget = 'maps',
-            onOpenCampus: () => selectedTarget = 'campus',
-            onOpenSchedule: () => selectedTarget = 'schedule',
-            onRefresh: () async {},
-          ),
-        ),
-      ),
-    );
-
-    await tester.scrollUntilVisible(
-      find.text('Inbox'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Inbox'));
-
-    expect(selectedTarget, 'mail');
-  });
-
-  testWidgets('home navigation card opens maps view', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    var selectedTarget = 'home';
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildStudyOsTheme(),
-        home: Scaffold(
-          body: HomeView(
-            profile: null,
-            config: const AgentConfig.defaults(),
-            snapshot: _testSnapshot(),
-            memoryText: '',
-            timetable: null,
-            onOpenProfile: () => selectedTarget = 'profile',
-            onOpenAssistant: () => selectedTarget = 'assistant',
-            onOpenNotes: () => selectedTarget = 'notes',
-            onOpenMail: () => selectedTarget = 'mail',
-            onOpenMaps: () => selectedTarget = 'maps',
-            onOpenCampus: () => selectedTarget = 'campus',
-            onOpenSchedule: () => selectedTarget = 'schedule',
-            onRefresh: () async {},
-          ),
-        ),
-      ),
-    );
-
-    final mapsCard = find.byKey(const ValueKey<String>('home-maps-card'));
-    await _bringCardIntoTapArea(tester, mapsCard);
-    await tester.tap(mapsCard);
-
-    expect(selectedTarget, 'maps');
-  });
-
-  testWidgets('home status grid items open their destinations', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    var selectedTarget = 'home';
-
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildStudyOsTheme(),
-        home: Scaffold(
-          body: HomeView(
-            profile: const OnboardingProfile(
-              displayName: 'Ada',
-              username: 'ada42',
-              email: null,
-              degreeProgram: 'M.Sc. AI',
-              semester: 2,
-              livesInTuebingen: true,
-            ),
-            config: const AgentConfig.defaults(),
-            snapshot: _testSnapshot(),
-            memoryText: 'Prefers morning study blocks.',
-            timetable: null,
-            onOpenProfile: () => selectedTarget = 'profile',
-            onOpenAssistant: () => selectedTarget = 'assistant',
-            onOpenNotes: () => selectedTarget = 'notes',
-            onOpenMail: () => selectedTarget = 'mail',
-            onOpenMaps: () => selectedTarget = 'maps',
-            onOpenCampus: () => selectedTarget = 'campus',
-            onOpenSchedule: () => selectedTarget = 'schedule',
-            onRefresh: () async {},
-          ),
-        ),
-      ),
-    );
-
-    Future<void> tapStatus(String key, String expectedTarget) async {
-      final finder = find.byKey(ValueKey<String>(key));
-      await _bringCardIntoTapArea(tester, finder);
-      await tester.tap(finder);
-      await tester.pump();
-      expect(selectedTarget, expectedTarget);
-    }
-
-    await tapStatus('home-status-profile', 'profile');
-    await tapStatus('home-status-assistant', 'assistant');
-    await tapStatus('home-status-notes', 'notes');
-    await tapStatus('home-status-timetable', 'schedule');
-    await tapStatus('home-status-mail', 'mail');
-    await tapStatus('home-status-map', 'maps');
-  });
-
-  testWidgets('home presents the daily focus before study tools', (
+  testWidgets('home presents a daily focus before StudyOS controls', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -316,11 +132,11 @@ void main() {
     expect(find.text('Timetable: Unavailable'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Study tools'),
+      find.text('StudyOS'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Study tools'), findsOneWidget);
+    expect(find.text('StudyOS'), findsOneWidget);
     expect(find.text('Generated component preview'), findsNothing);
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
@@ -411,7 +227,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(router.routeInformationProvider.value.uri.path, '/schedule');
+    expect(router.routeInformationProvider.value.uri.path, '/plan');
 
     await tester.fling(
       find.byKey(const ValueKey<String>('shell-swipe-area')),
@@ -467,7 +283,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.path, '/voice');
-    expect(find.text('Voice input spike'), findsOneWidget);
+    expect(find.text('Voice'), findsOneWidget);
     expect(find.text('Push-to-talk'), findsOneWidget);
     expect(find.text('Custom hotword'), findsOneWidget);
     expect(find.text('Passive listener'), findsOneWidget);
@@ -525,15 +341,6 @@ void main() {
   });
 }
 
-HomeFeedSnapshot _testSnapshot() {
-  return HomeFeedSnapshot.fromLocalState(
-    profile: null,
-    timetable: null,
-    memoryText: '',
-    now: DateTime(2026, 7, 1, 9),
-  );
-}
-
 TimetableSnapshot _testTimetable() {
   return TimetableSnapshot(
     refreshedAt: DateTime(2026, 7, 1, 9),
@@ -548,23 +355,4 @@ TimetableSnapshot _testTimetable() {
       ),
     ],
   );
-}
-
-Future<void> _bringCardIntoTapArea(WidgetTester tester, Finder finder) async {
-  final scrollable = find.byType(Scrollable).first;
-  await tester.scrollUntilVisible(finder, 300, scrollable: scrollable);
-  final viewportHeight =
-      tester.view.physicalSize.height / tester.view.devicePixelRatio;
-  final centerY = tester.getCenter(finder).dy;
-  const safeInset = 72.0;
-  if (centerY > viewportHeight - safeInset) {
-    await tester.drag(
-      scrollable,
-      Offset(0, -(centerY - viewportHeight + safeInset)),
-    );
-    await tester.pumpAndSettle();
-  } else if (centerY < safeInset) {
-    await tester.drag(scrollable, Offset(0, safeInset - centerY));
-    await tester.pumpAndSettle();
-  }
 }
