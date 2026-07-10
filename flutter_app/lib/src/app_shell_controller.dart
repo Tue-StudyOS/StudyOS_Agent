@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'agent_config_store.dart';
 import 'agent_message_sender.dart';
+import 'academic_repository.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
 import 'mail_repository.dart';
@@ -12,6 +14,8 @@ import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'official_document_models.dart';
+import 'official_documents_repository.dart';
 import 'profile_context.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
@@ -52,6 +56,9 @@ class AppShellController extends ChangeNotifier {
   final MailRepository _mailRepository = MailRepository();
   final MemoryStore _memoryStore = MemoryStore();
   final TimetableRepository _timetableRepository = TimetableRepository();
+  final AcademicRepository _academicRepository = AcademicRepository();
+  final OfficialDocumentsRepository _documentsRepository =
+      OfficialDocumentsRepository();
   final TextEditingController inputController = TextEditingController();
   final ScrollController messageScrollController = ScrollController();
 
@@ -74,6 +81,11 @@ class AppShellController extends ChangeNotifier {
   AgentConfig _agentConfig = const AgentConfig.defaults();
   String _memoryText = '';
   TimetableSnapshot? _timetable;
+  AcademicStatusSnapshot? _academicStatus;
+  String? _academicStatusError;
+  String? _academicReportError;
+  List<OfficialDocument> _officialDocuments = <OfficialDocument>[];
+  String? _officialDocumentsError;
   String? _timetableError;
   String? _calendarSyncMessage;
   String? _calendarSyncError;
@@ -82,6 +94,10 @@ class AppShellController extends ChangeNotifier {
   bool _isSending = false;
   bool _compactMessages = false;
   bool _isRefreshingTimetable = false;
+  bool _isRefreshingAcademicStatus = false;
+  bool _isOpeningAcademicReport = false;
+  bool _isLoadingOfficialDocuments = false;
+  String? _openingOfficialDocumentId;
   bool _isSyncingCalendar = false;
   StreamingAssistantMessage? _streaming;
   Timer? _streamNotifyTimer;
@@ -94,6 +110,11 @@ class AppShellController extends ChangeNotifier {
   AgentConfig get agentConfig => _agentConfig;
   String get memoryText => _memoryText;
   TimetableSnapshot? get timetable => _timetable;
+  AcademicStatusSnapshot? get academicStatus => _academicStatus;
+  String? get academicStatusError => _academicStatusError;
+  String? get academicReportError => _academicReportError;
+  List<OfficialDocument> get officialDocuments => _officialDocuments;
+  String? get officialDocumentsError => _officialDocumentsError;
   HomeFeedSnapshot get homeFeedSnapshot => HomeFeedSnapshot.fromLocalState(
     profile: _profile,
     timetable: _timetable,
@@ -108,6 +129,10 @@ class AppShellController extends ChangeNotifier {
   bool get isSending => _isSending;
   bool get compactMessages => _compactMessages;
   bool get isRefreshingTimetable => _isRefreshingTimetable;
+  bool get isRefreshingAcademicStatus => _isRefreshingAcademicStatus;
+  bool get isOpeningAcademicReport => _isOpeningAcademicReport;
+  bool get isLoadingOfficialDocuments => _isLoadingOfficialDocuments;
+  String? get openingOfficialDocumentId => _openingOfficialDocumentId;
   bool get isSyncingCalendar => _isSyncingCalendar;
 
   /// The reply currently streaming in, or null when none is in flight. The chat
@@ -126,6 +151,7 @@ class AppShellController extends ChangeNotifier {
     unawaited(_loadAgentConfig());
     unawaited(_loadMemory());
     unawaited(_loadTimetable());
+    unawaited(refreshAcademicStatus());
     unawaited(_initializeNativeLayer());
     unawaited(voice.init());
   }
@@ -250,6 +276,109 @@ class AppShellController extends ChangeNotifier {
       timetable: _timetable,
     );
     _notify();
+    unawaited(refreshAcademicStatus());
+  }
+
+  Future<void> refreshAcademicStatus() async {
+    final profile = _profile;
+    if (profile == null || _isRefreshingAcademicStatus) return;
+    _isRefreshingAcademicStatus = true;
+    _academicStatusError = null;
+    _notify();
+    try {
+      _academicStatus = await _academicRepository.refresh(
+        profile,
+        extractPdfText: bridge.extractPdfText,
+      );
+    } on Object catch (error) {
+      _academicStatusError = error.toString();
+    } finally {
+      _isRefreshingAcademicStatus = false;
+      _notify();
+    }
+  }
+
+  Future<void> openAcademicReport() async {
+    final profile = _profile;
+    if (profile == null || _isOpeningAcademicReport) return;
+    _isOpeningAcademicReport = true;
+    _academicReportError = null;
+    _notify();
+    try {
+      final document = await _academicRepository.downloadRegistrationReport(
+        profile,
+      );
+      await bridge.previewPdf(
+        document: document,
+        filename: 'alma-registrations.pdf',
+      );
+    } on Object catch (error) {
+      _academicReportError = error.toString();
+    } finally {
+      _isOpeningAcademicReport = false;
+      _notify();
+    }
+  }
+
+  Future<void> loadOfficialDocuments() async {
+    final profile = _profile;
+    if (profile == null || _isLoadingOfficialDocuments) return;
+    _isLoadingOfficialDocuments = true;
+    _officialDocumentsError = null;
+    _notify();
+    try {
+      _officialDocuments = await _documentsRepository.list(profile);
+    } on Object catch (error) {
+      _officialDocumentsError = error.toString();
+    } finally {
+      _isLoadingOfficialDocuments = false;
+      _notify();
+    }
+  }
+
+  Future<void> openOfficialDocument(OfficialDocument document) async {
+    final profile = _profile;
+    if (profile == null || _openingOfficialDocumentId != null) return;
+    _openingOfficialDocumentId = document.id;
+    _officialDocumentsError = null;
+    _notify();
+    try {
+      final pdf = await _documentsRepository.download(profile, document);
+      await bridge.previewPdf(
+        document: pdf,
+        filename: _documentFilename(document.label),
+      );
+    } on Object catch (error) {
+      _officialDocumentsError = error.toString();
+    } finally {
+      _openingOfficialDocumentId = null;
+      _notify();
+    }
+  }
+
+  String _documentFilename(String label) {
+    final stem = label
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '')
+        .toLowerCase();
+    return 'alma-${stem.isEmpty ? 'document' : stem}.pdf';
+  }
+
+  Future<String> readAcademicStatusForAgent() async {
+    final status = _academicStatus;
+    if (status == null) {
+      await refreshAcademicStatus();
+    }
+    final resolved = _academicStatus;
+    if (resolved == null) {
+      return _academicStatusError ?? 'Academic status is not available.';
+    }
+    return jsonEncode(<String, Object?>{
+      'term': resolved.term,
+      'refreshed_at': resolved.refreshedAt.toIso8601String(),
+      'notice': resolved.notice,
+      'entries': resolved.entries.map((entry) => entry.toJson()).toList(),
+    });
   }
 
   void setCompactMessages(bool value) {
@@ -322,6 +451,7 @@ class AppShellController extends ChangeNotifier {
         userText: text,
         appendMemory: appendMemory,
         readSchedule: readScheduleForAgent,
+        readAcademicStatus: readAcademicStatusForAgent,
         mailTools: MailToolRunner(
           repository: _mailRepository,
           profile: _profile,

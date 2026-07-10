@@ -53,52 +53,44 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: StudyOsColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: StudyOsColors.border),
-        borderRadius: BorderRadius.circular(StudyOsRadii.lg),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('Feedback', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: StudyOsSpacing.sm),
-            Text(
-              'Send feedback to the StudyOS team.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            TextField(
-              controller: _controller,
-              minLines: 3,
-              maxLines: 6,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Feedback',
-                hintText: 'What should we improve?',
-              ),
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _isSending ? null : _send,
-                icon: _isSending
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.feedback_outlined),
-                label: const Text('Send feedback'),
-              ),
-            ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Help improve StudyOS',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-      ),
+        const SizedBox(height: StudyOsSpacing.xs),
+        Text(
+          'Tell us what worked or what got in your way.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: StudyOsSpacing.md),
+        TextField(
+          controller: _controller,
+          minLines: 3,
+          maxLines: 6,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Feedback',
+            hintText: 'What should we improve?',
+          ),
+        ),
+        const SizedBox(height: StudyOsSpacing.md),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isSending ? null : _send,
+            icon: _isSending
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.feedback_outlined),
+            label: const Text('Send feedback'),
+          ),
+        ),
+      ],
     );
   }
 }

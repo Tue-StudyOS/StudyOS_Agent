@@ -75,7 +75,10 @@ class _MailViewState extends State<MailView> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
+      padding: const EdgeInsets.only(
+        top: StudyOsSpacing.xl,
+        bottom: StudyOsSpacing.xxl,
+      ),
       children: <Widget>[
         Row(
           children: <Widget>[

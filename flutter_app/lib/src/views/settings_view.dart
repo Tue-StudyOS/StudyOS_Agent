@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../assistant_copy.dart';
 import '../models.dart';
 import '../native_bridge.dart';
 import '../studyos_theme.dart';
-import '../widgets/assistant_status_card.dart';
 import '../widgets/feedback_settings_card.dart';
+import '../widgets/cloud_assistant_settings.dart';
 import '../widgets/local_model_settings_card.dart';
 import '../widgets/profile_row.dart';
 import '../widgets/settings_card.dart';
@@ -138,139 +139,154 @@ class _SettingsViewState extends State<SettingsView> {
   Widget build(BuildContext context) {
     final isCloud = _provider == AgentProvider.cloud;
     return ListView(
-      padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
+      padding: const EdgeInsets.only(
+        top: StudyOsSpacing.xl,
+        bottom: StudyOsSpacing.xxl,
+      ),
       children: <Widget>[
         Text('Settings', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: StudyOsSpacing.xs),
         Text(
-          'Profile, assistant, feedback, and app preferences.',
+          'Your account, assistant, and app preferences.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
-        const SizedBox(height: StudyOsSpacing.lg),
-        SettingsCard(
-          children: <Widget>[
-            ProfileRow(profile: widget.profile, onEdit: _editProfile),
-            const Divider(color: StudyOsColors.border),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.logout_rounded),
-              title: const Text('Logout'),
-              subtitle: Text(
-                widget.profile == null
-                    ? 'No active profile session'
-                    : 'End this app session',
-              ),
-              enabled: widget.onLogout != null,
-              onTap: widget.onLogout,
-            ),
-          ],
-        ),
-        const SizedBox(height: StudyOsSpacing.lg),
-        SettingsCard(
-          children: <Widget>[
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Compact message layout'),
-              subtitle: const Text(
-                'Use tighter chat spacing on small screens.',
-              ),
-              value: widget.compactMessages,
-              onChanged: widget.onCompactMessagesChanged,
-            ),
-          ],
-        ),
-        const SizedBox(height: StudyOsSpacing.lg),
-        FeedbackSettingsCard(status: widget.status),
-        const SizedBox(height: StudyOsSpacing.lg),
-        AssistantStatusCard(status: widget.status, config: widget.config),
-        const SizedBox(height: StudyOsSpacing.lg),
-        SettingsCard(
-          children: <Widget>[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Assistant setup',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            SegmentedButton<AgentProvider>(
-              segments: const <ButtonSegment<AgentProvider>>[
-                ButtonSegment<AgentProvider>(
-                  value: AgentProvider.local,
-                  icon: Icon(Icons.memory_rounded),
-                  label: Text('Built-in'),
+        const SizedBox(height: StudyOsSpacing.xxl),
+        _SettingsSection(
+          title: 'Account',
+          child: SettingsCard(
+            children: <Widget>[
+              ProfileRow(profile: widget.profile, onEdit: _editProfile),
+              const Divider(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.logout_rounded,
+                  color: StudyOsColors.destructive,
                 ),
-                ButtonSegment<AgentProvider>(
-                  value: AgentProvider.cloud,
-                  icon: Icon(Icons.cloud_outlined),
-                  label: Text('Custom'),
+                title: const Text('Log out'),
+                subtitle: Text(
+                  widget.profile == null
+                      ? 'No active profile session'
+                      : 'Sign out from this device',
                 ),
-              ],
-              selected: <AgentProvider>{_provider},
-              onSelectionChanged: (value) {
-                setState(() => _provider = value.first);
-              },
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            if (!isCloud) ...<Widget>[
-              LocalModelSettingsCard(
-                config: widget.config,
-                nativeBridge: widget.nativeBridge,
-                onSaveAgentConfig: widget.onSaveAgentConfig,
+                enabled: widget.onLogout != null,
+                onTap: widget.onLogout,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: StudyOsSpacing.xl),
+        _SettingsSection(
+          title: 'Appearance',
+          child: SettingsCard(
+            children: <Widget>[
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Compact chat'),
+                subtitle: const Text('Use tighter spacing in conversations.'),
+                value: widget.compactMessages,
+                onChanged: widget.onCompactMessagesChanged,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: StudyOsSpacing.xl),
+        _SettingsSection(
+          title: 'Assistant',
+          child: SettingsCard(
+            children: <Widget>[
+              _AssistantSummary(status: widget.status, config: widget.config),
+              const Divider(),
+              SegmentedButton<AgentProvider>(
+                segments: const <ButtonSegment<AgentProvider>>[
+                  ButtonSegment<AgentProvider>(
+                    value: AgentProvider.local,
+                    icon: Icon(Icons.memory_rounded),
+                    label: Text('On device'),
+                  ),
+                  ButtonSegment<AgentProvider>(
+                    value: AgentProvider.cloud,
+                    icon: Icon(Icons.cloud_outlined),
+                    label: Text('Custom'),
+                  ),
+                ],
+                selected: <AgentProvider>{_provider},
+                onSelectionChanged: (value) =>
+                    setState(() => _provider = value.first),
               ),
               const SizedBox(height: StudyOsSpacing.lg),
+              if (!isCloud)
+                LocalModelSettingsCard(
+                  config: widget.config,
+                  nativeBridge: widget.nativeBridge,
+                  onSaveAgentConfig: widget.onSaveAgentConfig,
+                )
+              else
+                CloudAssistantSettings(
+                  endpointController: _endpointController,
+                  modelController: _modelController,
+                  apiKeyController: _apiKeyController,
+                  hasApiKey: widget.config.hasApiKey,
+                  isSaving: _isSaving,
+                  onSave: _save,
+                ),
             ],
-            TextField(
-              controller: _endpointController,
-              enabled: isCloud,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                labelText: 'Custom AI server',
-                hintText: 'https://api.example.com/v1/chat/completions',
-                prefixIcon: Icon(Icons.link_rounded),
-              ),
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            TextField(
-              controller: _modelController,
-              enabled: isCloud,
-              decoration: const InputDecoration(
-                labelText: 'Model name',
-                hintText: 'gpt-4.1-mini',
-                prefixIcon: Icon(Icons.tune_rounded),
-              ),
-            ),
-            const SizedBox(height: StudyOsSpacing.md),
-            TextField(
-              controller: _apiKeyController,
-              enabled: isCloud,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'API key',
-                helperText: widget.config.hasApiKey
-                    ? 'Saved securely on this device.'
-                    : 'Stored securely on this device.',
-                prefixIcon: const Icon(Icons.key_rounded),
-              ),
-            ),
-            const SizedBox(height: StudyOsSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _isSaving ? null : _save,
-                icon: _isSaving
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check_rounded),
-                label: const Text('Save assistant setup'),
-              ),
-            ),
-          ],
+          ),
+        ),
+        const SizedBox(height: StudyOsSpacing.xl),
+        _SettingsSection(
+          title: 'Support',
+          child: SettingsCard(
+            children: <Widget>[FeedbackSettingsCard(status: widget.status)],
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Text(
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: StudyOsColors.textMuted,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
+      ),
+      const SizedBox(height: StudyOsSpacing.sm),
+      child,
+    ],
+  );
+}
+
+class _AssistantSummary extends StatelessWidget {
+  const _AssistantSummary({required this.status, required this.config});
+
+  final String status;
+  final AgentConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = assistantIsReady(status);
+    final color = ready ? StudyOsColors.success : StudyOsColors.warning;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: 0.14),
+        child: Icon(Icons.auto_awesome_outlined, color: color),
+      ),
+      title: Text(assistantStatusLabel(status)),
+      subtitle: Text(assistantSetupLabel(config)),
     );
   }
 }

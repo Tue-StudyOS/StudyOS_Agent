@@ -70,7 +70,7 @@ class _MapsViewState extends State<MapsView> {
           ),
           Positioned(
             left: StudyOsSpacing.sm,
-            top: StudyOsSpacing.sm,
+            bottom: StudyOsSpacing.sm,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: StudyOsColors.background.withValues(alpha: 0.78),
@@ -95,7 +95,7 @@ class _MapsViewState extends State<MapsView> {
           Positioned(
             left: StudyOsSpacing.md,
             right: StudyOsSpacing.md,
-            bottom: StudyOsSpacing.md,
+            top: StudyOsSpacing.md,
             child: MapOverlay(
               controller: _searchController,
               results: _results,
@@ -254,7 +254,7 @@ class _SelectedLocationMarker extends StatelessWidget {
                       child: FilledButton.icon(
                         onPressed: onAskAssistant,
                         icon: const Icon(Icons.auto_awesome_rounded, size: 17),
-                        label: const Text('Ask AI'),
+                        label: const Text('Ask StudyOS'),
                         style: FilledButton.styleFrom(
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(

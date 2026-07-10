@@ -1,6 +1,8 @@
 import AVFoundation
 import CoreLocation
 import Flutter
+import PDFKit
+import QuickLook
 import Speech
 import UIKit
 import UserNotifications
@@ -11,6 +13,7 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
   private let locationManager = CLLocationManager()
   private let speechSynthesizer = AVSpeechSynthesizer()
   private let calendarBridge = StudyOSCalendarBridge()
+  private var pdfPreview: StudyOSPdfPreview?
   private var eventSink: FlutterEventSink?
   private var lastLocation: CLLocation?
 
@@ -66,6 +69,10 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       executeNativeTool(call: call, result: result)
     case "syncScheduleToCalendar":
       calendarBridge.syncSchedule(arguments: call.arguments, result: result)
+    case "extractPdfText":
+      extractPdfText(call: call, result: result)
+    case "previewPdf":
+      previewPdf(call: call, result: result)
     case "publishIntentSnapshot":
       publishIntentSnapshot(call: call, result: result)
     case "consumePendingIntentPrompt":
@@ -119,6 +126,61 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
         details: nil
       ))
     }
+  }
+
+  private func extractPdfText(call: FlutterMethodCall, result: FlutterResult) {
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let typedData = arguments["document"] as? FlutterStandardTypedData,
+      let document = PDFDocument(data: typedData.data),
+      let text = document.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+      !text.isEmpty
+    else {
+      result(FlutterError(
+        code: "pdf_text_unavailable",
+        message: "Could not extract text from the ALMA registration report.",
+        details: nil
+      ))
+      return
+    }
+    result(text)
+  }
+
+  private func previewPdf(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let typedData = arguments["document"] as? FlutterStandardTypedData,
+      let filename = arguments["filename"] as? String,
+      !filename.isEmpty
+    else {
+      result(FlutterError(
+        code: "pdf_preview_arguments",
+        message: "Expected an ALMA PDF document and filename.",
+        details: nil
+      ))
+      return
+    }
+    do {
+      let preview = try StudyOSPdfPreview(data: typedData.data, filename: filename)
+      guard let presenter = topViewController() else {
+        throw StudyOSPdfPreviewError.noPresenter
+      }
+      pdfPreview = preview
+      preview.present(from: presenter)
+      result("ALMA registration report opened.")
+    } catch {
+      result(FlutterError(
+        code: "pdf_preview_failed",
+        message: error.localizedDescription,
+        details: nil
+      ))
+    }
+  }
+
+  private func topViewController() -> UIViewController? {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let root = scenes.flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController
+    return root?.presentedViewController ?? root
   }
 
   private func initialize(result: @escaping FlutterResult) {
@@ -445,5 +507,49 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
     case .unknown: return "unknown"
     @unknown default: return "unknown"
     }
+  }
+}
+
+private enum StudyOSPdfPreviewError: LocalizedError {
+  case noPresenter
+  case invalidDocument
+
+  var errorDescription: String? {
+    switch self {
+    case .noPresenter:
+      return "StudyOS could not present the ALMA PDF."
+    case .invalidDocument:
+      return "ALMA did not return a valid PDF document."
+    }
+  }
+}
+
+private final class StudyOSPdfPreview: NSObject, QLPreviewControllerDataSource {
+  private let documentUrl: URL
+
+  init(data: Data, filename: String) throws {
+    guard PDFDocument(data: data) != nil else {
+      throw StudyOSPdfPreviewError.invalidDocument
+    }
+    documentUrl = FileManager.default.temporaryDirectory
+      .appendingPathComponent(filename, isDirectory: false)
+    try data.write(to: documentUrl, options: .atomic)
+  }
+
+  func present(from presenter: UIViewController) {
+    let controller = QLPreviewController()
+    controller.dataSource = self
+    presenter.present(controller, animated: true)
+  }
+
+  func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
+    1
+  }
+
+  func previewController(
+    _ controller: QLPreviewController,
+    previewItemAt index: Int
+  ) -> QLPreviewItem {
+    documentUrl as NSURL
   }
 }

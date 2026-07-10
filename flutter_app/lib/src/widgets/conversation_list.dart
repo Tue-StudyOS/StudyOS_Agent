@@ -21,16 +21,21 @@ class ConversationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleSessions = sessions.where((session) => session.hasTurns);
+    final visibleSessions = sessions
+        .where((session) => session.hasTurns)
+        .toList(growable: false);
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(StudyOsSpacing.lg),
+        padding: const EdgeInsets.all(StudyOsSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
               children: <Widget>[
-                Text('Chats', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Conversations',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed: () {
@@ -42,40 +47,56 @@ class ConversationList extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: StudyOsSpacing.lg),
+            const SizedBox(height: StudyOsSpacing.xxl),
             Expanded(
-              child: ListView(
-                children: <Widget>[
-                  for (final session in visibleSessions)
-                    _SessionTile(
-                      session: session,
-                      selected: session.id == activeSessionId,
-                      onTap: () {
-                        onSelectSession(session.id);
-                        Navigator.of(context).maybePop();
-                      },
-                      onDelete: () => _confirmDeleteSession(context, session),
-                    ),
-                ],
+              child: Material(
+                color: StudyOsColors.surface,
+                borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(StudyOsRadii.md),
+                  child: ListView(
+                    children: <Widget>[
+                      for (
+                        var index = 0;
+                        index < visibleSessions.length;
+                        index++
+                      ) ...<Widget>[
+                        _SessionTile(
+                          session: visibleSessions.elementAt(index),
+                          selected:
+                              visibleSessions.elementAt(index).id ==
+                              activeSessionId,
+                          onTap: () {
+                            onSelectSession(
+                              visibleSessions.elementAt(index).id,
+                            );
+                            Navigator.of(context).maybePop();
+                          },
+                          onDelete: () => _confirmDeleteSession(
+                            context,
+                            visibleSessions.elementAt(index),
+                          ),
+                        ),
+                        if (index < visibleSessions.length - 1)
+                          const Padding(
+                            padding: EdgeInsets.only(left: StudyOsSpacing.xl),
+                            child: Divider(),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
+            const SizedBox(height: StudyOsSpacing.md),
             Text(
-              'Active ID: ${_activeShortId()}',
+              'Chats are stored on this device.',
               style: Theme.of(context).textTheme.bodyMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _activeShortId() {
-    for (final session in sessions) {
-      if (session.id == activeSessionId) return session.shortId;
-    }
-    return 'none';
   }
 
   Future<void> _confirmDeleteSession(
@@ -119,34 +140,27 @@ class _SessionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: StudyOsSpacing.sm),
-      child: ListTile(
-        selected: selected,
-        selectedTileColor: StudyOsColors.accent.withValues(alpha: 0.14),
-        textColor: StudyOsColors.text,
-        iconColor: selected ? StudyOsColors.accent : StudyOsColors.textMuted,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(StudyOsRadii.md),
-        ),
-        leading: const Icon(Icons.forum_outlined),
-        title: Text(
-          session.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          session.shortId,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: IconButton(
-          tooltip: 'Delete chat',
-          icon: const Icon(Icons.delete_outline_rounded),
-          onPressed: onDelete,
-        ),
-        onTap: onTap,
+    return ListTile(
+      selected: selected,
+      selectedTileColor: StudyOsColors.accent.withValues(alpha: 0.14),
+      textColor: StudyOsColors.text,
+      iconColor: selected ? StudyOsColors.accent : StudyOsColors.textMuted,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
       ),
+      leading: const Icon(Icons.forum_outlined),
+      title: Text(session.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: const Text(
+        'Saved conversation',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: IconButton(
+        tooltip: 'Delete chat',
+        icon: const Icon(Icons.delete_outline_rounded),
+        onPressed: onDelete,
+      ),
+      onTap: onTap,
     );
   }
 }

@@ -38,22 +38,8 @@ class StudyBottomBar extends StatelessWidget {
               selected: selectedIndex == 1,
               icon: Icons.calendar_month_outlined,
               selectedIcon: Icons.calendar_month_rounded,
-              label: 'Schedule',
+              label: 'Plan',
               onTap: () => onDestinationSelected(1),
-            ),
-            _BarItem(
-              selected: selectedIndex == 2,
-              icon: Icons.mail_outline_rounded,
-              selectedIcon: Icons.mail_rounded,
-              label: 'Mail',
-              onTap: () => onDestinationSelected(2),
-            ),
-            _BarItem(
-              selected: selectedIndex == 3,
-              icon: Icons.restaurant_outlined,
-              selectedIcon: Icons.restaurant_rounded,
-              label: 'Campus',
-              onTap: () => onDestinationSelected(3),
             ),
             _AssistantItem(
               onTap: onAssistantPressed,

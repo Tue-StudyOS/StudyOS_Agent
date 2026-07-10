@@ -5,12 +5,12 @@ import 'app_shell_controller.dart';
 import 'app_shell_scope.dart';
 import 'models.dart';
 import 'onboarding_flow.dart';
-import 'views/campus_view.dart';
+import 'studyos_theme.dart';
 import 'views/chat_route.dart';
 import 'views/home_view.dart';
-import 'views/mail_view.dart';
 import 'views/maps_view.dart';
 import 'views/memories_view.dart';
+import 'views/official_documents_view.dart';
 import 'views/profile_edit_view.dart';
 import 'views/schedule_view.dart';
 import 'views/settings_view.dart';
@@ -113,27 +113,9 @@ GoRouter buildAppRouter({
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: '/schedule',
+                path: '/plan',
                 builder: (context, state) =>
                     _ScheduleRoute(controller: shellController()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: <RouteBase>[
-              GoRoute(
-                path: '/mail',
-                builder: (context, state) =>
-                    _MailRoute(controller: shellController()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: <RouteBase>[
-              GoRoute(
-                path: '/campus',
-                builder: (context, state) =>
-                    _CampusRoute(controller: shellController()),
               ),
             ],
           ),
@@ -176,6 +158,13 @@ GoRouter buildAppRouter({
         builder: (context, state) => _ScopedAppRoute(
           controller: shellController(),
           child: _ProfileEditRoute(controller: shellController()),
+        ),
+      ),
+      GoRoute(
+        path: '/documents',
+        builder: (context, state) => _ScopedAppRoute(
+          controller: shellController(),
+          child: _DocumentsRoute(controller: shellController()),
         ),
       ),
       GoRoute(
@@ -224,10 +213,13 @@ class _HomeRoute extends StatelessWidget {
         onOpenProfile: () => context.push('/settings/profile'),
         onOpenAssistant: () => context.push('/settings'),
         onOpenNotes: () => context.push('/memories'),
-        onOpenMail: () => context.go('/mail'),
+        onOpenMail: () =>
+            context.push('/chat?prompt=Show%20my%20university%20mail'),
         onOpenMaps: () => context.push('/maps'),
-        onOpenCampus: () => context.go('/campus'),
-        onOpenSchedule: () => context.go('/schedule'),
+        onOpenCampus: () => context.push(
+          '/chat?prompt=What%20is%20good%20at%20the%20Mensa%20today%3F',
+        ),
+        onOpenSchedule: () => context.go('/plan'),
         onRefresh: controller.refreshHomeFeed,
       ),
     );
@@ -254,32 +246,15 @@ class _ScheduleRoute extends StatelessWidget {
         calendarSyncError: controller.calendarSyncError,
         isSyncingCalendar: controller.isSyncingCalendar,
         onSyncCalendar: controller.syncTimetableToCalendar,
+        academicStatus: controller.academicStatus,
+        academicStatusError: controller.academicStatusError,
+        isRefreshingAcademicStatus: controller.isRefreshingAcademicStatus,
+        onRefreshAcademicStatus: controller.refreshAcademicStatus,
+        academicReportError: controller.academicReportError,
+        isOpeningAcademicReport: controller.isOpeningAcademicReport,
+        onOpenAcademicReport: controller.openAcademicReport,
       ),
     );
-  }
-}
-
-class _MailRoute extends StatelessWidget {
-  const _MailRoute({required this.controller});
-
-  final AppShellController? controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = this.controller ?? AppShellScope.of(context);
-    return MailView(profile: controller.profile);
-  }
-}
-
-class _CampusRoute extends StatelessWidget {
-  const _CampusRoute({required this.controller});
-
-  final AppShellController? controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = this.controller ?? AppShellScope.of(context);
-    return CampusView(profile: controller.profile);
   }
 }
 
@@ -310,6 +285,7 @@ class _MemoriesRoute extends StatelessWidget {
       listenable: controller,
       builder: (context, _) => _RouteScaffold(
         title: 'Notes',
+        showTitle: false,
         child: MemoriesView(
           worldState: controller.worldState,
           memoryText: controller.memoryText,
@@ -332,6 +308,7 @@ class _SettingsRoute extends StatelessWidget {
       listenable: controller,
       builder: (context, _) => _RouteScaffold(
         title: 'Settings',
+        showTitle: false,
         child: SettingsView(
           config: controller.agentConfig,
           profile: controller.profile,
@@ -365,6 +342,7 @@ class _ProfileEditRoute extends StatelessWidget {
     }
     return ProfileEditView(
       profile: profile,
+      onOpenDocuments: () => context.push('/documents'),
       onSaved: (updated) async {
         await controller.saveProfile(updated);
         if (context.mounted) context.pop();
@@ -373,11 +351,47 @@ class _ProfileEditRoute extends StatelessWidget {
   }
 }
 
+class _DocumentsRoute extends StatelessWidget {
+  const _DocumentsRoute({required this.controller});
+
+  final AppShellController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller ?? AppShellScope.of(context);
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        if (controller.officialDocuments.isEmpty &&
+            controller.officialDocumentsError == null &&
+            !controller.isLoadingOfficialDocuments) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            controller.loadOfficialDocuments();
+          });
+        }
+        return OfficialDocumentsView(
+          documents: controller.officialDocuments,
+          error: controller.officialDocumentsError,
+          isLoading: controller.isLoadingOfficialDocuments,
+          openingDocumentId: controller.openingOfficialDocumentId,
+          onRefresh: controller.loadOfficialDocuments,
+          onOpen: controller.openOfficialDocument,
+        );
+      },
+    );
+  }
+}
+
 class _RouteScaffold extends StatelessWidget {
-  const _RouteScaffold({required this.title, required this.child});
+  const _RouteScaffold({
+    required this.title,
+    required this.child,
+    this.showTitle = true,
+  });
 
   final String title;
   final Widget child;
+  final bool showTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -391,7 +405,7 @@ class _RouteScaffold extends StatelessWidget {
               child: Column(
                 children: <Widget>[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
+                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
                     child: Row(
                       children: <Widget>[
                         IconButton(
@@ -403,17 +417,23 @@ class _RouteScaffold extends StatelessWidget {
                               context.go('/home');
                             }
                           },
+                          style: IconButton.styleFrom(
+                            backgroundColor: StudyOsColors.surface,
+                            foregroundColor: StudyOsColors.text,
+                          ),
                           icon: const Icon(Icons.arrow_back_ios_new_rounded),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge,
+                        if (showTitle) ...<Widget>[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

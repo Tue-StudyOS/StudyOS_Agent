@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
 import '../widgets/schedule_components.dart';
+import '../widgets/academic_status_section.dart';
 
 class ScheduleView extends StatefulWidget {
   const ScheduleView({
@@ -11,6 +12,13 @@ class ScheduleView extends StatefulWidget {
     required this.error,
     required this.isRefreshing,
     required this.onRefresh,
+    this.academicStatus,
+    this.academicStatusError,
+    this.isRefreshingAcademicStatus = false,
+    this.onRefreshAcademicStatus,
+    this.academicReportError,
+    this.isOpeningAcademicReport = false,
+    this.onOpenAcademicReport,
     this.calendarSyncMessage,
     this.calendarSyncError,
     this.isSyncingCalendar = false,
@@ -23,6 +31,13 @@ class ScheduleView extends StatefulWidget {
   final String? error;
   final bool isRefreshing;
   final Future<void> Function() onRefresh;
+  final AcademicStatusSnapshot? academicStatus;
+  final String? academicStatusError;
+  final bool isRefreshingAcademicStatus;
+  final Future<void> Function()? onRefreshAcademicStatus;
+  final String? academicReportError;
+  final bool isOpeningAcademicReport;
+  final Future<void> Function()? onOpenAcademicReport;
   final String? calendarSyncMessage;
   final String? calendarSyncError;
   final bool isSyncingCalendar;
@@ -43,9 +58,13 @@ class _ScheduleViewState extends State<ScheduleView> {
     final events = selectedDay == null
         ? const <LectureEvent>[]
         : snapshot!.eventsOn(selectedDay);
+    final nextEvent = _nextEvent(events, DateTime.now());
     final hasSyncableTimetable = snapshot != null && snapshot.events.isNotEmpty;
     return ListView(
-      padding: const EdgeInsets.only(top: StudyOsSpacing.sm),
+      padding: const EdgeInsets.only(
+        top: StudyOsSpacing.xl,
+        bottom: StudyOsSpacing.xxl,
+      ),
       children: <Widget>[
         Row(
           children: <Widget>[
@@ -54,7 +73,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    'Your schedule',
+                    'Plan',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: StudyOsSpacing.xs),
@@ -156,7 +175,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                     ) ...<Widget>[
                       ScheduleLectureCard(
                         event: events[index],
-                        isFirst: index == 0,
+                        isNext: events[index].id == nextEvent?.id,
                         color: scheduleColorFor(events[index].title),
                       ),
                       if (index < events.length - 1)
@@ -169,6 +188,16 @@ class _ScheduleViewState extends State<ScheduleView> {
                 ),
               ),
             ),
+          const SizedBox(height: StudyOsSpacing.xxl),
+          AcademicStatusSection(
+            snapshot: widget.academicStatus,
+            error: widget.academicStatusError,
+            isRefreshing: widget.isRefreshingAcademicStatus,
+            onRefresh: widget.onRefreshAcademicStatus ?? () async {},
+            reportError: widget.academicReportError,
+            isOpeningReport: widget.isOpeningAcademicReport,
+            onOpenReport: widget.onOpenAcademicReport ?? () async {},
+          ),
         ],
       ],
     );
@@ -197,6 +226,13 @@ class _ScheduleViewState extends State<ScheduleView> {
     return details.isEmpty
         ? 'Upcoming lectures from ALMA.'
         : details.join(' · ');
+  }
+
+  LectureEvent? _nextEvent(List<LectureEvent> events, DateTime now) {
+    for (final event in events) {
+      if (event.start.isAfter(now)) return event;
+    }
+    return null;
   }
 }
 

@@ -12,6 +12,9 @@ import 'prompt_context.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
 
+Future<String> _unavailableAcademicStatus() async =>
+    'Academic status is not available.';
+
 class CloudAgentClient {
   CloudAgentClient({
     http.Client? httpClient,
@@ -37,6 +40,7 @@ class CloudAgentClient {
     required Future<void> Function(String text) appendMemory,
     required Future<String> Function() readMemory,
     required Future<String> Function() readSchedule,
+    Future<String> Function() readAcademicStatus = _unavailableAcademicStatus,
     required MailToolRunner mailTools,
     void Function(ToolTrace trace)? onToolTrace,
     AgentStreamSink? onDelta,
@@ -71,6 +75,7 @@ class CloudAgentClient {
       appendMemory: appendMemory,
       readMemory: readMemory,
       readSchedule: readSchedule,
+      readAcademicStatus: readAcademicStatus,
       mailTools: mailTools,
       nativeTools: _nativeTools,
     );
