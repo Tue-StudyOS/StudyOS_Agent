@@ -297,6 +297,7 @@ class _FakeNativeBridge extends NativeBridge {
     String text, {
     String? systemPrompt,
     String? memory,
+    String? localModelId,
     String? localModelPath,
     String? localBackend,
   }) async {

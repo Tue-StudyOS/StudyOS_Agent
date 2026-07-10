@@ -133,6 +133,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       request.userText,
       systemPrompt: systemPrompt,
       memory: request.memoryText,
+      localModelId: request.config.localModelId,
       localModelPath: request.config.localModelPath,
       localBackend: request.config.localBackend.name,
     );
@@ -181,6 +182,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
         _localToolFeedbackPrompt(feedback),
         systemPrompt: systemPrompt,
         memory: request.memoryText,
+        localModelId: request.config.localModelId,
         localModelPath: request.config.localModelPath,
         localBackend: request.config.localBackend.name,
       );

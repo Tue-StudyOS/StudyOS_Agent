@@ -92,8 +92,15 @@ Model: nvidia/nemotron-3-ultra-550b-a55b:free
 GitHub push protection blocks committing OpenRouter keys, so release builds do
 not contain a default API key. Open `Settings -> Assistant setup -> Custom` and
 paste an OpenRouter key, or build with the Dart define shown below. To avoid
-cloud calls, switch `Assistant setup` back to `Built-in` and use the local model
+cloud calls, switch `Assistant` back to `On device` and use the local model
 controls.
+
+On Android, the built-in setup checks the AICore Gemini Nano configurations
+supported by the current device, preselects an available configuration, and can
+request an AICore-managed model download. Unsupported configurations stay hidden;
+if AICore is unavailable, settings show one compact unsupported status. Custom
+LiteRT-LM URL downloads remain available in a collapsed advanced section. On iOS,
+the built-in provider uses Apple Foundation Models when the device supports it.
 
 For local development builds, you can override the seeded preset without editing
 source:

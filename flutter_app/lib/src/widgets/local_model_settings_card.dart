@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../android_ai_core_models.dart';
 import '../local_model_catalog.dart';
 import '../models.dart';
 import '../native_bridge.dart';
 import '../studyos_theme.dart';
+import 'android_ai_core_settings.dart';
 
 class LocalModelSettingsCard extends StatefulWidget {
   const LocalModelSettingsCard({
@@ -40,7 +43,7 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
   void initState() {
     super.initState();
     _customModelUrlController = TextEditingController();
-    _localModelId = widget.config.localModelId;
+    _localModelId = _customModelId(widget.config.localModelId);
     _localBackend = widget.config.localBackend;
     _nativeEventSubscription = widget.nativeBridge.events.listen(
       _handleNativeEvent,
@@ -53,7 +56,9 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
   void didUpdateWidget(LocalModelSettingsCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.config == widget.config) return;
-    _localModelId = widget.config.localModelId;
+    if (!isAndroidAiCoreModelId(widget.config.localModelId)) {
+      _localModelId = _customModelId(widget.config.localModelId);
+    }
     _localBackend = widget.config.localBackend;
   }
 
@@ -66,124 +71,165 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return const ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(Icons.apple),
+        title: Text('Apple Intelligence'),
+        subtitle: Text('Uses Apple Foundation Models managed by iOS.'),
+      );
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return const ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(Icons.block_rounded),
+        title: Text('On-device AI'),
+        subtitle: Text('Not supported on this platform.'),
+      );
+    }
+
     return Column(
       children: <Widget>[
-        DropdownButtonFormField<String>(
-          initialValue: _localModelId,
-          decoration: const InputDecoration(
-            labelText: 'Local model',
-            prefixIcon: Icon(Icons.storage_rounded),
-          ),
-          items: localModelCatalog
-              .map(
-                (model) => DropdownMenuItem<String>(
-                  value: model.id,
-                  child: Text(model.label),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _localModelId = value);
-          },
+        AndroidAiCoreSettings(
+          config: widget.config,
+          nativeBridge: widget.nativeBridge,
+          onSaveAgentConfig: widget.onSaveAgentConfig,
         ),
         const SizedBox(height: StudyOsSpacing.sm),
-        _LocalModelStatus(
-          model: localModelById(_localModelId),
-          installed: _installedModelFor(_localModelId),
-        ),
-        const SizedBox(height: StudyOsSpacing.md),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Accelerator',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-        ),
-        const SizedBox(height: StudyOsSpacing.xs),
-        SegmentedButton<LocalBackend>(
-          segments: const <ButtonSegment<LocalBackend>>[
-            ButtonSegment<LocalBackend>(
-              value: LocalBackend.gpu,
-              icon: Icon(Icons.bolt_rounded),
-              label: Text('GPU'),
-            ),
-            ButtonSegment<LocalBackend>(
-              value: LocalBackend.cpu,
-              icon: Icon(Icons.memory_rounded),
-              label: Text('CPU'),
-            ),
-          ],
-          selected: <LocalBackend>{_localBackend},
-          onSelectionChanged: (selection) => _selectBackend(selection.first),
-        ),
-        const SizedBox(height: StudyOsSpacing.xs),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            _localBackend == LocalBackend.gpu
-                ? 'Runs on the GPU, falling back to CPU if unsupported.'
-                : 'Forces CPU. Slower, but works on every device.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-        const SizedBox(height: StudyOsSpacing.md),
-        TextField(
-          controller: _customModelUrlController,
-          keyboardType: TextInputType.url,
-          decoration: const InputDecoration(
-            labelText: 'Direct model URL',
-            hintText: 'https://.../model.litertlm',
-            prefixIcon: Icon(Icons.download_rounded),
-          ),
-        ),
-        const SizedBox(height: StudyOsSpacing.md),
-        Row(
+        ExpansionTile(
+          initiallyExpanded: widget.config.localModelPath.isNotEmpty,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          title: const Text('Custom LiteRT-LM'),
+          subtitle: const Text('Use a compatible model URL instead of AICore.'),
           children: <Widget>[
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _isDownloadingModel ? null : _downloadSelectedModel,
-                icon: _isDownloadingModel
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.download_rounded),
-                label: const Text('Download model'),
+            DropdownButtonFormField<String>(
+              initialValue: _localModelId,
+              decoration: const InputDecoration(
+                labelText: 'Local model',
+                prefixIcon: Icon(Icons.storage_rounded),
+              ),
+              items: localModelCatalog
+                  .map(
+                    (model) => DropdownMenuItem<String>(
+                      value: model.id,
+                      child: Text(model.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _localModelId = value);
+              },
+            ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            _LocalModelStatus(
+              model: localModelById(_localModelId),
+              installed: _installedModelFor(_localModelId),
+            ),
+            const SizedBox(height: StudyOsSpacing.md),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Accelerator',
+                style: Theme.of(context).textTheme.labelLarge,
               ),
             ),
-            const SizedBox(width: StudyOsSpacing.sm),
+            const SizedBox(height: StudyOsSpacing.xs),
+            SegmentedButton<LocalBackend>(
+              segments: const <ButtonSegment<LocalBackend>>[
+                ButtonSegment<LocalBackend>(
+                  value: LocalBackend.gpu,
+                  icon: Icon(Icons.bolt_rounded),
+                  label: Text('GPU'),
+                ),
+                ButtonSegment<LocalBackend>(
+                  value: LocalBackend.cpu,
+                  icon: Icon(Icons.memory_rounded),
+                  label: Text('CPU'),
+                ),
+              ],
+              selected: <LocalBackend>{_localBackend},
+              onSelectionChanged: (selection) =>
+                  _selectBackend(selection.first),
+            ),
+            const SizedBox(height: StudyOsSpacing.xs),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _localBackend == LocalBackend.gpu
+                    ? 'Runs on the GPU, falling back to CPU if unsupported.'
+                    : 'Forces CPU. Slower, but works on every device.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.md),
+            TextField(
+              controller: _customModelUrlController,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: 'Direct model URL',
+                hintText: 'https://.../model.litertlm',
+                prefixIcon: Icon(Icons.download_rounded),
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.md),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isDownloadingModel
+                        ? null
+                        : _downloadSelectedModel,
+                    icon: _isDownloadingModel
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.download_rounded),
+                    label: const Text('Download model'),
+                  ),
+                ),
+                const SizedBox(width: StudyOsSpacing.sm),
+                if (_isDownloadingModel) ...<Widget>[
+                  IconButton.filledTonal(
+                    tooltip: 'Cancel model download',
+                    onPressed: _cancelModelDownload,
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                  const SizedBox(width: StudyOsSpacing.sm),
+                ],
+                IconButton.filledTonal(
+                  tooltip: 'Delete downloaded model',
+                  onPressed: _isDeletingModel || _isDownloadingModel
+                      ? null
+                      : _deleteSelectedModel,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
+              ],
+            ),
             if (_isDownloadingModel) ...<Widget>[
-              IconButton.filledTonal(
-                tooltip: 'Cancel model download',
-                onPressed: _cancelModelDownload,
-                icon: const Icon(Icons.close_rounded),
+              const SizedBox(height: StudyOsSpacing.sm),
+              LinearProgressIndicator(value: _downloadProgress),
+              const SizedBox(height: StudyOsSpacing.xs),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _downloadProgressLabel,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ),
-              const SizedBox(width: StudyOsSpacing.sm),
             ],
-            IconButton.filledTonal(
-              tooltip: 'Delete downloaded model',
-              onPressed: _isDeletingModel || _isDownloadingModel
-                  ? null
-                  : _deleteSelectedModel,
-              icon: const Icon(Icons.delete_outline_rounded),
-            ),
           ],
         ),
-        if (_isDownloadingModel) ...<Widget>[
-          const SizedBox(height: StudyOsSpacing.sm),
-          LinearProgressIndicator(value: _downloadProgress),
-          const SizedBox(height: StudyOsSpacing.xs),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _downloadProgressLabel,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        ],
       ],
     );
+  }
+
+  String _customModelId(String id) {
+    return localModelCatalog.any((model) => model.id == id)
+        ? id
+        : localModelCatalog.first.id;
   }
 
   void _handleNativeEvent(NativeEvent event) {

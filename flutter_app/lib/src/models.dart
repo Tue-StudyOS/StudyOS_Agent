@@ -160,7 +160,7 @@ class AgentConfig {
       cloudEndpoint = '',
       cloudModel = '',
       hasApiKey = false,
-      localModelId = 'gemma-4-e2b-it',
+      localModelId = 'platform-default',
       localModelPath = '',
       localBackend = LocalBackend.gpu;
 

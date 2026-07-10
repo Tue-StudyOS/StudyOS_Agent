@@ -10,6 +10,8 @@ import com.example.studyOS.Memory.FileIO
 import com.example.studyOS.Reminder.ReminderManager
 import com.example.studyOS.Sensors.WorldStateProvider
 import com.example.studyOS.System.RuntimeEnvironment
+import com.google.mlkit.genai.common.DownloadCallback
+import com.google.mlkit.genai.common.GenAiException
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -74,6 +76,8 @@ class MainActivity : FlutterActivity() {
             "executeNativeTool" -> executeNativeTool(call, result)
             "syncScheduleToCalendar" -> syncScheduleToCalendar(call, result)
             "listLocalModels" -> result.success(localModelStore().listModels())
+            "listAndroidAiCoreModels" -> listAndroidAiCoreModels(result)
+            "downloadAndroidAiCoreModel" -> downloadAndroidAiCoreModel(call, result)
             "downloadLocalModel" -> downloadLocalModel(call, result)
             "cancelLocalModelDownload" -> {
                 localModelStore().cancelDownload()
@@ -96,6 +100,7 @@ class MainActivity : FlutterActivity() {
                     text = text,
                     systemPrompt = call.argument<String>("systemPrompt").orEmpty(),
                     memory = call.argument<String>("memory").orEmpty(),
+                    localModelId = call.argument<String>("localModelId").orEmpty(),
                     localModelPath = call.argument<String>("localModelPath").orEmpty(),
                     localBackend = call.argument<String>("localBackend").orEmpty(),
                     result = result,
@@ -144,6 +149,7 @@ class MainActivity : FlutterActivity() {
         text: String,
         systemPrompt: String,
         memory: String,
+        localModelId: String,
         localModelPath: String,
         localBackend: String,
         result: MethodChannel.Result,
@@ -160,6 +166,7 @@ class MainActivity : FlutterActivity() {
             )
             localPromptClient().generate(
                 prompt = prompt,
+                modelId = localModelId,
                 modelPath = localModelPath,
                 backend = localBackend,
                 canExecuteTool = { toolName ->
@@ -297,6 +304,60 @@ class MainActivity : FlutterActivity() {
         if (existing != null) return existing
         return AndroidLocalModelStore(applicationContext).also {
             localModelStore = it
+        }
+    }
+
+    private fun listAndroidAiCoreModels(result: MethodChannel.Result) {
+        Thread {
+            try {
+                val models = AndroidAiCoreModelCatalog.listModels()
+                Handler(Looper.getMainLooper()).post { result.success(models) }
+            } catch (error: Throwable) {
+                Handler(Looper.getMainLooper()).post {
+                    result.error(
+                        "aicore_model_list_failed",
+                        "Could not check Android built-in AI: ${error.message}",
+                        null,
+                    )
+                }
+            }
+        }.start()
+    }
+
+    private fun downloadAndroidAiCoreModel(
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val modelId = call.argument<String>("modelId").orEmpty()
+        try {
+            AndroidAiCoreModelCatalog.clientFor(modelId).download(
+                object : DownloadCallback {
+                    override fun onDownloadStarted(bytesToDownload: Long) {
+                        emitStatus("Android built-in AI download started.")
+                    }
+
+                    override fun onDownloadCompleted() {
+                        emitStatus("Android built-in AI download completed.")
+                        Handler(Looper.getMainLooper()).post { result.success(null) }
+                    }
+
+                    override fun onDownloadFailed(error: GenAiException) {
+                        Handler(Looper.getMainLooper()).post {
+                            result.error(
+                                "aicore_model_download_failed",
+                                "Android built-in AI download failed: ${error.message}",
+                                null,
+                            )
+                        }
+                    }
+                },
+            )
+        } catch (error: Throwable) {
+            result.error(
+                "aicore_model_download_failed",
+                "Android built-in AI download failed: ${error.message}",
+                null,
+            )
         }
     }
 

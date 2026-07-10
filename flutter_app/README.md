@@ -34,7 +34,12 @@ Fresh installs seed the assistant with the repository's OpenRouter endpoint and
 model preset. GitHub push protection blocks committing OpenRouter keys, so users
 still need to paste an API key in `Settings -> Assistant setup -> Custom` unless
 the app was built with the Dart define below. Users can switch back to
-`Built-in` for local model mode.
+`On device` for local model mode.
+
+Android local mode probes the AICore Gemini Nano configurations supported by the
+device and preselects an available one. Unsupported configurations are hidden,
+while custom LiteRT-LM URL downloads remain available in a collapsed section.
+iOS local mode continues to use Apple Foundation Models when supported.
 
 For development builds, override the seeded preset with Dart defines:
 

@@ -1,3 +1,4 @@
+import 'android_ai_core_models.dart';
 import 'models.dart';
 
 bool assistantIsReady(String status) {
@@ -19,7 +20,10 @@ String assistantSetupLabel(AgentConfig config) {
     return model.isEmpty ? 'Custom AI' : model;
   }
   if (config.localModelPath.trim().isNotEmpty) {
-    return 'Downloaded local model';
+    return 'Downloaded custom model';
   }
-  return 'Built-in Android AI';
+  if (isAndroidAiCoreModelId(config.localModelId)) {
+    return androidAiCoreModelLabel(config.localModelId);
+  }
+  return 'Built-in platform AI';
 }

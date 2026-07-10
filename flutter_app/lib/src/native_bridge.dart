@@ -68,6 +68,25 @@ class NativeBridge {
         .toList();
   }
 
+  Future<List<Map<String, Object?>>> listAndroidAiCoreModels() async {
+    final result = await _methods.invokeListMethod<Object?>(
+      'listAndroidAiCoreModels',
+    );
+    return (result ?? const <Object?>[])
+        .whereType<Map<Object?, Object?>>()
+        .map(
+          (item) => item.map((key, value) => MapEntry(key.toString(), value)),
+        )
+        .toList();
+  }
+
+  Future<void> downloadAndroidAiCoreModel(String modelId) async {
+    await _methods.invokeMethod<void>(
+      'downloadAndroidAiCoreModel',
+      <String, Object?>{'modelId': modelId},
+    );
+  }
+
   Future<Map<String, Object?>> downloadLocalModel({
     required String id,
     required String label,
@@ -152,6 +171,7 @@ class NativeBridge {
     String text, {
     String? systemPrompt,
     String? memory,
+    String? localModelId,
     String? localModelPath,
     String? localBackend,
   }) async {
@@ -160,6 +180,7 @@ class NativeBridge {
           'text': text,
           'systemPrompt': systemPrompt,
           'memory': memory,
+          'localModelId': localModelId,
           'localModelPath': localModelPath,
           'localBackend': localBackend,
         });
