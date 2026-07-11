@@ -14,6 +14,8 @@ import 'studyos_tool_executor.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
     'Academic status is not available.';
+Future<String> _unavailableTalks(String query, int limit) async =>
+    'Tübingen Talks are not available.';
 
 class CloudAgentClient {
   CloudAgentClient({
@@ -41,6 +43,8 @@ class CloudAgentClient {
     required Future<String> Function() readMemory,
     required Future<String> Function() readSchedule,
     Future<String> Function() readAcademicStatus = _unavailableAcademicStatus,
+    Future<String> Function(String query, int limit) searchTalks =
+        _unavailableTalks,
     required MailToolRunner mailTools,
     void Function(ToolTrace trace)? onToolTrace,
     AgentStreamSink? onDelta,
@@ -76,6 +80,7 @@ class CloudAgentClient {
       readMemory: readMemory,
       readSchedule: readSchedule,
       readAcademicStatus: readAcademicStatus,
+      searchTalks: searchTalks,
       mailTools: mailTools,
       nativeTools: _nativeTools,
     );

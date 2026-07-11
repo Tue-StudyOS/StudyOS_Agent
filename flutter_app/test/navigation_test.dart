@@ -117,6 +117,7 @@ void main() {
             onOpenProfile: () {},
             onOpenAssistant: () {},
             onOpenNotes: () {},
+            onOpenTalks: () {},
             onOpenMail: () {},
             onOpenMaps: () {},
             onOpenCampus: () {},
@@ -137,6 +138,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('StudyOS'), findsOneWidget);
+    expect(find.text('Tübingen Talks'), findsOneWidget);
     expect(find.text('Generated component preview'), findsNothing);
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });

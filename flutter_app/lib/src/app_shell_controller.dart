@@ -20,6 +20,7 @@ import 'profile_context.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
 import 'timetable_repository.dart';
+import 'talks_client.dart';
 import 'voice_controller.dart';
 
 class ChatRouteRequest {
@@ -452,6 +453,7 @@ class AppShellController extends ChangeNotifier {
         appendMemory: appendMemory,
         readSchedule: readScheduleForAgent,
         readAcademicStatus: readAcademicStatusForAgent,
+        searchTalks: searchTalksForAgent,
         mailTools: MailToolRunner(
           repository: _mailRepository,
           profile: _profile,
@@ -761,6 +763,22 @@ class AppShellController extends ChangeNotifier {
     }
     return snapshot?.compactSummary(limit: 12) ??
         'No timetable has been synced yet.';
+  }
+
+  Future<String> searchTalksForAgent(String query, int limit) async {
+    final client = TalksClient();
+    try {
+      final talks = await client.fetchUpcoming();
+      final matches = talks.where((talk) => talk.matches(query)).take(limit);
+      return jsonEncode(<String, Object?>{
+        'scope': 'upcoming',
+        'query': query,
+        'source_url': TalksClient.sourceUri.toString(),
+        'items': matches.map((talk) => talk.toJson()).toList(),
+      });
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> publishIntentSnapshot() async {

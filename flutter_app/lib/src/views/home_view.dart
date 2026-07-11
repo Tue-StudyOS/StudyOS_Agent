@@ -15,6 +15,7 @@ class HomeView extends StatelessWidget {
     required this.onOpenProfile,
     required this.onOpenAssistant,
     required this.onOpenNotes,
+    required this.onOpenTalks,
     required this.onOpenMail,
     required this.onOpenMaps,
     required this.onOpenCampus,
@@ -31,6 +32,7 @@ class HomeView extends StatelessWidget {
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenAssistant;
   final VoidCallback onOpenNotes;
+  final VoidCallback onOpenTalks;
   final VoidCallback onOpenMail;
   final VoidCallback onOpenMaps;
   final VoidCallback onOpenCampus;
@@ -82,6 +84,13 @@ class HomeView extends StatelessWidget {
                     ? 'Nothing saved yet'
                     : 'Personal context saved',
                 onTap: onOpenNotes,
+              ),
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-talks'),
+                icon: Icons.campaign_outlined,
+                title: 'Tübingen Talks',
+                detail: 'Upcoming public talks and guest lectures',
+                onTap: onOpenTalks,
               ),
             ],
           ),

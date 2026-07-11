@@ -6,6 +6,9 @@ import 'models.dart';
 import 'native_bridge.dart';
 import 'prompt_context.dart';
 
+Future<String> _unavailableTalks(String query, int limit) async =>
+    'Tübingen Talks are not available.';
+
 Future<String> sendAgentMessage({
   required AgentConfig config,
   required NativeBridge bridge,
@@ -21,6 +24,8 @@ Future<String> sendAgentMessage({
   required Future<void> Function(String text) appendMemory,
   required Future<String> Function() readSchedule,
   required Future<String> Function() readAcademicStatus,
+  Future<String> Function(String query, int limit) searchTalks =
+      _unavailableTalks,
   required MailToolRunner mailTools,
   required void Function(ToolTrace trace) onToolTrace,
   AgentStreamSink? onDelta,
@@ -47,6 +52,7 @@ Future<String> sendAgentMessage({
     memoryText: memoryText,
     readSchedule: readSchedule,
     readAcademicStatus: readAcademicStatus,
+    searchTalks: searchTalks,
     mailTools: mailTools,
     onDelta: onDelta,
     cancelToken: cancelToken,

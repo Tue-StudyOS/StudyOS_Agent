@@ -103,6 +103,7 @@ void main() {
       );
 
       expect(response, 'Plain local response.');
+      expect(bridge.lastSystemPrompt, contains('search_talks'));
       expect(bridge.lastSystemPrompt, contains('get_recent_mail'));
       expect(bridge.lastSystemPrompt, contains('search_mail'));
       expect(bridge.lastSystemPrompt, contains('find_mail_deadlines'));

@@ -15,6 +15,7 @@ import 'views/profile_edit_view.dart';
 import 'views/schedule_view.dart';
 import 'views/settings_view.dart';
 import 'views/shell_scaffold.dart';
+import 'views/talks_view.dart';
 import 'views/voice_assist_view.dart';
 
 class AuthRouterState extends ChangeNotifier {
@@ -168,6 +169,13 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/talks',
+        builder: (context, state) => _ScopedAppRoute(
+          controller: shellController(),
+          child: const TalksView(),
+        ),
+      ),
+      GoRoute(
         path: '/voice',
         builder: (context, state) => _ScopedAppRoute(
           controller: shellController(),
@@ -213,6 +221,7 @@ class _HomeRoute extends StatelessWidget {
         onOpenProfile: () => context.push('/settings/profile'),
         onOpenAssistant: () => context.push('/settings'),
         onOpenNotes: () => context.push('/memories'),
+        onOpenTalks: () => context.push('/talks'),
         onOpenMail: () =>
             context.push('/chat?prompt=Show%20my%20university%20mail'),
         onOpenMaps: () => context.push('/maps'),

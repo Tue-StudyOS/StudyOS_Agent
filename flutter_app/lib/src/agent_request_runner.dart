@@ -10,6 +10,8 @@ import 'prompt_context.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
     'Academic status is not available.';
+Future<String> _unavailableTalks(String query, int limit) async =>
+    'Tübingen Talks are not available.';
 
 class AgentRequestRunner {
   AgentRequestRunner({
@@ -48,6 +50,8 @@ class AgentRequestRunner {
     required String memoryText,
     required Future<String> Function() readSchedule,
     Future<String> Function() readAcademicStatus = _unavailableAcademicStatus,
+    Future<String> Function(String query, int limit) searchTalks =
+        _unavailableTalks,
     required MailToolRunner mailTools,
     AgentStreamSink? onDelta,
     AgentCancelToken? cancelToken,
@@ -65,6 +69,7 @@ class AgentRequestRunner {
         readMemory: memoryStore.read,
         readSchedule: readSchedule,
         readAcademicStatus: readAcademicStatus,
+        searchTalks: searchTalks,
         mailTools: mailTools,
         onToolTrace: onToolTrace,
         onDelta: onDelta,

@@ -10,7 +10,7 @@ class SuggestionStrip extends StatelessWidget {
   static const List<String> _suggestions = <String>[
     'Summarize my day and tell me what still needs attention.',
     'Find my next lecture, including the room and when I should leave.',
-    'Plan a focused study block around my timetable and open tasks.',
+    'What public Tübingen talks are coming up?',
   ];
 
   @override

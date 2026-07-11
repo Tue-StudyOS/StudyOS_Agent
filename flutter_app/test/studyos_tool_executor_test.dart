@@ -38,6 +38,27 @@ void main() {
     expect(saved, <String>['Prefers morning study blocks.']);
   });
 
+  test('StudyOsToolExecutor searches upcoming talks', () async {
+    String? requestedQuery;
+    int? requestedLimit;
+
+    final response = await const StudyOsToolExecutor().execute(
+      'search_talks',
+      '{"query":"AI","limit":50}',
+      _context(
+        searchTalks: (query, limit) async {
+          requestedQuery = query;
+          requestedLimit = limit;
+          return 'Talk results';
+        },
+      ),
+    );
+
+    expect(response, 'Talk results');
+    expect(requestedQuery, 'AI');
+    expect(requestedLimit, 20);
+  });
+
   test(
     'StudyOsToolExecutor returns explicit errors for bad tool input',
     () async {
@@ -58,6 +79,7 @@ void main() {
   test('StudyOS catalog exposes active native tools for #30 only', () {
     final toolNames = studyOsTools.map((tool) => tool.name).toSet();
 
+    expect(toolNames, contains('search_talks'));
     expect(toolNames, contains(nativeDeviceStatusToolName));
     expect(toolNames, contains(nativeSetFlashlightToolName));
     expect(toolNames, contains(nativeOpenInstalledAppToolName));
@@ -117,6 +139,7 @@ StudyOsToolContext _context({
   Future<void> Function(String text)? appendMemory,
   Future<String> Function()? readMemory,
   Future<String> Function()? readSchedule,
+  Future<String> Function(String query, int limit)? searchTalks,
   NativeToolRunner? nativeTools,
 }) {
   return StudyOsToolContext(
@@ -128,6 +151,7 @@ StudyOsToolContext _context({
     appendMemory: appendMemory ?? (_) async {},
     readMemory: readMemory ?? () async => '',
     readSchedule: readSchedule ?? () async => '',
+    searchTalks: searchTalks ?? (_, _) async => '',
     mailTools: MailToolRunner(repository: MailRepository(), profile: null),
     nativeTools: nativeTools,
   );

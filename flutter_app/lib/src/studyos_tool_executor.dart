@@ -7,6 +7,8 @@ import 'prompt_context.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
     'Academic status is not available.';
+Future<String> _unavailableTalks(String query, int limit) async =>
+    'Tübingen Talks are not available.';
 
 class StudyOsToolContext {
   const StudyOsToolContext({
@@ -15,6 +17,7 @@ class StudyOsToolContext {
     required this.readMemory,
     required this.readSchedule,
     this.readAcademicStatus = _unavailableAcademicStatus,
+    this.searchTalks = _unavailableTalks,
     required this.mailTools,
     required this.nativeTools,
   });
@@ -24,6 +27,7 @@ class StudyOsToolContext {
   final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
   final Future<String> Function() readAcademicStatus;
+  final Future<String> Function(String query, int limit) searchTalks;
   final MailToolRunner mailTools;
   final NativeToolRunner? nativeTools;
 }
@@ -42,6 +46,7 @@ class StudyOsToolExecutor {
       'get_study_context' => context.promptContext.systemPrompt(),
       'get_schedule' => context.readSchedule(),
       'get_academic_status' => context.readAcademicStatus(),
+      'search_talks' => _searchTalks(arguments, context.searchTalks),
       'list_mailboxes' ||
       'get_recent_mail' ||
       'search_mail' ||
@@ -87,6 +92,28 @@ class StudyOsToolExecutor {
     await appendMemory(text);
     return 'Memory saved.';
   }
+
+  Future<String> _searchTalks(
+    String arguments,
+    Future<String> Function(String query, int limit) searchTalks,
+  ) async {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(arguments);
+    } on FormatException {
+      return 'Talk search arguments were not valid JSON.';
+    }
+    if (decoded is! Map) {
+      return 'Talk search arguments must be a JSON object.';
+    }
+    final values = Map<String, Object?>.from(decoded);
+    final query = values['query']?.toString().trim() ?? '';
+    final requestedLimit = values['limit'];
+    final limit = requestedLimit is num
+        ? requestedLimit.toInt().clamp(1, 20).toInt()
+        : 8;
+    return searchTalks(query, limit);
+  }
 }
 
 StudyOsToolContext studyOsToolContext({
@@ -95,6 +122,8 @@ StudyOsToolContext studyOsToolContext({
   required MemoryStore memoryStore,
   required Future<String> Function() readSchedule,
   Future<String> Function() readAcademicStatus = _unavailableAcademicStatus,
+  Future<String> Function(String query, int limit) searchTalks =
+      _unavailableTalks,
   required MailToolRunner mailTools,
   NativeToolRunner? nativeTools,
 }) {
@@ -104,6 +133,7 @@ StudyOsToolContext studyOsToolContext({
     readMemory: memoryStore.read,
     readSchedule: readSchedule,
     readAcademicStatus: readAcademicStatus,
+    searchTalks: searchTalks,
     mailTools: mailTools,
     nativeTools: nativeTools,
   );

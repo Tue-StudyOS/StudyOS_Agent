@@ -13,6 +13,8 @@ import 'studyos_tool_executor.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
     'Academic status is not available.';
+Future<String> _unavailableTalks(String query, int limit) async =>
+    'Tübingen Talks are not available.';
 
 class AgentLlmRequest {
   const AgentLlmRequest({
@@ -26,6 +28,7 @@ class AgentLlmRequest {
     required this.readMemory,
     required this.readSchedule,
     this.readAcademicStatus = _unavailableAcademicStatus,
+    this.searchTalks = _unavailableTalks,
     required this.mailTools,
     required this.onToolTrace,
     this.onDelta,
@@ -42,6 +45,7 @@ class AgentLlmRequest {
   final Future<String> Function() readMemory;
   final Future<String> Function() readSchedule;
   final Future<String> Function() readAcademicStatus;
+  final Future<String> Function(String query, int limit) searchTalks;
   final MailToolRunner mailTools;
   final void Function(ToolTrace trace) onToolTrace;
 
@@ -143,6 +147,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       readMemory: request.readMemory,
       readSchedule: request.readSchedule,
       readAcademicStatus: request.readAcademicStatus,
+      searchTalks: request.searchTalks,
       mailTools: request.mailTools,
       nativeTools: nativeTools,
     );
@@ -330,6 +335,7 @@ class CloudLlmProvider implements AgentLlmProvider {
       appendMemory: _appendMemory,
       readMemory: _memoryStore.read,
       readSchedule: request.readSchedule,
+      searchTalks: request.searchTalks,
       mailTools: request.mailTools,
       onToolTrace: request.onToolTrace,
       onDelta: request.onDelta,

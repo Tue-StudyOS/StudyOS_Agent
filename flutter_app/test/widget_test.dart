@@ -45,9 +45,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text(
-        'Plan a focused study block around my timetable and open tasks.',
-      ),
+      find.text('What public Tübingen talks are coming up?'),
       findsOneWidget,
     );
     expect(find.text('Message StudyOS...'), findsOneWidget);

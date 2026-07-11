@@ -62,6 +62,24 @@ const getAcademicStatusTool = StudyOsToolSpec(
   required: <String>[],
 );
 
+const searchTalksTool = StudyOsToolSpec(
+  name: 'search_talks',
+  description:
+      'List or search upcoming public Tübingen talks by topic, speaker, or location.',
+  traceSummary: 'Searching the live Tübingen talks calendar.',
+  properties: <String, Object?>{
+    'query': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional topic, speaker, or location search.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum talks to return. Capped at 20.',
+    },
+  },
+  required: <String>[],
+);
+
 const listMailboxesTool = StudyOsToolSpec(
   name: 'list_mailboxes',
   description: 'List local university mail folders and unread counts.',
@@ -319,6 +337,7 @@ const studyOsTools = <StudyOsToolSpec>[
   getStudyContextTool,
   getScheduleTool,
   getAcademicStatusTool,
+  searchTalksTool,
   listMailboxesTool,
   getRecentMailTool,
   searchMailTool,
