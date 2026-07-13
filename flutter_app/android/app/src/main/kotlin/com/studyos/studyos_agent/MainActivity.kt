@@ -29,6 +29,7 @@ class MainActivity : FlutterActivity() {
     private var localModelStore: AndroidLocalModelStore? = null
     private var liteRtToolExecutor: AndroidLiteRtToolExecutor? = null
     private var nativeToolExecutor: AndroidNativeToolExecutor? = null
+    private var pdfPreview: AndroidPdfPreview? = null
     private var pendingCalendarOperation: (() -> Unit)? = null
     private lateinit var intentBridge: AndroidIntentBridge
 
@@ -75,6 +76,7 @@ class MainActivity : FlutterActivity() {
             "getNativeToolCapabilities" -> result.success(nativeToolCapabilities())
             "executeNativeTool" -> executeNativeTool(call, result)
             "syncScheduleToCalendar" -> syncScheduleToCalendar(call, result)
+            "previewPdf" -> pdfPreview().open(call, result)
             "listLocalModels" -> result.success(localModelStore().listModels())
             "listAndroidAiCoreModels" -> listAndroidAiCoreModels(result)
             "downloadAndroidAiCoreModel" -> downloadAndroidAiCoreModel(call, result)
@@ -113,6 +115,9 @@ class MainActivity : FlutterActivity() {
             else -> result.notImplemented()
         }
     }
+
+    private fun pdfPreview(): AndroidPdfPreview =
+        pdfPreview ?: AndroidPdfPreview(this).also { pdfPreview = it }
 
     private fun initializeNativeLayer(): Map<String, Any?> {
         if (nativeInitialized) {
