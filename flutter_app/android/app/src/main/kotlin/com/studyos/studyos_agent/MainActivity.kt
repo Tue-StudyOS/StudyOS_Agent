@@ -341,6 +341,12 @@ class MainActivity : FlutterActivity() {
                         emitStatus("Android built-in AI download started.")
                     }
 
+                    override fun onDownloadProgress(totalBytesDownloaded: Long) {
+                        emitStatus(
+                            "Android built-in AI downloaded $totalBytesDownloaded bytes.",
+                        )
+                    }
+
                     override fun onDownloadCompleted() {
                         emitStatus("Android built-in AI download completed.")
                         Handler(Looper.getMainLooper()).post { result.success(null) }
