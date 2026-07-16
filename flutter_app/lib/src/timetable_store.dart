@@ -6,7 +6,7 @@ class TimetableStore {
   TimetableStore({SharedPreferencesAsync? preferences})
     : _preferences = preferences ?? SharedPreferencesAsync();
 
-  static const _snapshotKey = 'studyos.timetable.snapshot.v1';
+  static const _snapshotKey = 'studyos.timetable.snapshot.v2';
 
   final SharedPreferencesAsync _preferences;
 

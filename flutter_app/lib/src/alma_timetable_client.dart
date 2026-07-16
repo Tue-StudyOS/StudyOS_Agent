@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
@@ -48,16 +50,24 @@ class AlmaTimetableClient {
       contract.selectedTermValue,
     );
     final calendar = await _get(Uri.parse(resolvedExportUrl));
-    final rawIcs = calendar.body;
+    final String rawIcs;
+    try {
+      rawIcs = utf8.decode(calendar.bodyBytes);
+    } on FormatException {
+      throw const AlmaTimetableException(
+        'ALMA returned a timetable with invalid UTF-8 text.',
+      );
+    }
     if (!rawIcs.contains('BEGIN:VCALENDAR')) {
       throw const AlmaTimetableException(
         'ALMA returned an unexpected timetable export.',
       );
     }
+    final refreshedAt = DateTime.now();
     return TimetableSnapshot(
-      refreshedAt: DateTime.now(),
+      refreshedAt: refreshedAt,
       sourceTerm: contract.selectedTermLabel ?? 'Current term',
-      events: _icsParser.parseUpcoming(rawIcs),
+      events: _icsParser.parseUpcoming(rawIcs, now: refreshedAt),
     );
   }
 

@@ -1,18 +1,63 @@
+import 'lecture_occurrence_merge.dart';
 import 'timetable_models.dart';
+
+part 'ics_parser_values.dart';
 
 class IcsParser {
   const IcsParser();
 
   List<LectureEvent> parseUpcoming(String rawIcs, {DateTime? now}) {
     final windowStart = now ?? DateTime.now();
-    final windowEnd = windowStart.add(const Duration(days: 120));
+    final windowEnd = windowStart.add(timetableLookAhead);
     final events = _events(rawIcs);
-    final expanded = <LectureEvent>[];
-    for (final event in events) {
-      expanded.addAll(_expand(event, windowStart, windowEnd));
+    // A detached VEVENT replaces its series occurrence at RECURRENCE-ID.
+    final overrides = <String, _IcsEvent>{};
+    final orphanedOverrides = <_IcsEvent>[];
+    for (final event in events.where(
+      (candidate) => candidate.recurrenceId != null,
+    )) {
+      final uid = event.uid;
+      if (uid == null || uid.isEmpty) {
+        orphanedOverrides.add(event);
+        continue;
+      }
+      final key = _overrideKey(uid, event.recurrenceId!);
+      final previous = overrides[key];
+      if (previous == null || event.sequence >= previous.sequence) {
+        overrides[key] = event;
+      }
     }
-    expanded.sort((a, b) => a.start.compareTo(b.start));
-    return expanded;
+    final overriddenStarts = <String, Set<int>>{};
+    for (final override in overrides.values) {
+      overriddenStarts
+          .putIfAbsent(override.uid!, () => <int>{})
+          .add(override.recurrenceId!.microsecondsSinceEpoch);
+    }
+    final expanded = <LectureEvent>[];
+    for (final event in events.where(
+      (candidate) => candidate.recurrenceId == null,
+    )) {
+      if (event.isCancelled) continue;
+      expanded.addAll(
+        _expand(
+          event,
+          windowStart,
+          windowEnd,
+          overriddenStarts: overriddenStarts[event.uid] ?? const <int>{},
+        ),
+      );
+    }
+    for (final event in <_IcsEvent>[
+      ...overrides.values,
+      ...orphanedOverrides,
+    ]) {
+      if (event.isCancelled ||
+          !_overlaps(event.start, event.end, windowStart, windowEnd)) {
+        continue;
+      }
+      expanded.add(_lecture(event, event.recurrenceId ?? event.start));
+    }
+    return mergeLectureOccurrences(expanded);
   }
 
   List<_IcsEvent> _events(String rawIcs) {
@@ -41,8 +86,10 @@ class IcsParser {
   }
 
   _IcsEvent? _eventFrom(Map<String, List<_IcsProperty>> fields) {
+    final recurrence = fields['RECURRENCE-ID']?.firstOrNull;
+    final recurrenceDate = recurrence == null ? null : _parseDate(recurrence);
     final start = fields['DTSTART']?.firstOrNull;
-    final startDate = start == null ? null : _parseDate(start);
+    final startDate = start == null ? recurrenceDate : _parseDate(start);
     if (startDate == null) return null;
     final end = fields['DTEND']?.firstOrNull;
     return _IcsEvent(
@@ -52,6 +99,13 @@ class IcsParser {
       end: end == null ? null : _parseDate(end),
       location: _text(fields['LOCATION']?.firstOrNull),
       detail: _text(fields['DESCRIPTION']?.firstOrNull),
+      recurrenceId: recurrenceDate,
+      sequence:
+          int.tryParse(fields['SEQUENCE']?.firstOrNull?.value.trim() ?? '') ??
+          0,
+      isCancelled:
+          fields['STATUS']?.firstOrNull?.value.trim().toUpperCase() ==
+          'CANCELLED',
       rule: fields['RRULE']?.firstOrNull?.value,
       excludedStarts: (fields['EXDATE'] ?? const <_IcsProperty>[])
           .expand(
@@ -69,11 +123,13 @@ class IcsParser {
   List<LectureEvent> _expand(
     _IcsEvent event,
     DateTime windowStart,
-    DateTime windowEnd,
-  ) {
+    DateTime windowEnd, {
+    Set<int> overriddenStarts = const <int>{},
+  }) {
     final rule = event.rule;
     if (rule == null || rule.isEmpty) {
-      return _overlaps(event.start, event.end, windowStart, windowEnd)
+      return !overriddenStarts.contains(event.start.microsecondsSinceEpoch) &&
+              _overlaps(event.start, event.end, windowStart, windowEnd)
           ? <LectureEvent>[_lecture(event, event.start)]
           : const <LectureEvent>[];
     }
@@ -108,11 +164,15 @@ class IcsParser {
       final intervalMatches = frequency == 'DAILY'
           ? dayDistance % interval == 0
           : (dayDistance ~/ 7) % interval == 0;
-      if (intervalMatches &&
-          byDays.contains(cursor.weekday) &&
-          !event.excludedStarts.contains(cursor.microsecondsSinceEpoch)) {
+      if (intervalMatches && byDays.contains(cursor.weekday)) {
         generated += 1;
         if (countLimit != null && generated > countLimit) break;
+        final occurrenceKey = cursor.microsecondsSinceEpoch;
+        if (event.excludedStarts.contains(occurrenceKey) ||
+            overriddenStarts.contains(occurrenceKey)) {
+          cursor = cursor.add(const Duration(days: 1));
+          continue;
+        }
         final occurrence = event.copyWith(
           start: cursor,
           end: duration == null ? null : cursor.add(duration),
@@ -131,11 +191,11 @@ class IcsParser {
     return output;
   }
 
-  LectureEvent _lecture(_IcsEvent event, DateTime start) {
+  LectureEvent _lecture(_IcsEvent event, DateTime identityStart) {
     return LectureEvent(
-      id: '${event.uid ?? event.title}-${start.microsecondsSinceEpoch}',
+      id: '${event.uid ?? event.title}-${identityStart.microsecondsSinceEpoch}',
       title: event.title,
-      start: start,
+      start: event.start,
       end: event.end,
       location: event.location,
       detail: event.detail,
@@ -153,44 +213,32 @@ class IcsParser {
   }
 }
 
-class _IcsProperty {
-  const _IcsProperty({
-    required this.name,
-    required this.parameters,
-    required this.value,
-  });
-
-  final String name;
-  final Map<String, String> parameters;
-  final String value;
-
-  _IcsProperty copyWith({String? value}) => _IcsProperty(
-    name: name,
-    parameters: parameters,
-    value: value ?? this.value,
-  );
-}
-
 class _IcsEvent {
   const _IcsEvent({
     required this.title,
     required this.start,
     required this.end,
     required this.excludedStarts,
+    required this.sequence,
+    required this.isCancelled,
     this.uid,
     this.location,
     this.detail,
     this.rule,
+    this.recurrenceId,
   });
 
   final String title;
   final DateTime start;
   final DateTime? end;
   final Set<int> excludedStarts;
+  final int sequence;
+  final bool isCancelled;
   final String? uid;
   final String? location;
   final String? detail;
   final String? rule;
+  final DateTime? recurrenceId;
 
   _IcsEvent copyWith({required DateTime start, DateTime? end}) => _IcsEvent(
     title: title,
@@ -201,90 +249,11 @@ class _IcsEvent {
     location: location,
     detail: detail,
     rule: rule,
+    recurrenceId: recurrenceId,
+    sequence: sequence,
+    isCancelled: isCancelled,
   );
 }
 
-List<String> _unfold(String raw) {
-  final lines = <String>[];
-  for (final line
-      in raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n')) {
-    if ((line.startsWith(' ') || line.startsWith('\t')) && lines.isNotEmpty) {
-      lines[lines.length - 1] = '${lines.last}${line.substring(1)}';
-    } else {
-      lines.add(line);
-    }
-  }
-  return lines;
-}
-
-_IcsProperty? _parseLine(String line) {
-  final separator = line.indexOf(':');
-  if (separator < 1) return null;
-  final keyParts = line.substring(0, separator).split(';');
-  final parameters = <String, String>{};
-  for (final part in keyParts.skip(1)) {
-    final split = part.split('=');
-    if (split.length == 2) parameters[split.first.toUpperCase()] = split.last;
-  }
-  return _IcsProperty(
-    name: keyParts.first.toUpperCase(),
-    parameters: parameters,
-    value: line.substring(separator + 1),
-  );
-}
-
-DateTime? _parseDate(_IcsProperty property) =>
-    _parseIcsDate(property.value, property.parameters);
-
-DateTime? _parseUntil(String? value) =>
-    value == null ? null : _parseIcsDate(value, const <String, String>{});
-
-DateTime? _parseIcsDate(String value, Map<String, String> parameters) {
-  final raw = value.trim();
-  if (raw.length == 8 || parameters['VALUE'] == 'DATE') {
-    return DateTime.tryParse(
-      '${raw.substring(0, 4)}-${raw.substring(4, 6)}-${raw.substring(6, 8)}',
-    );
-  }
-  final year = int.tryParse(raw.substring(0, 4));
-  final month = int.tryParse(raw.substring(4, 6));
-  final day = int.tryParse(raw.substring(6, 8));
-  final hour = raw.length >= 11 ? int.tryParse(raw.substring(9, 11)) : 0;
-  final minute = raw.length >= 13 ? int.tryParse(raw.substring(11, 13)) : 0;
-  final second = raw.length >= 15 ? int.tryParse(raw.substring(13, 15)) : 0;
-  if ([year, month, day, hour, minute, second].contains(null)) return null;
-  if (raw.endsWith('Z')) {
-    return DateTime.utc(year!, month!, day!, hour!, minute!, second!).toLocal();
-  }
-  return DateTime(year!, month!, day!, hour!, minute!, second!);
-}
-
-String? _text(_IcsProperty? property) {
-  final value = property?.value;
-  if (value == null || value.isEmpty) return null;
-  return value
-      .replaceAll(r'\n', '\n')
-      .replaceAll(r'\N', '\n')
-      .replaceAll(r'\,', ',')
-      .replaceAll(r'\;', ';')
-      .replaceAll(r'\\', r'\')
-      .trim();
-}
-
-Set<int> _weekdays(String? raw, int fallback) {
-  const map = <String, int>{
-    'MO': 1,
-    'TU': 2,
-    'WE': 3,
-    'TH': 4,
-    'FR': 5,
-    'SA': 6,
-    'SU': 7,
-  };
-  if (raw == null || raw.isEmpty) return <int>{fallback};
-  return raw
-      .split(',')
-      .map((day) => map[day.substring(day.length - 2).toUpperCase()])
-      .whereType<int>()
-      .toSet();
-}
+String _overrideKey(String uid, DateTime recurrenceId) =>
+    '$uid:${recurrenceId.microsecondsSinceEpoch}';
