@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'agent_config_store.dart';
 import 'agent_message_sender.dart';
 import 'academic_repository.dart';
+import 'calendar_overview_repository.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
 import 'mail_repository.dart';
@@ -21,6 +22,7 @@ import 'send_error_message.dart';
 import 'session_store.dart';
 import 'timetable_repository.dart';
 import 'talks_client.dart';
+import 'talks_repository.dart';
 import 'voice_controller.dart';
 
 class ChatRouteRequest {
@@ -47,11 +49,24 @@ class AppShellController extends ChangeNotifier {
     required Future<void> Function(OnboardingProfile profile)?
     initialOnSaveProfile,
     this.onOpenChatRequest,
-  }) : _profile = initialProfile,
+    NativeBridge? nativeBridge,
+    TalksRepository? talksRepository,
+    CalendarOverviewSource? calendarOverviewSource,
+  }) : bridge = nativeBridge ?? NativeBridge(),
+       talksRepository = talksRepository ?? TalksRepository(),
+       _ownsTalksRepository = talksRepository == null,
+       _profile = initialProfile,
        _onLogout = initialOnLogout,
-       _onSaveProfile = initialOnSaveProfile;
+       _onSaveProfile = initialOnSaveProfile {
+    this.calendarOverviewSource =
+        calendarOverviewSource ??
+        CalendarOverviewRepository(bridge, this.talksRepository);
+  }
 
-  final NativeBridge bridge = NativeBridge();
+  final NativeBridge bridge;
+  final TalksRepository talksRepository;
+  final bool _ownsTalksRepository;
+  late final CalendarOverviewSource calendarOverviewSource;
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
   final MailRepository _mailRepository = MailRepository();
@@ -184,6 +199,7 @@ class AppShellController extends ChangeNotifier {
     _streamNotifyTimer?.cancel();
     _eventSubscription?.cancel();
     voice.dispose();
+    if (_ownsTalksRepository) talksRepository.dispose();
     inputController.dispose();
     messageScrollController.dispose();
     super.dispose();
@@ -713,7 +729,7 @@ class AppShellController extends ChangeNotifier {
   Future<void> syncTimetableToCalendar() async {
     if (_isSyncingCalendar) return;
     final snapshot = _timetable;
-    if (snapshot == null || snapshot.events.isEmpty) {
+    if (snapshot == null) {
       _calendarSyncMessage = null;
       _calendarSyncError = 'Refresh ALMA before syncing calendar.';
       _notify();
@@ -766,19 +782,14 @@ class AppShellController extends ChangeNotifier {
   }
 
   Future<String> searchTalksForAgent(String query, int limit) async {
-    final client = TalksClient();
-    try {
-      final talks = await client.fetchUpcoming();
-      final matches = talks.where((talk) => talk.matches(query)).take(limit);
-      return jsonEncode(<String, Object?>{
-        'scope': 'upcoming',
-        'query': query,
-        'source_url': TalksClient.sourceUri.toString(),
-        'items': matches.map((talk) => talk.toJson()).toList(),
-      });
-    } finally {
-      client.close();
-    }
+    final talks = await talksRepository.load();
+    final matches = talks.where((talk) => talk.matches(query)).take(limit);
+    return jsonEncode(<String, Object?>{
+      'scope': 'upcoming',
+      'query': query,
+      'source_url': TalksClient.sourceUri.toString(),
+      'items': matches.map((talk) => talk.toJson()).toList(),
+    });
   }
 
   Future<void> publishIntentSnapshot() async {

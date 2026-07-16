@@ -26,19 +26,35 @@ class AcademicStatusSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = snapshot?.entries ?? const <AcademicEntry>[];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                'Academic status',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+    return Material(
+      color: StudyOsColors.surface,
+      borderRadius: BorderRadius.circular(StudyOsRadii.md),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        key: const ValueKey<String>('academic-status-expansion'),
+        initiallyExpanded: false,
+        maintainState: true,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        title: Text(
+          'Academic status',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: Text(
+          _summary(entries),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        children: <Widget>[
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              StudyOsSpacing.md,
+              StudyOsSpacing.xs,
+              StudyOsSpacing.md,
+              0,
             ),
-            Wrap(
-              spacing: StudyOsSpacing.xs,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
                 TextButton.icon(
                   onPressed: isOpeningReport ? null : onOpenReport,
@@ -62,66 +78,60 @@ class AcademicStatusSection extends StatelessWidget {
                 ),
               ],
             ),
-          ],
-        ),
-        const SizedBox(height: StudyOsSpacing.sm),
-        if (error != null)
-          _Message(title: 'Couldn’t refresh ALMA status', body: error!)
-        else if (snapshot == null)
-          const _Message(
-            title: 'No academic status yet',
-            body:
-                'Refresh to load your current course and exam registrations from ALMA.',
-          )
-        else if (entries.isEmpty)
-          _Message(
-            title: 'No registrations shown',
-            body:
-                snapshot!.notice ??
-                'Check the official ALMA registration report for a complete view.',
-          )
-        else
-          Material(
-            color: StudyOsColors.surface,
-            borderRadius: BorderRadius.circular(StudyOsRadii.md),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(StudyOsRadii.md),
-              child: Column(
-                children: <Widget>[
-                  for (
-                    var index = 0;
-                    index < entries.length;
-                    index++
-                  ) ...<Widget>[
-                    _EntryRow(entry: entries[index]),
-                    if (index < entries.length - 1)
-                      const Padding(
-                        padding: EdgeInsets.only(left: StudyOsSpacing.xl),
-                        child: Divider(),
-                      ),
-                  ],
-                ],
+          ),
+          if (error != null)
+            _Message(title: 'Couldn’t refresh ALMA status', body: error!)
+          else if (snapshot == null)
+            const _Message(
+              title: 'No academic status yet',
+              body: 'Refresh to load your registrations from ALMA.',
+            )
+          else if (entries.isEmpty)
+            _Message(
+              title: 'No registrations shown',
+              body:
+                  snapshot!.notice ??
+                  'Open the official ALMA report for the complete view.',
+            )
+          else
+            for (var index = 0; index < entries.length; index++) ...<Widget>[
+              _EntryRow(entry: entries[index]),
+              if (index < entries.length - 1)
+                const Padding(
+                  padding: EdgeInsets.only(left: StudyOsSpacing.xxl),
+                  child: Divider(height: 1),
+                ),
+            ],
+          if (snapshot?.notice != null && entries.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(StudyOsSpacing.lg),
+              child: Text(
+                snapshot!.notice!,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
-          ),
-        if (snapshot?.notice != null && entries.isNotEmpty) ...<Widget>[
+          if (reportError != null)
+            _Message(title: 'Couldn’t open ALMA report', body: reportError!),
           const SizedBox(height: StudyOsSpacing.sm),
-          Text(
-            snapshot!.notice!,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
         ],
-        if (reportError != null) ...<Widget>[
-          const SizedBox(height: StudyOsSpacing.sm),
-          _Message(title: 'Couldn’t open ALMA report', body: reportError!),
-        ],
-      ],
+      ),
     );
+  }
+
+  String _summary(List<AcademicEntry> entries) {
+    if (isRefreshing) return 'Refreshing registrations…';
+    if (error != null) return 'Registrations unavailable';
+    if (snapshot == null) return 'Not loaded';
+    if (entries.isEmpty) return 'No registrations shown';
+    return entries.length == 1
+        ? '1 current registration'
+        : '${entries.length} current registrations';
   }
 }
 
 class _EntryRow extends StatelessWidget {
   const _EntryRow({required this.entry});
+
   final AcademicEntry entry;
 
   @override
@@ -164,23 +174,20 @@ class _EntryRow extends StatelessWidget {
 
 class _Message extends StatelessWidget {
   const _Message({required this.title, required this.body});
+
   final String title;
   final String body;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: StudyOsColors.surface,
-    borderRadius: BorderRadius.circular(StudyOsRadii.md),
-    child: Padding(
-      padding: const EdgeInsets.all(StudyOsSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(title, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: StudyOsSpacing.xs),
-          Text(body, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(StudyOsSpacing.lg),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: StudyOsSpacing.xs),
+        Text(body, style: Theme.of(context).textTheme.bodyMedium),
+      ],
     ),
   );
 }

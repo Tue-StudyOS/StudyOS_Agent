@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
 import 'package:studyos_agent/src/talks_client.dart';
+import 'package:studyos_agent/src/talks_repository.dart';
 import 'package:studyos_agent/src/views/talks_view.dart';
 
 void main() {
@@ -39,11 +40,13 @@ void main() {
         ),
       ),
     );
+    final repository = TalksRepository(client: client);
+    addTearDown(repository.dispose);
 
     await tester.pumpWidget(
       MaterialApp(
         theme: buildStudyOsTheme(),
-        home: TalksView(client: client),
+        home: TalksView(repository: repository),
       ),
     );
     await tester.pumpAndSettle();

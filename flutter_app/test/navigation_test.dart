@@ -6,8 +6,11 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:studyos_agent/src/app_router.dart';
 import 'package:studyos_agent/src/app_shell_controller.dart';
+import 'package:studyos_agent/src/calendar_overview_repository.dart';
+import 'package:studyos_agent/src/device_calendar_event.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/studyos_theme.dart';
+import 'package:studyos_agent/src/talk_models.dart';
 import 'package:studyos_agent/src/views/home_view.dart';
 import 'package:studyos_agent/src/views/schedule_view.dart';
 import 'package:studyos_agent/src/widgets/study_bottom_bar.dart';
@@ -77,11 +80,11 @@ void main() {
         theme: buildStudyOsTheme(),
         home: Scaffold(
           body: ScheduleView(
-            profile: null,
             snapshot: _testTimetable(),
             error: null,
             isRefreshing: false,
             onRefresh: () async {},
+            calendarOverviewSource: const _EmptyCalendarOverviewSource(),
             onSyncCalendar: () async => synced = true,
           ),
         ),
@@ -94,6 +97,76 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(synced, isTrue);
+  });
+
+  testWidgets('schedule combines classes, talks, and personal calendar', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final day = DateTime.now().add(const Duration(days: 1));
+    final start = DateTime(day.year, day.month, day.day, 10);
+    final overview = CalendarOverviewSnapshot(
+      talks: <Talk>[
+        Talk(
+          id: 1,
+          title: 'Reliable Agents',
+          timestamp: start.add(const Duration(hours: 2)).toIso8601String(),
+          description: null,
+          location: 'AI Center',
+          speakerName: 'Ada Lovelace',
+          tags: const <String>[],
+        ),
+      ],
+      deviceEvents: <DeviceCalendarEvent>[
+        DeviceCalendarEvent(
+          id: 'personal-1',
+          title: 'Project meeting',
+          start: start.add(const Duration(hours: 4)),
+          end: start.add(const Duration(hours: 5)),
+          isAllDay: false,
+          calendarName: 'Personal',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: ScheduleView(
+            snapshot: TimetableSnapshot(
+              refreshedAt: DateTime.now(),
+              sourceTerm: 'Summer 2026',
+              events: <LectureEvent>[
+                LectureEvent(
+                  id: 'class-1',
+                  title: 'ML4510 Practical Machine Learning',
+                  start: start,
+                  end: start.add(const Duration(hours: 1)),
+                ),
+              ],
+            ),
+            error: null,
+            isRefreshing: false,
+            onRefresh: () async {},
+            calendarOverviewSource: _FixedCalendarOverviewSource(overview),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 Class'), findsOneWidget);
+    expect(find.text('1 Talk'), findsOneWidget);
+    expect(find.text('1 Other event'), findsOneWidget);
+    expect(find.text('3 calendar items'), findsOneWidget);
+    expect(find.text('Reliable Agents'), findsOneWidget);
+    expect(find.text('Project meeting'), findsOneWidget);
+    expect(find.textContaining('sessions'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('home presents a daily focus before StudyOS controls', (
@@ -204,6 +277,7 @@ void main() {
       initialProfile: profile,
       initialOnLogout: () {},
       initialOnSaveProfile: (_) async {},
+      calendarOverviewSource: const _EmptyCalendarOverviewSource(),
     );
     final router = buildAppRouter(
       authState: authState,
@@ -357,4 +431,28 @@ TimetableSnapshot _testTimetable() {
       ),
     ],
   );
+}
+
+class _EmptyCalendarOverviewSource implements CalendarOverviewSource {
+  const _EmptyCalendarOverviewSource();
+
+  @override
+  Future<CalendarOverviewSnapshot> load({
+    required DateTime start,
+    required DateTime end,
+    bool refreshTalks = false,
+  }) async => CalendarOverviewSnapshot.empty;
+}
+
+class _FixedCalendarOverviewSource implements CalendarOverviewSource {
+  const _FixedCalendarOverviewSource(this.snapshot);
+
+  final CalendarOverviewSnapshot snapshot;
+
+  @override
+  Future<CalendarOverviewSnapshot> load({
+    required DateTime start,
+    required DateTime end,
+    bool refreshTalks = false,
+  }) async => snapshot;
 }

@@ -1,17 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../calendar_overview_repository.dart';
+import '../device_calendar_event.dart';
 import '../models.dart';
+import '../plan_models.dart';
 import '../studyos_theme.dart';
-import '../widgets/schedule_components.dart';
+import '../talk_models.dart';
 import '../widgets/academic_status_section.dart';
+import '../widgets/schedule_agenda_card.dart';
+import '../widgets/schedule_components.dart';
+import '../widgets/schedule_plan_header.dart';
 
 class ScheduleView extends StatefulWidget {
   const ScheduleView({
-    required this.profile,
     required this.snapshot,
     required this.error,
     required this.isRefreshing,
     required this.onRefresh,
+    required this.calendarOverviewSource,
     this.academicStatus,
     this.academicStatusError,
     this.isRefreshingAcademicStatus = false,
@@ -26,11 +34,11 @@ class ScheduleView extends StatefulWidget {
     super.key,
   });
 
-  final OnboardingProfile? profile;
   final TimetableSnapshot? snapshot;
   final String? error;
   final bool isRefreshing;
   final Future<void> Function() onRefresh;
+  final CalendarOverviewSource calendarOverviewSource;
   final AcademicStatusSnapshot? academicStatus;
   final String? academicStatusError;
   final bool isRefreshingAcademicStatus;
@@ -49,158 +57,188 @@ class ScheduleView extends StatefulWidget {
 
 class _ScheduleViewState extends State<ScheduleView> {
   DateTime? _selectedDay;
+  CalendarOverviewSnapshot _overview = CalendarOverviewSnapshot.empty;
+  bool _isLoadingOverview = true;
+  int _overviewRequest = 0;
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_refreshOverview());
+  }
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = widget.snapshot;
-    final days = snapshot?.days ?? const <DateTime>[];
+    final items = buildPlanItems(
+      lectures: widget.snapshot?.events ?? const <LectureEvent>[],
+      talks: _overview.talks,
+      deviceEvents: _overview.deviceEvents,
+    );
+    final days = planDays(items);
     final selectedDay = _visibleDay(days);
-    final events = selectedDay == null
-        ? const <LectureEvent>[]
-        : snapshot!.eventsOn(selectedDay);
-    final nextEvent = _nextEvent(events, DateTime.now());
-    final hasSyncableTimetable = snapshot != null && snapshot.events.isNotEmpty;
+    final selectedItems = selectedDay == null
+        ? const <PlanItem>[]
+        : planItemsOn(items, selectedDay);
+    final nextItem = _nextItem(items, DateTime.now());
+    final classCount = items
+        .where((item) => item.source == PlanItemSource.alma)
+        .length;
+    final talkCount = items
+        .where((item) => item.source == PlanItemSource.talk)
+        .length;
+    final calendarCount = items
+        .where((item) => item.source == PlanItemSource.deviceCalendar)
+        .length;
+    final hasSyncableTimetable = widget.snapshot != null;
+
     return ListView(
       padding: const EdgeInsets.only(
         top: StudyOsSpacing.xl,
         bottom: StudyOsSpacing.xxl,
       ),
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Plan',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: StudyOsSpacing.xs),
-                  Text(
-                    _subtitle(snapshot),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-            _RefreshButton(
-              isRefreshing: widget.isRefreshing,
-              onPressed: widget.onRefresh,
-            ),
-          ],
-        ),
-        const SizedBox(height: StudyOsSpacing.sm),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            key: const ValueKey<String>('schedule-sync-calendar'),
-            onPressed: hasSyncableTimetable && !widget.isSyncingCalendar
-                ? widget.onSyncCalendar
-                : null,
-            icon: widget.isSyncingCalendar
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.event_available_outlined),
-            label: Text(
-              widget.isSyncingCalendar
-                  ? 'Syncing calendar'
-                  : 'Sync to Calendar',
-            ),
-          ),
+        SchedulePlanHeader(
+          subtitle:
+              widget.snapshot?.sourceTerm ??
+              'Classes, Tübingen Talks, and your device calendar',
+          classCount: classCount,
+          talkCount: talkCount,
+          calendarCount: calendarCount,
+          talksAvailable: _overview.talksError == null,
+          calendarAvailable: _overview.deviceCalendarError == null,
+          isLoadingOverview: _isLoadingOverview,
+          isRefreshing: widget.isRefreshing || _isLoadingOverview,
+          isSyncing: widget.isSyncingCalendar,
+          canSync: hasSyncableTimetable,
+          onRefresh: _refreshAll,
+          onSync: _syncCalendar,
         ),
         if (widget.error != null) ...<Widget>[
           const SizedBox(height: StudyOsSpacing.md),
-          ScheduleMessageCard(
+          ScheduleNotice(
             icon: Icons.warning_amber_rounded,
-            title: 'Could not refresh timetable',
+            title: 'ALMA timetable unavailable',
             body: widget.error!,
+          ),
+        ],
+        if (_sourceError != null) ...<Widget>[
+          const SizedBox(height: StudyOsSpacing.md),
+          ScheduleNotice(
+            icon: Icons.info_outline_rounded,
+            title: 'Some calendars are unavailable',
+            body: _sourceError!,
           ),
         ],
         if (widget.calendarSyncError != null) ...<Widget>[
           const SizedBox(height: StudyOsSpacing.md),
-          ScheduleMessageCard(
+          ScheduleNotice(
             icon: Icons.warning_amber_rounded,
-            title: 'Calendar sync failed',
+            title: 'Device calendar update failed',
             body: widget.calendarSyncError!,
           ),
         ] else if (widget.calendarSyncMessage != null) ...<Widget>[
           const SizedBox(height: StudyOsSpacing.md),
-          ScheduleMessageCard(
+          ScheduleNotice(
             icon: Icons.check_circle_outline_rounded,
-            title: 'Calendar synced',
+            title: 'Device calendar updated',
             body: widget.calendarSyncMessage!,
+            isSuccess: true,
           ),
         ],
         const SizedBox(height: StudyOsSpacing.lg),
-        if (snapshot == null || snapshot.events.isEmpty)
+        if (_isLoadingOverview && items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: StudyOsSpacing.xxl),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (items.isEmpty)
           const ScheduleMessageCard(
             icon: Icons.calendar_month_outlined,
-            title: 'No timetable synced yet',
-            body: 'Refresh ALMA to load your upcoming lectures and rooms.',
+            title: 'Nothing scheduled',
+            body: 'Refresh to load ALMA, Talks, and your device calendar.',
           )
         else ...<Widget>[
           ScheduleDayStrip(
             days: days,
             selectedDay: selectedDay ?? days.first,
-            eventsFor: snapshot.eventsOn,
+            countFor: (day) => planItemsOn(items, day).length,
             onSelected: (day) => setState(() => _selectedDay = day),
           ),
           const SizedBox(height: StudyOsSpacing.lg),
           ScheduleDayHeader(
             day: selectedDay ?? days.first,
-            count: events.length,
+            count: selectedItems.length,
           ),
           const SizedBox(height: StudyOsSpacing.md),
-          if (events.isEmpty)
-            const ScheduleMessageCard(
-              icon: Icons.calendar_today_outlined,
-              title: 'No lectures this day',
-              body: 'Pick another day from the strip above.',
-            )
-          else
-            Material(
-              color: StudyOsColors.surface,
-              borderRadius: BorderRadius.circular(StudyOsRadii.md),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(StudyOsRadii.md),
-                child: Column(
-                  children: <Widget>[
-                    for (
-                      var index = 0;
-                      index < events.length;
-                      index++
-                    ) ...<Widget>[
-                      ScheduleLectureCard(
-                        event: events[index],
-                        isNext: events[index].id == nextEvent?.id,
-                        color: scheduleColorFor(events[index].title),
-                      ),
-                      if (index < events.length - 1)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 60),
-                          child: Divider(),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: StudyOsSpacing.xxl),
-          AcademicStatusSection(
-            snapshot: widget.academicStatus,
-            error: widget.academicStatusError,
-            isRefreshing: widget.isRefreshingAcademicStatus,
-            onRefresh: widget.onRefreshAcademicStatus ?? () async {},
-            reportError: widget.academicReportError,
-            isOpeningReport: widget.isOpeningAcademicReport,
-            onOpenReport: widget.onOpenAcademicReport ?? () async {},
-          ),
+          ScheduleAgenda(items: selectedItems, nextItemId: nextItem?.id),
         ],
+        const SizedBox(height: StudyOsSpacing.xxl),
+        AcademicStatusSection(
+          snapshot: widget.academicStatus,
+          error: widget.academicStatusError,
+          isRefreshing: widget.isRefreshingAcademicStatus,
+          onRefresh: widget.onRefreshAcademicStatus ?? () async {},
+          reportError: widget.academicReportError,
+          isOpeningReport: widget.isOpeningAcademicReport,
+          onOpenReport: widget.onOpenAcademicReport ?? () async {},
+        ),
       ],
     );
+  }
+
+  String? get _sourceError {
+    final messages = <String>[
+      if (_overview.talksError != null) 'Talks: ${_overview.talksError}',
+      if (_overview.deviceCalendarError != null)
+        'Calendar: ${_overview.deviceCalendarError}',
+      if (_overview.deviceCalendarTruncated)
+        'Calendar: showing the first 250 events in this date range.',
+    ];
+    return messages.isEmpty ? null : messages.join('\n');
+  }
+
+  Future<void> _refreshAll() async {
+    await Future.wait<void>(<Future<void>>[
+      widget.onRefresh(),
+      _refreshOverview(refreshTalks: true),
+    ]);
+  }
+
+  Future<void> _syncCalendar() async {
+    await widget.onSyncCalendar?.call();
+    await _refreshOverview();
+  }
+
+  Future<void> _refreshOverview({bool refreshTalks = false}) async {
+    final request = ++_overviewRequest;
+    if (mounted) setState(() => _isLoadingOverview = true);
+    final today = DateTime.now();
+    final start = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).subtract(const Duration(days: 7));
+    final end = start.add(const Duration(days: 127));
+    CalendarOverviewSnapshot overview;
+    try {
+      overview = await widget.calendarOverviewSource.load(
+        start: start,
+        end: end,
+        refreshTalks: refreshTalks,
+      );
+    } on Object catch (error) {
+      final message = 'Calendar overview could not refresh: $error';
+      overview = CalendarOverviewSnapshot(
+        talks: const <Talk>[],
+        deviceEvents: const <DeviceCalendarEvent>[],
+        talksError: message,
+        deviceCalendarError: message,
+      );
+    }
+    if (!mounted || request != _overviewRequest) return;
+    setState(() {
+      _overview = overview;
+      _isLoadingOverview = false;
+    });
   }
 
   DateTime? _visibleDay(List<DateTime> days) {
@@ -210,51 +248,19 @@ class _ScheduleViewState extends State<ScheduleView> {
       return days.firstWhere((day) => scheduleSameDay(day, selected));
     }
     final today = DateTime.now();
+    final startOfToday = DateTime(today.year, today.month, today.day);
     return days.firstWhere(
-      (day) => !day.isBefore(DateTime(today.year, today.month, today.day)),
+      (day) => !day.isBefore(startOfToday),
       orElse: () => days.first,
     );
   }
 
-  String _subtitle(TimetableSnapshot? snapshot) {
-    final profile = widget.profile;
-    final details = <String>[
-      if (snapshot != null) snapshot.sourceTerm,
-      if (profile != null) profile.degreeProgram,
-      if (snapshot != null) '${snapshot.events.length} entries',
-    ];
-    return details.isEmpty
-        ? 'Upcoming lectures from ALMA.'
-        : details.join(' · ');
-  }
-
-  LectureEvent? _nextEvent(List<LectureEvent> events, DateTime now) {
-    for (final event in events) {
-      if (event.start.isAfter(now)) return event;
+  PlanItem? _nextItem(List<PlanItem> items, DateTime now) {
+    for (final item in items) {
+      if (item.end?.isAfter(now) == true || item.start.isAfter(now)) {
+        return item;
+      }
     }
     return null;
   }
-}
-
-class _RefreshButton extends StatelessWidget {
-  const _RefreshButton({required this.isRefreshing, required this.onPressed});
-
-  final bool isRefreshing;
-  final Future<void> Function() onPressed;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: 'Refresh timetable',
-    onPressed: isRefreshing ? null : onPressed,
-    style: IconButton.styleFrom(
-      backgroundColor: StudyOsColors.surface,
-      foregroundColor: StudyOsColors.accent,
-    ),
-    icon: isRefreshing
-        ? const SizedBox.square(
-            dimension: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        : const Icon(Icons.refresh_rounded),
-  );
 }

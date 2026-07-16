@@ -3,12 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../studyos_theme.dart';
 import '../talk_models.dart';
-import '../talks_client.dart';
+import '../talks_repository.dart';
 
 class TalksView extends StatefulWidget {
-  const TalksView({this.client, super.key});
+  const TalksView({required this.repository, super.key});
 
-  final TalksClient? client;
+  final TalksRepository repository;
 
   @override
   State<TalksView> createState() => _TalksViewState();
@@ -30,22 +30,15 @@ class _TalksViewState extends State<TalksView> {
     _searchController
       ..removeListener(_onSearchChanged)
       ..dispose();
-    if (widget.client == null) {
-      // The view owns the default client, which is created once in [_fetch].
-      _ownedClient?.close();
-    }
     super.dispose();
   }
 
-  TalksClient? _ownedClient;
-
-  TalksClient get _client => widget.client ?? (_ownedClient ??= TalksClient());
-
-  Future<List<Talk>> _fetch() => _client.fetchUpcoming();
+  Future<List<Talk>> _fetch({bool refresh = false}) =>
+      widget.repository.load(refresh: refresh);
 
   void _onSearchChanged() => setState(() {});
 
-  void _refresh() => setState(() => _talks = _fetch());
+  void _refresh() => setState(() => _talks = _fetch(refresh: true));
 
   @override
   Widget build(BuildContext context) => Scaffold(

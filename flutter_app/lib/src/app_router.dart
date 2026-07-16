@@ -172,7 +172,7 @@ GoRouter buildAppRouter({
         path: '/talks',
         builder: (context, state) => _ScopedAppRoute(
           controller: shellController(),
-          child: const TalksView(),
+          child: _TalksRoute(controller: shellController()),
         ),
       ),
       GoRoute(
@@ -246,7 +246,6 @@ class _ScheduleRoute extends StatelessWidget {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) => ScheduleView(
-        profile: controller.profile,
         snapshot: controller.timetable,
         error: controller.timetableError,
         isRefreshing: controller.isRefreshingTimetable,
@@ -255,6 +254,7 @@ class _ScheduleRoute extends StatelessWidget {
         calendarSyncError: controller.calendarSyncError,
         isSyncingCalendar: controller.isSyncingCalendar,
         onSyncCalendar: controller.syncTimetableToCalendar,
+        calendarOverviewSource: controller.calendarOverviewSource,
         academicStatus: controller.academicStatus,
         academicStatusError: controller.academicStatusError,
         isRefreshingAcademicStatus: controller.isRefreshingAcademicStatus,
@@ -264,6 +264,18 @@ class _ScheduleRoute extends StatelessWidget {
         onOpenAcademicReport: controller.openAcademicReport,
       ),
     );
+  }
+}
+
+class _TalksRoute extends StatelessWidget {
+  const _TalksRoute({required this.controller});
+
+  final AppShellController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller ?? AppShellScope.of(context);
+    return TalksView(repository: controller.talksRepository);
   }
 }
 
