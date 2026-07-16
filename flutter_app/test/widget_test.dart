@@ -194,7 +194,7 @@ void main() {
     expect(savedConfig?.cloudModel, 'studyos');
     expect(savedKey, 'secret');
     expect(find.text('Stored securely on this device.'), findsOneWidget);
-    expect(find.text('Send feedback'), findsOneWidget);
+    expect(find.text('Feedback is unavailable'), findsOneWidget);
   });
 
   testWidgets('settings profile editor updates onboarding preferences', (

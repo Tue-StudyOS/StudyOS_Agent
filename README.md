@@ -112,6 +112,22 @@ flutter run -d chrome \
   --dart-define=STUDYOS_DEMO_OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
 ```
 
+## Feedback Deployment
+
+The Settings feedback card connects to the containerized SQLite service under
+`feedback_service/`. Deploy that service behind HTTPS, then provide its public
+base URL to Flutter builds:
+
+```sh
+flutter build web --release \
+  --dart-define=STUDYOS_FEEDBACK_API_URL=https://feedback.example.edu
+```
+
+The URL isn't a secret. Moderator credentials remain server-side environment
+variables; never embed them—or a GitHub write token—in a Flutter build. See
+`feedback_service/README.md` for deployment, moderation, backup, retention, and
+restore guidance.
+
 ## Migration Notes
 
 - Flutter owns the main chat UI, input bar, status display, navigation, and

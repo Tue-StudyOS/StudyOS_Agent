@@ -236,9 +236,7 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(height: StudyOsSpacing.xl),
         _SettingsSection(
           title: 'Support',
-          child: SettingsCard(
-            children: <Widget>[FeedbackSettingsCard(status: widget.status)],
-          ),
+          child: SettingsCard(children: const <Widget>[FeedbackSettingsCard()]),
         ),
       ],
     );

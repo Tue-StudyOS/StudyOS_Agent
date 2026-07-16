@@ -1,0 +1,35 @@
+services:
+  feedback:
+    build:
+      context: ..
+      dockerfile: feedback_service/Dockerfile
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      FEEDBACK_ADMIN_TOKEN: ${FEEDBACK_ADMIN_TOKEN:?set a long random admin token}
+      FEEDBACK_MODERATOR_ID: ${FEEDBACK_MODERATOR_ID:-studyos-admin}
+      FEEDBACK_CORS_ORIGINS: ${FEEDBACK_CORS_ORIGINS:-}
+      FEEDBACK_SERVICE_IDS: studyos-agent
+    volumes:
+      - feedback-data:/data
+      - feedback-backups:/backups
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 100
+    restart: unless-stopped
+
+volumes:
+  feedback-data:
+  feedback-backups:
