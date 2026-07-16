@@ -3,11 +3,17 @@ import Foundation
 
 struct StudyOSCalendarLecture {
   let id: String
+  let sourceIds: [String]
   let title: String
   let start: Date
   let end: Date
   let location: String?
   let detail: String?
+
+  var allSourceIds: [String] {
+    var seen = Set<String>()
+    return ([id] + sourceIds).filter { seen.insert($0).inserted }
+  }
 }
 
 enum StudyOSCalendarAccess {
@@ -94,6 +100,30 @@ func studyOSCalendarWritableSource(_ eventStore: EKEventStore) -> EKSource? {
   return eventStore.sources.first {
     $0.sourceType != .birthdays && $0.sourceType != .subscribed
   }
+}
+
+func studyOSCalendarLectureNotes(
+  _ lecture: StudyOSCalendarLecture,
+  sourceTerm: String,
+  markerPrefix: String
+) -> String {
+  var lines = [
+    "\(markerPrefix) \(lecture.id)",
+    "StudyOS term: \(sourceTerm)"
+  ]
+  if let detail = lecture.detail {
+    lines.append("")
+    lines.append(detail)
+  }
+  return lines.joined(separator: "\n")
+}
+
+func studyOSCalendarLectureId(in notes: String?, markerPrefix: String) -> String? {
+  notes?
+    .components(separatedBy: .newlines)
+    .first { $0.hasPrefix(markerPrefix) }?
+    .dropFirst(markerPrefix.count)
+    .trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 func studyOSCalendarTrimmed(_ value: Any?) -> String? {

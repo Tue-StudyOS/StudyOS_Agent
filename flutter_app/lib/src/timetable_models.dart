@@ -1,21 +1,32 @@
 import 'dart:convert';
 
+const timetableLookAhead = Duration(days: 120);
+
 class LectureEvent {
   const LectureEvent({
     required this.id,
     required this.title,
     required this.start,
     required this.end,
+    this.sourceIds = const <String>[],
     this.location,
     this.detail,
   });
 
   final String id;
+  final List<String> sourceIds;
   final String title;
   final DateTime start;
   final DateTime? end;
   final String? location;
   final String? detail;
+
+  Iterable<String> get allSourceIds sync* {
+    final seen = <String>{};
+    for (final sourceId in <String>[id, ...sourceIds]) {
+      if (seen.add(sourceId)) yield sourceId;
+    }
+  }
 
   bool get isNow {
     final now = DateTime.now();
@@ -27,6 +38,7 @@ class LectureEvent {
 
   Map<String, Object?> toJson() => <String, Object?>{
     'id': id,
+    if (sourceIds.isNotEmpty) 'sourceIds': sourceIds,
     'title': title,
     'start': start.toIso8601String(),
     'end': end?.toIso8601String(),
@@ -40,6 +52,7 @@ class LectureEvent {
     if (title == null || title.isEmpty || start == null) return null;
     return LectureEvent(
       id: json['id']?.toString() ?? '$title-${start.microsecondsSinceEpoch}',
+      sourceIds: _stringList(json['sourceIds']),
       title: title,
       start: start,
       end: DateTime.tryParse(json['end']?.toString() ?? ''),
@@ -205,4 +218,13 @@ String _time(DateTime value) =>
 String? _optional(Object? value) {
   final text = value?.toString().trim();
   return text == null || text.isEmpty ? null : text;
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) return const <String>[];
+  return value
+      .map((item) => item?.toString().trim())
+      .whereType<String>()
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
 }

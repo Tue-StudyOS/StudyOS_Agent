@@ -81,6 +81,10 @@ class AndroidNativeToolExecutor(context: Context) {
         return calendarBridge.syncSchedule(arguments)
     }
 
+    fun listDeviceCalendarEvents(arguments: Map<*, *>): List<Map<String, Any?>> {
+        return calendarBridge.listStructuredEvents(arguments)
+    }
+
     private fun openSystemSetting(setting: String): String {
         val normalized = setting.trim().lowercase()
         val action = when (normalized) {

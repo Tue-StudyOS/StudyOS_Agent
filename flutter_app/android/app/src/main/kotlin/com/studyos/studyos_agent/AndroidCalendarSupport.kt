@@ -1,22 +1,27 @@
 package com.studyos.studyos_agent
 
+import android.content.ContentResolver
 import android.database.Cursor
+import android.provider.CalendarContract
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-
-internal const val STUDYOS_CALENDAR_DAY_MILLIS = 86_400_000L
 
 internal data class AndroidCalendarLectureInput(
     val id: String,
+    val sourceIds: List<String>,
     val title: String,
     val startMillis: Long,
     val endMillis: Long,
     val location: String?,
     val detail: String?,
-)
+) {
+    val allSourceIds: List<String>
+        get() = (listOf(id) + sourceIds).distinct()
+}
 
 internal fun androidCalendarLectureInput(item: Any?): AndroidCalendarLectureInput? {
     val values = item as? Map<*, *> ?: return null
@@ -27,8 +32,12 @@ internal fun androidCalendarLectureInput(item: Any?): AndroidCalendarLectureInpu
     val end = androidCalendarOptionalString(values["end"])
         ?.let(::androidCalendarParseMillis) ?: start + 90 * 60 * 1_000
     val id = androidCalendarOptionalString(values["id"]) ?: "$title-$start"
+    val sourceIds = (values["sourceIds"] as? List<*>)
+        ?.mapNotNull(::androidCalendarOptionalString)
+        .orEmpty()
     return AndroidCalendarLectureInput(
         id = id,
+        sourceIds = sourceIds,
         title = title,
         startMillis = start,
         endMillis = end,
@@ -91,6 +100,19 @@ internal fun androidCalendarTimeLabel(millis: Long): String {
     return Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(formatter)
 }
 
+internal fun androidCalendarOccurrenceId(eventId: Long, beginMillis: Long): String {
+    return "$eventId:$beginMillis"
+}
+
+internal fun androidCalendarIsoString(millis: Long, allDay: Boolean): String {
+    if (!allDay) return Instant.ofEpochMilli(millis).toString()
+    // CalendarContract stores all-day boundaries as UTC dates, not timed instants.
+    val providerDate = Instant.ofEpochMilli(millis)
+        .atZone(ZoneOffset.UTC)
+        .toLocalDate()
+    return providerDate.atStartOfDay().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+}
+
 internal fun androidCalendarLocationSuffix(location: String?): String {
     val value = androidCalendarOptionalString(location) ?: return ""
     return " @ $value"
@@ -103,6 +125,25 @@ internal fun androidCalendarLectureId(description: String?, markerPrefix: String
         ?.removePrefix(markerPrefix)
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
+}
+
+internal fun androidCalendarWritableCalendarId(resolver: ContentResolver): Long {
+    val selection =
+        "${CalendarContract.Calendars.VISIBLE} = 1 AND " +
+            "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ?"
+    val args = arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString())
+    resolver.query(
+        CalendarContract.Calendars.CONTENT_URI,
+        arrayOf(CalendarContract.Calendars._ID),
+        selection,
+        args,
+        null,
+    )?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            return cursor.calendarLongValue(CalendarContract.Calendars._ID)
+        }
+    }
+    throw IllegalStateException("No writable calendar is available.")
 }
 
 internal fun Cursor.calendarStringValue(column: String): String? {

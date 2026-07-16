@@ -69,6 +69,8 @@ final class StudyOSNativeBridge: NSObject, FlutterStreamHandler, CLLocationManag
       executeNativeTool(call: call, result: result)
     case "syncScheduleToCalendar":
       calendarBridge.syncSchedule(arguments: call.arguments, result: result)
+    case "listDeviceCalendarEvents":
+      calendarBridge.listStructuredEvents(arguments: call.arguments, result: result)
     case "extractPdfText":
       extractPdfText(call: call, result: result)
     case "previewPdf":

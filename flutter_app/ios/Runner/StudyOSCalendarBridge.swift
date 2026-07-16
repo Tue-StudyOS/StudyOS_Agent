@@ -31,7 +31,14 @@ final class StudyOSCalendarBridge {
   func syncSchedule(arguments: Any?, result: @escaping FlutterResult) {
     guard
       let args = arguments as? [String: Any],
-      let rawLectures = args["lectures"] as? [Any]
+      let rawLectures = args["lectures"] as? [Any],
+      let windowStart = studyOSCalendarParseIsoDate(
+        studyOSCalendarTrimmed(args["windowStart"]) ?? ""
+      ),
+      let windowEnd = studyOSCalendarParseIsoDate(
+        studyOSCalendarTrimmed(args["windowEnd"]) ?? ""
+      ),
+      windowEnd > windowStart
     else {
       finish(result, flutterError("invalid_calendar_sync", "Expected lecture schedule arguments."))
       return
@@ -39,8 +46,8 @@ final class StudyOSCalendarBridge {
 
     let sourceTerm = studyOSCalendarTrimmed(args["sourceTerm"]) ?? "ALMA"
     let lectures = rawLectures.compactMap(parseLecture)
-    guard !lectures.isEmpty else {
-      finish(result, flutterError("empty_calendar_sync", "No lectures were available to sync."))
+    guard lectures.count == rawLectures.count else {
+      finish(result, flutterError("invalid_calendar_sync", "One or more lectures were invalid."))
       return
     }
 
@@ -51,7 +58,12 @@ final class StudyOSCalendarBridge {
         return
       }
       do {
-        let message = try self.upsertLectures(lectures, sourceTerm: sourceTerm)
+        let message = try self.upsertLectures(
+          lectures,
+          sourceTerm: sourceTerm,
+          windowStart: windowStart,
+          windowEnd: windowEnd
+        )
         finish(result, message)
       } catch {
         finish(result, flutterError("calendar_sync_failed", error.localizedDescription))
@@ -60,35 +72,46 @@ final class StudyOSCalendarBridge {
   }
 
   func listEvents(arguments: [String: Any], result: @escaping FlutterResult) {
-    guard
-      let start = studyOSCalendarParseIsoDate(studyOSCalendarTrimmed(arguments["start"]) ?? ""),
-      let end = studyOSCalendarParseIsoDate(studyOSCalendarTrimmed(arguments["end"]) ?? ""),
-      end > start
-    else {
-      finish(result, flutterError("invalid_calendar_window", "Expected valid ISO-8601 start and end."))
-      return
-    }
-
-    let limit = min(max(studyOSCalendarIntValue(arguments["limit"]) ?? 25, 1), 50)
     requestCalendarAccess { [weak self] error in
       guard let self else { return }
       if let error {
         finish(result, error)
         return
       }
-      let predicate = self.eventStore.predicateForEvents(withStart: start, end: end, calendars: nil)
-      let events = self.eventStore.events(matching: predicate)
-        .sorted { $0.startDate < $1.startDate }
-        .prefix(limit)
-      if events.isEmpty {
-        self.finish(result, "No calendar events found in that time window.")
+      studyOSReadCalendarEvents(
+        in: self.eventStore, arguments: arguments, maximumLimit: 50
+      ) { eventResult in
+        switch eventResult {
+        case .success(let events):
+          self.finish(result, studyOSCalendarEventListText(events))
+        case .failure(let error):
+          self.finish(result, self.flutterError("invalid_calendar_window", error.localizedDescription))
+        }
+      }
+    }
+  }
+
+  func listStructuredEvents(arguments: Any?, result: @escaping FlutterResult) {
+    guard let arguments = arguments as? [String: Any] else {
+      finish(result, flutterError("invalid_calendar_window", "Expected calendar window arguments."))
+      return
+    }
+    requestCalendarAccess { [weak self] error in
+      guard let self else { return }
+      if let error {
+        finish(result, error)
         return
       }
-      let lines = events.map { event -> String in
-        let location = studyOSCalendarOptionalSuffix(" @ ", event.location)
-        return "- \(event.title ?? "Untitled"), \(studyOSCalendarDateLabel(event.startDate))-\(studyOSCalendarTimeLabel(event.endDate))\(location)"
+      studyOSReadCalendarEvents(
+        in: self.eventStore, arguments: arguments, maximumLimit: 500
+      ) { eventResult in
+        switch eventResult {
+        case .success(let events):
+          self.finish(result, events.map(studyOSCalendarEventMap))
+        case .failure(let error):
+          self.finish(result, self.flutterError("invalid_calendar_window", error.localizedDescription))
+        }
       }
-      self.finish(result, lines.joined(separator: "\n"))
     }
   }
 
@@ -129,37 +152,22 @@ final class StudyOSCalendarBridge {
     }
   }
 
-  private func upsertLectures(_ lectures: [StudyOSCalendarLecture], sourceTerm: String) throws -> String {
+  private func upsertLectures(
+    _ lectures: [StudyOSCalendarLecture],
+    sourceTerm: String,
+    windowStart: Date,
+    windowEnd: Date
+  ) throws -> String {
     let calendar = try writableCalendar()
-    let minStart = lectures.map(\.start).min()!.addingTimeInterval(-86_400)
-    let maxEnd = lectures.map(\.end).max()!.addingTimeInterval(86_400)
-    let predicate = eventStore.predicateForEvents(withStart: minStart, end: maxEnd, calendars: nil)
-    var existingById: [String: EKEvent] = [:]
-    for event in eventStore.events(matching: predicate) {
-      if let id = lectureId(in: event.notes) {
-        existingById[id] = event
-      }
-    }
-
-    var created = 0
-    var updated = 0
-    for lecture in lectures {
-      let event = existingById[lecture.id] ?? EKEvent(eventStore: eventStore)
-      if existingById[lecture.id] == nil {
-        event.calendar = calendar
-        created += 1
-      } else {
-        updated += 1
-      }
-      event.title = lecture.title
-      event.startDate = lecture.start
-      event.endDate = lecture.end
-      event.location = lecture.location
-      event.notes = notes(for: lecture, sourceTerm: sourceTerm)
-      try eventStore.save(event, span: .thisEvent)
-    }
-
-    return "Synced \(lectures.count) lecture events to \(calendar.title) (\(created) new, \(updated) updated)."
+    return try studyOSSyncLectures(
+      in: eventStore,
+      calendar: calendar,
+      lectures: lectures,
+      sourceTerm: sourceTerm,
+      markerPrefix: markerPrefix,
+      windowStart: windowStart,
+      windowEnd: windowEnd
+    )
   }
 
   private func writableCalendar() throws -> EKCalendar {
@@ -252,35 +260,18 @@ final class StudyOSCalendarBridge {
       return nil
     }
     let id = studyOSCalendarTrimmed(dict["id"]) ?? "\(title)-\(Int(start.timeIntervalSince1970))"
+    let sourceIds = (dict["sourceIds"] as? [Any])?
+      .compactMap(studyOSCalendarTrimmed) ?? []
     let end = studyOSCalendarParseIsoDate(studyOSCalendarTrimmed(dict["end"]) ?? "") ?? start.addingTimeInterval(90 * 60)
     return StudyOSCalendarLecture(
       id: id,
+      sourceIds: sourceIds,
       title: title,
       start: start,
       end: end,
       location: studyOSCalendarTrimmed(dict["location"]),
       detail: studyOSCalendarTrimmed(dict["detail"])
     )
-  }
-
-  private func notes(for lecture: StudyOSCalendarLecture, sourceTerm: String) -> String {
-    var lines = [
-      "\(markerPrefix) \(lecture.id)",
-      "StudyOS term: \(sourceTerm)"
-    ]
-    if let detail = lecture.detail {
-      lines.append("")
-      lines.append(detail)
-    }
-    return lines.joined(separator: "\n")
-  }
-
-  private func lectureId(in notes: String?) -> String? {
-    notes?
-      .components(separatedBy: .newlines)
-      .first { $0.hasPrefix(markerPrefix) }?
-      .dropFirst(markerPrefix.count)
-      .trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   private func flutterError(_ code: String, _ message: String) -> FlutterError {

@@ -29,9 +29,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>StudyOS Agent uses your location to build local world state for native assistant features.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>StudyOS Agent syncs lectures and creates study blocks in Calendar when you ask.</string>
+	<string>StudyOS displays events from your device calendars in Plan and syncs lectures or creates study blocks when you choose.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>StudyOS Agent syncs lectures and creates study blocks in Calendar when you ask.</string>
+	<string>StudyOS displays events from your device calendars in Plan and syncs lectures or creates study blocks when you choose.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>StudyOS Agent uses the microphone for native speech input when speech features are enabled.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

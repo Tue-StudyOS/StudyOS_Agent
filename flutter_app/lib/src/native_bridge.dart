@@ -138,9 +138,34 @@ class NativeBridge {
         .invokeMethod<String>('syncScheduleToCalendar', <String, Object?>{
           'sourceTerm': timetable.sourceTerm,
           'updatedAt': DateTime.now().toIso8601String(),
+          'windowStart': timetable.refreshedAt.toIso8601String(),
+          'windowEnd': timetable.refreshedAt
+              .add(timetableLookAhead)
+              .toIso8601String(),
           'lectures': timetable.events.map((event) => event.toJson()).toList(),
         });
     return result ?? 'Calendar sync finished.';
+  }
+
+  Future<List<Map<String, Object?>>> listDeviceCalendarEvents({
+    required DateTime start,
+    required DateTime end,
+    int limit = 250,
+  }) async {
+    final result = await _methods.invokeListMethod<Object?>(
+      'listDeviceCalendarEvents',
+      <String, Object?>{
+        'start': start.toIso8601String(),
+        'end': end.toIso8601String(),
+        'limit': limit.clamp(1, 500),
+      },
+    );
+    return (result ?? const <Object?>[])
+        .whereType<Map<Object?, Object?>>()
+        .map(
+          (event) => event.map((key, value) => MapEntry(key.toString(), value)),
+        )
+        .toList();
   }
 
   Future<String> extractPdfText(Uint8List document) async {
