@@ -20,9 +20,11 @@ import io.flutter.plugin.common.MethodChannel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val calendarPermissionRequestCode = 7302
+    private val aiCoreModelExecutor = Executors.newSingleThreadExecutor()
     private var eventSink: EventChannel.EventSink? = null
     private var nativeInitialized = false
     private var localPromptClient: AndroidLocalPromptClient? = null
@@ -43,6 +45,11 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intentBridge.captureIntent(intent)
+    }
+
+    override fun onDestroy() {
+        aiCoreModelExecutor.shutdownNow()
+        super.onDestroy()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -314,7 +321,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun listAndroidAiCoreModels(result: MethodChannel.Result) {
-        Thread {
+        aiCoreModelExecutor.execute {
             try {
                 val models = AndroidAiCoreModelCatalog.listModels()
                 Handler(Looper.getMainLooper()).post { result.success(models) }
@@ -327,7 +334,7 @@ class MainActivity : FlutterActivity() {
                     )
                 }
             }
-        }.start()
+        }
     }
 
     private fun downloadAndroidAiCoreModel(
