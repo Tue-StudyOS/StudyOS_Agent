@@ -54,8 +54,6 @@ class HomeView extends StatelessWidget {
           const SizedBox(height: StudyOsSpacing.xxl),
           _TodayFocus(next: next, onTap: onOpenSchedule),
           const SizedBox(height: StudyOsSpacing.xxl),
-          _SectionLabel(label: 'For you'),
-          const SizedBox(height: StudyOsSpacing.sm),
           ProactiveFeedSection(
             snapshot: snapshot,
             onRefresh: onRefresh,

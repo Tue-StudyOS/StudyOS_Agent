@@ -18,35 +18,51 @@ class ProactiveFeedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _FeedSectionTitle(
-          title: 'Today’s Schedule',
-          trailing: snapshot.isStale ? 'stale' : snapshot.generatedAtLabel,
+    return Material(
+      color: StudyOsColors.text.withValues(alpha: 0.045),
+      borderRadius: BorderRadius.circular(StudyOsRadii.lg),
+      child: Padding(
+        padding: const EdgeInsets.all(StudyOsSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'For you',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 28,
+                height: 1.05,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: StudyOsSpacing.lg),
+            _FeedSectionTitle(
+              title: 'Today’s Schedule',
+              trailing: snapshot.isStale ? 'stale' : snapshot.generatedAtLabel,
+            ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            _ScheduleSection(
+              items: snapshot.todaySchedule,
+              onAskAssistant: onAskAssistant,
+            ),
+            const SizedBox(height: StudyOsSpacing.xl),
+            const _FeedSectionTitle(title: 'Highlights Tübingen'),
+            const SizedBox(height: StudyOsSpacing.sm),
+            _ArticleSection(
+              articles: snapshot.highlights,
+              emptyText: 'News could not be loaded.',
+              onAskAssistant: onAskAssistant,
+            ),
+            const SizedBox(height: StudyOsSpacing.xl),
+            const _FeedSectionTitle(title: 'Emails'),
+            const SizedBox(height: StudyOsSpacing.sm),
+            _EmailSection(
+              emails: snapshot.emails,
+              onRefresh: onRefresh,
+              onAskAssistant: onAskAssistant,
+            ),
+          ],
         ),
-        const SizedBox(height: StudyOsSpacing.sm),
-        _ScheduleSection(
-          items: snapshot.todaySchedule,
-          onAskAssistant: onAskAssistant,
-        ),
-        const SizedBox(height: StudyOsSpacing.xxl),
-        const _FeedSectionTitle(title: 'Highlights Tübingen'),
-        const SizedBox(height: StudyOsSpacing.sm),
-        _ArticleSection(
-          articles: snapshot.highlights,
-          emptyText: 'News could not be loaded.',
-          onAskAssistant: onAskAssistant,
-        ),
-        const SizedBox(height: StudyOsSpacing.xxl),
-        const _FeedSectionTitle(title: 'Emails'),
-        const SizedBox(height: StudyOsSpacing.sm),
-        _EmailSection(
-          emails: snapshot.emails,
-          onRefresh: onRefresh,
-          onAskAssistant: onAskAssistant,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -94,9 +110,10 @@ class _ScheduleSection extends StatelessWidget {
     if (items.isEmpty) {
       return const _EmptyDayCard();
     }
+    final visibleItems = items.take(1);
     return Column(
       children: <Widget>[
-        for (final item in items) ...<Widget>[
+        for (final item in visibleItems) ...<Widget>[
           _ScheduleTile(item: item, onAskAssistant: onAskAssistant),
           const SizedBox(height: StudyOsSpacing.sm),
         ],
@@ -269,7 +286,8 @@ class _EmailSection extends StatelessWidget {
     if (emails.isEmpty) {
       return _UnavailableCard(
         text: 'Email highlights could not be loaded.',
-        actionLabel: 'Refresh',
+        actionIcon: Icons.refresh_rounded,
+        actionTooltip: 'Refresh',
         onAction: onRefresh,
       );
     }
@@ -338,10 +356,16 @@ class _EmailTile extends StatelessWidget {
 }
 
 class _UnavailableCard extends StatelessWidget {
-  const _UnavailableCard({required this.text, this.actionLabel, this.onAction});
+  const _UnavailableCard({
+    required this.text,
+    this.actionIcon,
+    this.actionTooltip,
+    this.onAction,
+  });
 
   final String text;
-  final String? actionLabel;
+  final IconData? actionIcon;
+  final String? actionTooltip;
   final Future<void> Function()? onAction;
 
   @override
@@ -364,8 +388,12 @@ class _UnavailableCard extends StatelessWidget {
               ),
             ),
           ),
-          if (actionLabel != null && onAction != null)
-            TextButton(onPressed: () => onAction!(), child: Text(actionLabel!)),
+          if (actionIcon != null && onAction != null)
+            IconButton(
+              tooltip: actionTooltip,
+              onPressed: () => onAction!(),
+              icon: Icon(actionIcon, color: StudyOsColors.accent),
+            ),
         ],
       ),
     );

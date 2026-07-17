@@ -218,6 +218,68 @@ void main() {
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 
+  testWidgets('home feed card previews one lecture and icon refresh', (
+    WidgetTester tester,
+  ) async {
+    final now = DateTime(2026, 7, 1, 9);
+    final timetable = TimetableSnapshot(
+      refreshedAt: now,
+      sourceTerm: 'Summer 2026',
+      events: <LectureEvent>[
+        LectureEvent(
+          id: 'lecture',
+          title: 'ML Lecture',
+          start: DateTime(2026, 7, 1, 10),
+          end: DateTime(2026, 7, 1, 12),
+          detail: 'Lecture',
+        ),
+        LectureEvent(
+          id: 'practice',
+          title: 'ML Practice',
+          start: DateTime(2026, 7, 1, 13),
+          end: DateTime(2026, 7, 1, 15),
+          detail: 'Tutorial',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: null,
+            config: const AgentConfig.defaults(),
+            snapshot: HomeFeedSnapshot.fromLocalState(
+              profile: null,
+              timetable: timetable,
+              memoryText: '',
+              now: now,
+            ),
+            memoryText: '',
+            timetable: timetable,
+            onOpenProfile: () {},
+            onOpenAssistant: () {},
+            onOpenNotes: () {},
+            onOpenTalks: () {},
+            onOpenMail: () {},
+            onOpenMaps: () {},
+            onOpenCampus: () {},
+            onOpenSchedule: () {},
+            onAskAssistant: (_) {},
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('For you'), findsOneWidget);
+    expect(find.text('ML Lecture'), findsWidgets);
+    expect(find.text('ML Practice'), findsNothing);
+    expect(find.text('Refresh'), findsNothing);
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+  });
+
   test(
     'home feed snapshot summarizes the next lecture from structured state',
     () {
