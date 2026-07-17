@@ -9,6 +9,7 @@ import 'mail_tools.dart';
 import 'models.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
+import 'public_study_tools.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
 
@@ -46,6 +47,7 @@ class CloudAgentClient {
     Future<String> Function(String query, int limit) searchTalks =
         _unavailableTalks,
     required MailToolRunner mailTools,
+    PublicStudyToolRunner? publicStudyTools,
     void Function(ToolTrace trace)? onToolTrace,
     AgentStreamSink? onDelta,
     AgentCancelToken? cancelToken,
@@ -83,6 +85,7 @@ class CloudAgentClient {
       searchTalks: searchTalks,
       mailTools: mailTools,
       nativeTools: _nativeTools,
+      publicStudyTools: publicStudyTools,
     );
     for (var round = 0; ; round += 1) {
       final message = await _fetchTurn(

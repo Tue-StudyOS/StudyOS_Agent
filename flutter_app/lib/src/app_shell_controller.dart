@@ -18,6 +18,7 @@ import 'native_bridge.dart';
 import 'official_document_models.dart';
 import 'official_documents_repository.dart';
 import 'profile_context.dart';
+import 'public_study_tools.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
 import 'timetable_repository.dart';
@@ -75,6 +76,7 @@ class AppShellController extends ChangeNotifier {
   final AcademicRepository _academicRepository = AcademicRepository();
   final OfficialDocumentsRepository _documentsRepository =
       OfficialDocumentsRepository();
+  final PublicStudyToolRunner _publicStudyTools = LivePublicStudyToolRunner();
   final TextEditingController inputController = TextEditingController();
   final ScrollController messageScrollController = ScrollController();
 
@@ -199,6 +201,7 @@ class AppShellController extends ChangeNotifier {
     _streamNotifyTimer?.cancel();
     _eventSubscription?.cancel();
     voice.dispose();
+    _publicStudyTools.close();
     if (_ownsTalksRepository) talksRepository.dispose();
     inputController.dispose();
     messageScrollController.dispose();
@@ -474,6 +477,7 @@ class AppShellController extends ChangeNotifier {
           repository: _mailRepository,
           profile: _profile,
         ),
+        publicStudyTools: _publicStudyTools,
         onToolTrace: addToolTrace,
         onDelta: _handleStreamDelta,
         cancelToken: cancelToken,

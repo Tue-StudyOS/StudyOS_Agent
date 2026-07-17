@@ -28,6 +28,8 @@ void main() {
         'read_memories',
         'get_study_context',
         'get_schedule',
+        'get_mensa_options',
+        'search_campus_locations',
         'list_mailboxes',
         'get_recent_mail',
         'search_mail',

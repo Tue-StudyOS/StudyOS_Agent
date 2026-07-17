@@ -8,6 +8,7 @@ import 'models.dart';
 import 'native_bridge.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
+import 'public_study_tools.dart';
 import 'studyos_tool_catalog.dart';
 import 'studyos_tool_executor.dart';
 
@@ -31,6 +32,7 @@ class AgentLlmRequest {
     this.searchTalks = _unavailableTalks,
     required this.mailTools,
     required this.onToolTrace,
+    this.publicStudyTools,
     this.onDelta,
     this.cancelToken,
   });
@@ -47,6 +49,7 @@ class AgentLlmRequest {
   final Future<String> Function() readAcademicStatus;
   final Future<String> Function(String query, int limit) searchTalks;
   final MailToolRunner mailTools;
+  final PublicStudyToolRunner? publicStudyTools;
   final void Function(ToolTrace trace) onToolTrace;
 
   /// Optional sink for streamed reply fragments. Cloud uses it for SSE; the
@@ -150,6 +153,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       searchTalks: request.searchTalks,
       mailTools: request.mailTools,
       nativeTools: nativeTools,
+      publicStudyTools: request.publicStudyTools,
     );
 
     for (var round = 0; round < _maxToolRounds; round += 1) {
@@ -337,6 +341,7 @@ class CloudLlmProvider implements AgentLlmProvider {
       readSchedule: request.readSchedule,
       searchTalks: request.searchTalks,
       mailTools: request.mailTools,
+      publicStudyTools: request.publicStudyTools,
       onToolTrace: request.onToolTrace,
       onDelta: request.onDelta,
       cancelToken: request.cancelToken,

@@ -1,4 +1,5 @@
 import 'native_tool_router.dart';
+import 'public_study_tools.dart';
 
 class StudyOsToolSpec {
   const StudyOsToolSpec({
@@ -78,6 +79,51 @@ const searchTalksTool = StudyOsToolSpec(
     },
   },
   required: <String>[],
+);
+
+const getMensaOptionsTool = StudyOsToolSpec(
+  name: getMensaOptionsToolName,
+  description:
+      'Get live Tübingen Mensa meal options, optionally filtered by date, canteen, and dietary preference.',
+  traceSummary: 'Loading live Tübingen Mensa options.',
+  properties: <String, Object?>{
+    'date': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional date in YYYY-MM-DD format.',
+    },
+    'canteen': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional canteen ID or name filter.',
+    },
+    'preference': <String, Object?>{
+      'type': 'string',
+      'enum': <String>['any', 'vegetarian', 'vegan'],
+      'description': 'Optional dietary filter. Defaults to any.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum menu entries to return. Capped at 30.',
+    },
+  },
+  required: <String>[],
+);
+
+const searchCampusLocationsTool = StudyOsToolSpec(
+  name: searchCampusLocationsToolName,
+  description:
+      'Search public OpenStreetMap place data bounded to Tübingen without using the device location.',
+  traceSummary: 'Searching public Tübingen campus locations.',
+  properties: <String, Object?>{
+    'query': <String, Object?>{
+      'type': 'string',
+      'description': 'Campus building, facility, street, or place to find.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum locations to return. Capped at 8.',
+    },
+  },
+  required: <String>['query'],
 );
 
 const listMailboxesTool = StudyOsToolSpec(
@@ -338,6 +384,8 @@ const studyOsTools = <StudyOsToolSpec>[
   getScheduleTool,
   getAcademicStatusTool,
   searchTalksTool,
+  getMensaOptionsTool,
+  searchCampusLocationsTool,
   listMailboxesTool,
   getRecentMailTool,
   searchMailTool,

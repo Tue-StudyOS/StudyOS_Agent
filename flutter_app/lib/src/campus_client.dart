@@ -5,11 +5,14 @@ import 'package:http/http.dart' as http;
 import 'campus_models.dart';
 
 class CampusClient {
-  CampusClient({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  CampusClient({
+    http.Client? httpClient,
+    this.timeout = const Duration(seconds: 12),
+  }) : _httpClient = httpClient ?? http.Client();
 
-  static const _mealplanUrl =
-      'https://www.my-stuwe.de/wp-json/mealplans/v1/canteens?lang=de';
+  static final sourceUri = Uri.parse(
+    'https://www.my-stuwe.de/wp-json/mealplans/v1/canteens?lang=de',
+  );
   static const _tuebingenCanteenIds = <String>{
     '611',
     '621',
@@ -19,9 +22,10 @@ class CampusClient {
   };
 
   final http.Client _httpClient;
+  final Duration timeout;
 
   Future<List<CampusCanteen>> fetchTuebingenCanteens() async {
-    final response = await _httpClient.get(Uri.parse(_mealplanUrl));
+    final response = await _httpClient.get(sourceUri).timeout(timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw CampusException('Mensa data returned HTTP ${response.statusCode}.');
     }

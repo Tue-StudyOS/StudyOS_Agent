@@ -3,12 +3,18 @@ import 'package:http/http.dart' as http;
 import 'map_location_models.dart';
 
 class MapSearchClient {
-  MapSearchClient({http.Client? client})
-    : _client = client ?? http.Client(),
-      _ownsClient = client == null;
+  MapSearchClient({
+    http.Client? client,
+    this.timeout = const Duration(seconds: 12),
+  }) : _client = client ?? http.Client(),
+       _ownsClient = client == null;
 
   final http.Client _client;
   final bool _ownsClient;
+  final Duration timeout;
+  static final sourceUri = Uri.parse(
+    'https://nominatim.openstreetmap.org/search',
+  );
 
   Future<List<MapLocation>> search(String query) async {
     final trimmed = query.trim();
@@ -21,12 +27,14 @@ class MapSearchClient {
       'viewbox': '8.93,48.57,9.16,48.47',
       'q': '$trimmed Tuebingen',
     });
-    final response = await _client.get(
-      uri,
-      headers: const <String, String>{
-        'User-Agent': 'StudyOS Agent course prototype',
-      },
-    );
+    final response = await _client
+        .get(
+          uri,
+          headers: const <String, String>{
+            'User-Agent': 'StudyOS Agent course prototype',
+          },
+        )
+        .timeout(timeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw MapSearchException(
         'Search failed with HTTP ${response.statusCode}.',
