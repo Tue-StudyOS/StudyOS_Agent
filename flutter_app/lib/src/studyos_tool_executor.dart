@@ -81,7 +81,7 @@ class StudyOsToolExecutor {
   ) {
     if (privateStudyTools == null) {
       return Future<String>.value(
-        'Private study tool is not available in this local runtime: $toolName',
+        'Private study tool is not available in this app runtime: $toolName',
       );
     }
     return privateStudyTools.execute(toolName, arguments);

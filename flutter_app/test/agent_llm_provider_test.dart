@@ -10,6 +10,7 @@ import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/native_bridge.dart';
 import 'package:studyos_agent/src/native_tool_router.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
+import 'package:studyos_agent/src/private_study_tools.dart';
 
 void main() {
   test('AgentLlmProviderRegistry resolves registered providers', () {
@@ -27,6 +28,7 @@ void main() {
     'AgentRequestRunner delegates requests to the selected provider',
     () async {
       final provider = _FakeLlmProvider(provider: AgentProvider.cloud);
+      final privateTools = _FakePrivateStudyTools();
       final runner = AgentRequestRunner(
         bridge: NativeBridge(),
         configStore: AgentConfigStore(),
@@ -58,11 +60,13 @@ void main() {
         memoryText: 'Saved context',
         readSchedule: () async => 'No schedule.',
         mailTools: MailToolRunner(repository: MailRepository(), profile: null),
+        privateStudyTools: privateTools,
       );
 
       expect(response, 'fake response');
       expect(provider.lastRequest?.userText, 'Hello');
       expect(provider.lastRequest?.memoryText, 'Saved context');
+      expect(provider.lastRequest?.privateStudyTools, same(privateTools));
     },
   );
 
@@ -268,6 +272,14 @@ class _FakeLlmProvider implements AgentLlmProvider {
     lastRequest = request;
     return 'fake response';
   }
+}
+
+class _FakePrivateStudyTools implements PrivateStudyToolRunner {
+  @override
+  Future<String> execute(String toolName, String arguments) async => '{}';
+
+  @override
+  void invalidate() {}
 }
 
 class _FakeNativeBridge extends NativeBridge {

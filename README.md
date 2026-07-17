@@ -112,6 +112,16 @@ flutter run -d chrome \
   --dart-define=STUDYOS_DEMO_OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
 ```
 
+### Assistant tool privacy
+
+StudyOS executes university tools in the app for both on-device and cloud
+models. Portal credentials, cookies, SAML fields, session keys, and raw HTML
+remain on the device. When a cloud model requests `get_tasks` or
+`get_deadlines`, the app sends only the sanitized tool result (such as titles,
+courses, dates, and source links) back to the configured AI service so it can
+answer the question. Use the on-device model when those results must not leave
+the device.
+
 ## Migration Notes
 
 - Flutter owns the main chat UI, input bar, status display, navigation, and

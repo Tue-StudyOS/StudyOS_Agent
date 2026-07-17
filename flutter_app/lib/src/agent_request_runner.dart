@@ -76,9 +76,7 @@ class AgentRequestRunner {
         searchTalks: searchTalks,
         mailTools: mailTools,
         publicStudyTools: publicStudyTools,
-        privateStudyTools: config.provider == AgentProvider.local
-            ? privateStudyTools
-            : null,
+        privateStudyTools: privateStudyTools,
         onToolTrace: onToolTrace,
         onDelta: onDelta,
         cancelToken: cancelToken,

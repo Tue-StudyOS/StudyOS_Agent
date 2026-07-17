@@ -346,6 +346,7 @@ class CloudLlmProvider implements AgentLlmProvider {
       searchTalks: request.searchTalks,
       mailTools: request.mailTools,
       publicStudyTools: request.publicStudyTools,
+      privateStudyTools: request.privateStudyTools,
       onToolTrace: request.onToolTrace,
       onDelta: request.onDelta,
       cancelToken: request.cancelToken,
