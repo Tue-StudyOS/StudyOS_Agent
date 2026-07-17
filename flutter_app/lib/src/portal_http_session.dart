@@ -51,7 +51,8 @@ class PortalHttpSession {
     Uri action,
     List<MapEntry<String, String>> fields, {
     Uri? referer,
-  }) => _send('POST', action, formBody: _encodeFields(fields), referer: referer);
+  }) =>
+      _send('POST', action, formBody: _encodeFields(fields), referer: referer);
 
   Future<PortalResponse> _send(
     String method,
@@ -274,7 +275,8 @@ Future<PortalResponse> completeSaml(
       // inputs (always submitted); other templates use pre-checked checkboxes.
       if (box.attributes.containsKey('disabled')) continue;
       final type = box.attributes['type']?.toLowerCase();
-      if (type == 'checkbox' && !box.attributes.containsKey('checked')) continue;
+      if (type == 'checkbox' && !box.attributes.containsKey('checked'))
+        continue;
       final value = box.attributes['value'];
       if (value != null && value.isNotEmpty) {
         fields.add(MapEntry('_shib_idp_consentIds', value));

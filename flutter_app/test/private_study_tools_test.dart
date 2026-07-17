@@ -154,7 +154,10 @@ void main() {
     expect(consentPost.body, contains('_eventId_proceed=Accept'));
     // The reject event must never ride along with proceed, or the IdP blocks
     // the release ("release of information prevented").
-    expect(consentPost.body, isNot(contains('_eventId_AttributeReleaseRejected')));
+    expect(
+      consentPost.body,
+      isNot(contains('_eventId_AttributeReleaseRejected')),
+    );
     session.close();
   });
 
