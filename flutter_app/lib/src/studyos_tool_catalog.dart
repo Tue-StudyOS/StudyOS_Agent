@@ -1,4 +1,5 @@
 import 'native_tool_router.dart';
+import 'private_study_tools.dart';
 import 'public_study_tools.dart';
 
 class StudyOsToolSpec {
@@ -8,6 +9,7 @@ class StudyOsToolSpec {
     required this.traceSummary,
     required this.properties,
     required this.required,
+    this.cloudAllowed = true,
   });
 
   final String name;
@@ -15,6 +17,7 @@ class StudyOsToolSpec {
   final String traceSummary;
   final Map<String, Object?> properties;
   final List<String> required;
+  final bool cloudAllowed;
 }
 
 const appendMemoryTool = StudyOsToolSpec(
@@ -124,6 +127,56 @@ const searchCampusLocationsTool = StudyOsToolSpec(
     },
   },
   required: <String>['query'],
+);
+
+const getTasksTool = StudyOsToolSpec(
+  name: getTasksToolName,
+  description:
+      'Read private ILIAS and Moodle tasks locally. Results never leave the device through cloud tools.',
+  traceSummary: 'Loading local ILIAS and Moodle tasks.',
+  properties: <String, Object?>{
+    'sources': <String, Object?>{
+      'type': 'array',
+      'items': <String, Object?>{
+        'type': 'string',
+        'enum': <String>['ilias', 'moodle'],
+      },
+      'description': 'Optional portal subset; defaults to both.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum tasks to return. Capped at 50.',
+    },
+  },
+  required: <String>[],
+  cloudAllowed: false,
+);
+
+const getDeadlinesTool = StudyOsToolSpec(
+  name: getDeadlinesToolName,
+  description:
+      'Read confirmed private ILIAS and Moodle deadlines locally within a bounded window.',
+  traceSummary: 'Loading local ILIAS and Moodle deadlines.',
+  properties: <String, Object?>{
+    'days': <String, Object?>{
+      'type': 'integer',
+      'description': 'Upcoming window in days, from 1 to 180. Defaults to 30.',
+    },
+    'sources': <String, Object?>{
+      'type': 'array',
+      'items': <String, Object?>{
+        'type': 'string',
+        'enum': <String>['ilias', 'moodle'],
+      },
+      'description': 'Optional portal subset; defaults to both.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum deadlines to return. Capped at 100.',
+    },
+  },
+  required: <String>[],
+  cloudAllowed: false,
 );
 
 const listMailboxesTool = StudyOsToolSpec(
@@ -386,6 +439,8 @@ const studyOsTools = <StudyOsToolSpec>[
   searchTalksTool,
   getMensaOptionsTool,
   searchCampusLocationsTool,
+  getTasksTool,
+  getDeadlinesTool,
   listMailboxesTool,
   getRecentMailTool,
   searchMailTool,
@@ -412,6 +467,11 @@ List<StudyOsToolSpec> studyOsToolsForNativeSupport(
       )
       .toList();
 }
+
+List<StudyOsToolSpec> cloudStudyOsTools(Set<String> supportedNativeToolNames) =>
+    studyOsToolsForNativeSupport(
+      supportedNativeToolNames,
+    ).where((tool) => tool.cloudAllowed).toList(growable: false);
 
 StudyOsToolSpec? studyOsToolByName(String name) {
   for (final tool in studyOsTools) {

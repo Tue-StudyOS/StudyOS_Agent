@@ -3,6 +3,7 @@ import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/native_tool_router.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
+import 'package:studyos_agent/src/private_study_tools.dart';
 import 'package:studyos_agent/src/public_study_tools.dart';
 import 'package:studyos_agent/src/studyos_tool_catalog.dart';
 import 'package:studyos_agent/src/studyos_tool_executor.dart';
@@ -74,6 +75,19 @@ void main() {
     expect(publicTools.arguments, <String>['{"preference":"vegan"}']);
   });
 
+  test('StudyOsToolExecutor routes private study tools locally', () async {
+    final privateTools = _FakePrivateStudyToolRunner('Private results');
+
+    final response = await const StudyOsToolExecutor().execute(
+      getTasksToolName,
+      '{"sources":["ilias"]}',
+      _context(privateStudyTools: privateTools),
+    );
+
+    expect(response, 'Private results');
+    expect(privateTools.calls, <String>[getTasksToolName]);
+  });
+
   test(
     'StudyOsToolExecutor returns explicit errors for bad tool input',
     () async {
@@ -97,6 +111,8 @@ void main() {
     expect(toolNames, contains('search_talks'));
     expect(toolNames, contains(getMensaOptionsToolName));
     expect(toolNames, contains(searchCampusLocationsToolName));
+    expect(toolNames, contains(getTasksToolName));
+    expect(toolNames, contains(getDeadlinesToolName));
     expect(toolNames, contains(nativeDeviceStatusToolName));
     expect(toolNames, contains(nativeSetFlashlightToolName));
     expect(toolNames, contains(nativeOpenInstalledAppToolName));
@@ -159,6 +175,7 @@ StudyOsToolContext _context({
   Future<String> Function(String query, int limit)? searchTalks,
   NativeToolRunner? nativeTools,
   PublicStudyToolRunner? publicStudyTools,
+  PrivateStudyToolRunner? privateStudyTools,
 }) {
   return StudyOsToolContext(
     promptContext: const PromptContext(
@@ -173,7 +190,24 @@ StudyOsToolContext _context({
     mailTools: MailToolRunner(repository: MailRepository(), profile: null),
     nativeTools: nativeTools,
     publicStudyTools: publicStudyTools,
+    privateStudyTools: privateStudyTools,
   );
+}
+
+class _FakePrivateStudyToolRunner implements PrivateStudyToolRunner {
+  _FakePrivateStudyToolRunner(this.response);
+
+  final String response;
+  final calls = <String>[];
+
+  @override
+  Future<String> execute(String toolName, String arguments) async {
+    calls.add(toolName);
+    return response;
+  }
+
+  @override
+  void invalidate() {}
 }
 
 class _FakePublicStudyToolRunner implements PublicStudyToolRunner {

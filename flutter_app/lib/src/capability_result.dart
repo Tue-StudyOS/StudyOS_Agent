@@ -1,4 +1,12 @@
-enum CapabilityState { fresh, stale, empty, unavailable, failed }
+enum CapabilityState {
+  fresh,
+  stale,
+  empty,
+  unavailable,
+  permissionDenied,
+  authenticationRequired,
+  failed,
+}
 
 enum CapabilityPrivacy { publicExternal, privateLocal }
 
@@ -12,12 +20,29 @@ class CapabilityPolicy {
     effect: CapabilityEffect.readOnly,
   );
 
+  static const privateRead = CapabilityPolicy(
+    privacy: CapabilityPrivacy.privateLocal,
+    effect: CapabilityEffect.readOnly,
+  );
+
   final CapabilityPrivacy privacy;
   final CapabilityEffect effect;
 
   Map<String, Object?> toJson() => <String, Object?>{
     'privacy': _snakeCase(privacy.name),
     'effect': _snakeCase(effect.name),
+  };
+}
+
+class CapabilityFailure {
+  const CapabilityFailure({required this.source, required this.message});
+
+  final String source;
+  final String message;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+    'source': source,
+    'message': message,
   };
 }
 
@@ -51,6 +76,7 @@ class CapabilityResult<T> {
     this.expiresAt,
     this.data,
     this.message,
+    this.failures = const <CapabilityFailure>[],
   });
 
   final CapabilityState state;
@@ -60,6 +86,7 @@ class CapabilityResult<T> {
   final DateTime? expiresAt;
   final T? data;
   final String? message;
+  final List<CapabilityFailure> failures;
 
   Map<String, Object?> toJson(
     Object? Function(T value) encodeData,
@@ -71,6 +98,8 @@ class CapabilityResult<T> {
     if (expiresAt != null) 'expires_at': expiresAt!.toUtc().toIso8601String(),
     if (data != null) 'data': encodeData(data as T),
     if (message != null) 'message': message,
+    if (failures.isNotEmpty)
+      'failures': failures.map((failure) => failure.toJson()).toList(),
   };
 }
 

@@ -37,6 +37,8 @@ void main() {
         'find_mail_deadlines',
       ]),
     );
+    expect(toolNames, isNot(contains('get_tasks')));
+    expect(toolNames, isNot(contains('get_deadlines')));
     expect(toolNames, isNot(contains(nativeDeviceStatusToolName)));
   });
 

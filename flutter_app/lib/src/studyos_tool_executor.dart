@@ -4,6 +4,7 @@ import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
+import 'private_study_tools.dart';
 import 'public_study_tools.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
@@ -22,6 +23,7 @@ class StudyOsToolContext {
     required this.mailTools,
     required this.nativeTools,
     this.publicStudyTools,
+    this.privateStudyTools,
   });
 
   final PromptContext promptContext;
@@ -33,6 +35,7 @@ class StudyOsToolContext {
   final MailToolRunner mailTools;
   final NativeToolRunner? nativeTools;
   final PublicStudyToolRunner? publicStudyTools;
+  final PrivateStudyToolRunner? privateStudyTools;
 }
 
 class StudyOsToolExecutor {
@@ -52,6 +55,11 @@ class StudyOsToolExecutor {
       'search_talks' => _searchTalks(arguments, context.searchTalks),
       getMensaOptionsToolName || searchCampusLocationsToolName =>
         _executePublicStudyTool(toolName, arguments, context.publicStudyTools),
+      getTasksToolName || getDeadlinesToolName => _executePrivateStudyTool(
+        toolName,
+        arguments,
+        context.privateStudyTools,
+      ),
       'list_mailboxes' ||
       'get_recent_mail' ||
       'search_mail' ||
@@ -64,6 +72,19 @@ class StudyOsToolExecutor {
       ),
       _ => 'Tool is not available: $toolName',
     };
+  }
+
+  Future<String> _executePrivateStudyTool(
+    String toolName,
+    String arguments,
+    PrivateStudyToolRunner? privateStudyTools,
+  ) {
+    if (privateStudyTools == null) {
+      return Future<String>.value(
+        'Private study tool is not available in this local runtime: $toolName',
+      );
+    }
+    return privateStudyTools.execute(toolName, arguments);
   }
 
   Future<String> _executePublicStudyTool(
@@ -145,6 +166,7 @@ StudyOsToolContext studyOsToolContext({
   required MailToolRunner mailTools,
   NativeToolRunner? nativeTools,
   PublicStudyToolRunner? publicStudyTools,
+  PrivateStudyToolRunner? privateStudyTools,
 }) {
   return StudyOsToolContext(
     promptContext: promptContext,
@@ -156,5 +178,6 @@ StudyOsToolContext studyOsToolContext({
     mailTools: mailTools,
     nativeTools: nativeTools,
     publicStudyTools: publicStudyTools,
+    privateStudyTools: privateStudyTools,
   );
 }

@@ -18,6 +18,8 @@ import 'native_bridge.dart';
 import 'official_document_models.dart';
 import 'official_documents_repository.dart';
 import 'profile_context.dart';
+import 'private_study_capabilities.dart';
+import 'private_study_tools.dart';
 import 'public_study_tools.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
@@ -59,6 +61,9 @@ class AppShellController extends ChangeNotifier {
        _profile = initialProfile,
        _onLogout = initialOnLogout,
        _onSaveProfile = initialOnSaveProfile {
+    _privateStudyTools = LivePrivateStudyToolRunner(
+      PrivateStudyCapability(profileProvider: () => _profile),
+    );
     this.calendarOverviewSource =
         calendarOverviewSource ??
         CalendarOverviewRepository(bridge, this.talksRepository);
@@ -77,6 +82,7 @@ class AppShellController extends ChangeNotifier {
   final OfficialDocumentsRepository _documentsRepository =
       OfficialDocumentsRepository();
   final PublicStudyToolRunner _publicStudyTools = LivePublicStudyToolRunner();
+  late final PrivateStudyToolRunner _privateStudyTools;
   final TextEditingController inputController = TextEditingController();
   final ScrollController messageScrollController = ScrollController();
 
@@ -185,6 +191,7 @@ class AppShellController extends ChangeNotifier {
       return;
     }
     _profile = profile;
+    _privateStudyTools.invalidate();
     _onLogout = onLogout;
     _onSaveProfile = onSaveProfile;
     _worldState = withProfileContext(
@@ -478,6 +485,7 @@ class AppShellController extends ChangeNotifier {
           profile: _profile,
         ),
         publicStudyTools: _publicStudyTools,
+        privateStudyTools: _privateStudyTools,
         onToolTrace: addToolTrace,
         onDelta: _handleStreamDelta,
         cancelToken: cancelToken,
