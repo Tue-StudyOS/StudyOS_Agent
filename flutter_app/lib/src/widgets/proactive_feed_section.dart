@@ -260,7 +260,7 @@ class _ArticleSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (articles.isEmpty) {
-      return _UnavailableCard(text: emptyText);
+      return _UnavailableText(text: emptyText);
     }
     return Column(
       children: <Widget>[
@@ -335,7 +335,7 @@ class _EmailSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (emails.isEmpty) {
-      return _UnavailableCard(
+      return _UnavailableText(
         text: 'Email highlights could not be loaded.',
         actionIcon: Icons.refresh_rounded,
         actionTooltip: 'Refresh',
@@ -406,8 +406,8 @@ class _EmailTile extends StatelessWidget {
   }
 }
 
-class _UnavailableCard extends StatelessWidget {
-  const _UnavailableCard({
+class _UnavailableText extends StatelessWidget {
+  const _UnavailableText({
     required this.text,
     this.actionIcon,
     this.actionTooltip,
@@ -421,13 +421,8 @@ class _UnavailableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(StudyOsSpacing.lg),
-      decoration: BoxDecoration(
-        color: StudyOsColors.text.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-      ),
       child: Row(
         children: <Widget>[
           Expanded(

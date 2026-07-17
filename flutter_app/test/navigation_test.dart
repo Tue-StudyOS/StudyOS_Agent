@@ -206,6 +206,11 @@ void main() {
     expect(find.text('No lectures today, have a great day'), findsOneWidget);
     expect(find.text('Highlights Tübingen'), findsOneWidget);
     expect(find.text('News could not be loaded.'), findsOneWidget);
+    final newsText = find.text('News could not be loaded.');
+    expect(
+      find.ancestor(of: newsText, matching: find.byType(DecoratedBox)),
+      findsNothing,
+    );
     expect(find.text('For you'), findsOneWidget);
     expect(find.textContaining('setting up your feed'), findsOneWidget);
     await tester.scrollUntilVisible(
