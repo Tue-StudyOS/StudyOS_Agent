@@ -35,6 +35,66 @@ void main() {
     expect(isAuthenticatedIliasPage(response), isFalse);
   });
 
+  test('portal form includes a required submit button', () {
+    final form = portalForm(
+      '''
+      <form action="/continue" method="post">
+        <input type="hidden" name="csrf" value="safe">
+        <button type="submit" name="_eventId_proceed" value="continue">Continue</button>
+        <button type="submit" name="_eventId_cancel" value="cancel">Cancel</button>
+      </form>
+      ''',
+      Uri.parse('https://idp.uni-tuebingen.de/flow'),
+      requiredFields: const <String>{'_eventId_proceed'},
+    );
+
+    expect(form.action.path, '/continue');
+    expect(form.payload['_eventId_proceed'], 'continue');
+    expect(form.payload['_eventId_cancel'], isNull);
+    expect(form.payload['csrf'], 'safe');
+  });
+
+  test('SAML handoff submits an IdP proceed button', () async {
+    final requests = <http.Request>[];
+    final session = PortalHttpSession(
+      client: MockClient((request) async {
+        requests.add(request);
+        if (request.url.host == 'idp.uni-tuebingen.de') {
+          return http.Response(
+            '',
+            302,
+            headers: <String, String>{
+              'location': 'https://ovidius.uni-tuebingen.de/ilias.php',
+            },
+            request: request,
+          );
+        }
+        return http.Response(
+          '<html><nav class="il-maincontrols-metabar"></nav></html>',
+          200,
+          request: request,
+        );
+      }),
+    );
+    final response = await completeSaml(
+      PortalResponse(
+        response: http.Response('''
+          <form action="/continue" method="post">
+            <input type="hidden" name="csrf" value="safe">
+            <button type="submit" name="_eventId_proceed">Continue</button>
+          </form>
+          ''', 200),
+        url: Uri.parse('https://idp.uni-tuebingen.de/flow'),
+      ),
+      session,
+      isAuthenticated: isAuthenticatedIliasPage,
+    );
+
+    expect(response.url.host, 'ovidius.uni-tuebingen.de');
+    expect(requests.first.body, contains('_eventId_proceed='));
+    session.close();
+  });
+
   test('ILIAS parser preserves hints and normalizes reliable dates', () {
     final tasks = parseIliasTasks(
       _iliasTasksHtml,

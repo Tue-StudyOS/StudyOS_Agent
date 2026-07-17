@@ -147,7 +147,7 @@ PortalForm portalForm(
 }) {
   final document = html_parser.parse(html);
   for (final form in document.querySelectorAll('form')) {
-    final payload = _formPayload(form);
+    final payload = _formPayload(form, requiredFields);
     if (requiredFields.every(payload.containsKey)) {
       return PortalForm(
         action: pageUrl.resolve(form.attributes['action'] ?? ''),
@@ -158,11 +158,18 @@ PortalForm portalForm(
   throw const PortalException('Could not find the expected portal form.');
 }
 
-Map<String, String> _formPayload(Element form) {
+Map<String, String> _formPayload(Element form, Set<String> requiredFields) {
   final result = <String, String>{};
   for (final input in form.querySelectorAll('input[name]')) {
     if (input.attributes['type']?.toLowerCase() == 'checkbox') continue;
     result[input.attributes['name']!] = input.attributes['value'] ?? '';
+  }
+  for (final button in form.querySelectorAll('button[name]')) {
+    final name = button.attributes['name']!;
+    final type = button.attributes['type']?.toLowerCase() ?? 'submit';
+    if (type == 'submit' && requiredFields.contains(name)) {
+      result[name] = button.attributes['value'] ?? '';
+    }
   }
   return result;
 }
@@ -199,9 +206,10 @@ Future<PortalResponse> completeSaml(
     }
     break;
   }
-  throw const PortalAuthenticationException(
-    'Could not complete the university SAML handoff.',
-  );
+  final stage = current.url.host == 'idp.uni-tuebingen.de'
+      ? 'The university identity provider requires an unsupported interactive step, such as MFA or consent.'
+      : 'The university portal did not confirm the SAML login at ${current.url.host}${current.url.path}.';
+  throw PortalAuthenticationException(stage);
 }
 
 bool _isRedirect(int status) =>
