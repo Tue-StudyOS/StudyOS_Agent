@@ -35,7 +35,7 @@ class ProactiveFeedSection extends StatelessWidget {
               ),
             ),
             const SizedBox(height: StudyOsSpacing.sm),
-            _AssistantBriefCard(brief: snapshot.assistantBrief),
+            _AssistantBrief(brief: snapshot.assistantBrief),
             const SizedBox(height: StudyOsSpacing.lg),
             _FeedSectionTitle(
               title: 'Today’s Schedule',
@@ -69,8 +69,8 @@ class ProactiveFeedSection extends StatelessWidget {
   }
 }
 
-class _AssistantBriefCard extends StatelessWidget {
-  const _AssistantBriefCard({required this.brief});
+class _AssistantBrief extends StatelessWidget {
+  const _AssistantBrief({required this.brief});
 
   final ForYouAssistantBrief brief;
 
@@ -79,41 +79,28 @@ class _AssistantBriefCard extends StatelessWidget {
     final llmText = brief.llmSummary?.trim();
     final text = llmText == null || llmText.isEmpty ? brief.text : llmText;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: StudyOsColors.surface.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-        border: Border.all(color: StudyOsColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: StudyOsSpacing.md,
-          vertical: StudyOsSpacing.sm,
+    return Row(
+      children: <Widget>[
+        Icon(
+          brief.isGenerating
+              ? Icons.auto_awesome_outlined
+              : Icons.check_circle_outline_rounded,
+          color: StudyOsColors.accent,
+          size: 18,
         ),
-        child: Row(
-          children: <Widget>[
-            Icon(
-              brief.isGenerating
-                  ? Icons.auto_awesome_outlined
-                  : Icons.check_circle_outline_rounded,
-              color: StudyOsColors.accent,
-              size: 18,
+        const SizedBox(width: StudyOsSpacing.sm),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: StudyOsColors.text,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(width: StudyOsSpacing.sm),
-            Expanded(
-              child: Text(
-                text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: StudyOsColors.text,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -159,7 +146,7 @@ class _ScheduleSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const _EmptyDayCard();
+      return const _EmptyDayText();
     }
     final visibleItems = items.take(1);
     return Column(
@@ -173,22 +160,13 @@ class _ScheduleSection extends StatelessWidget {
   }
 }
 
-class _EmptyDayCard extends StatelessWidget {
-  const _EmptyDayCard();
+class _EmptyDayText extends StatelessWidget {
+  const _EmptyDayText();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: StudyOsSpacing.xl,
-        vertical: StudyOsSpacing.xxl,
-      ),
-      decoration: BoxDecoration(
-        color: StudyOsColors.surface,
-        borderRadius: BorderRadius.circular(StudyOsRadii.md),
-        border: Border.all(color: StudyOsColors.border),
-      ),
       child: Text(
         'No lectures today, have a great day',
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
