@@ -11,6 +11,30 @@ import 'package:studyos_agent/src/private_study_parsers.dart';
 import 'package:studyos_agent/src/private_study_tools.dart';
 
 void main() {
+  test('recognizes the current authenticated ILIAS shell', () {
+    final response = PortalResponse(
+      response: http.Response(
+        '<html><nav class="il-maincontrols-metabar"></nav></html>',
+        200,
+      ),
+      url: Uri.parse('https://ovidius.uni-tuebingen.de/ilias.php'),
+    );
+
+    expect(isAuthenticatedIliasPage(response), isTrue);
+  });
+
+  test('does not accept an ILIAS login page as authenticated', () {
+    final response = PortalResponse(
+      response: http.Response(
+        '<html>Login mit zentraler Universitäts-Kennung</html>',
+        200,
+      ),
+      url: Uri.parse('https://ovidius.uni-tuebingen.de/login.php'),
+    );
+
+    expect(isAuthenticatedIliasPage(response), isFalse);
+  });
+
   test('ILIAS parser preserves hints and normalizes reliable dates', () {
     final tasks = parseIliasTasks(
       _iliasTasksHtml,
@@ -183,6 +207,35 @@ void main() {
 
     expect(result['state'], 'authenticationRequired');
     expect(result['message'], contains('Sign in locally'));
+  });
+
+  test('private tools preserve bounded SAML failure details', () async {
+    final capability = PrivateStudyCapability(
+      profileProvider: () => null,
+      credentialsProvider: () async =>
+          const PortalCredentials('student', 'secret'),
+      iliasFactory: (_, _) => _FakeIlias(
+        tasksError: const PortalAuthenticationException(
+          'Could not complete the university SAML handoff.',
+        ),
+      ),
+      moodleFactory: (_, _) => _FakeMoodle(onFetch: () => const <PortalTask>[]),
+    );
+    final result = _json(
+      await LivePrivateStudyToolRunner(
+        capability,
+      ).execute(getTasksToolName, '{"sources":["ilias"]}'),
+    );
+
+    expect(result['state'], 'authenticationRequired');
+    expect(
+      (result['failures'] as List).single,
+      containsPair(
+        'message',
+        'authentication required: Could not complete the university SAML handoff.',
+      ),
+    );
+    expect(jsonEncode(result), isNot(contains('secret')));
   });
 
   test('private tools serve stale local data after refresh failure', () async {

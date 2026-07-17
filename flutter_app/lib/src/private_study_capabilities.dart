@@ -252,13 +252,15 @@ class _PrivateCacheEntry<T> {
   final DateTime expiresAt;
 }
 
-CapabilityFailure _failure(StudyPortalSource source, Object error) =>
-    CapabilityFailure(
-      source: source.name,
-      message: error is PortalAuthenticationException
-          ? 'authentication required'
-          : boundedCapabilityMessage(error),
-    );
+CapabilityFailure _failure(
+  StudyPortalSource source,
+  Object error,
+) => CapabilityFailure(
+  source: source.name,
+  message: error is PortalAuthenticationException
+      ? 'authentication required: ${boundedCapabilityMessage(error.message)}'
+      : boundedCapabilityMessage(error),
+);
 
 String _sourceKey(Set<StudyPortalSource> sources) =>
     (sources.toList()..sort((a, b) => a.index.compareTo(b.index)))

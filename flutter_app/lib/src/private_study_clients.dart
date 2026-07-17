@@ -76,18 +76,34 @@ class IliasPortalClient implements IliasStudySource {
     await completeSaml(
       submitted,
       _session,
-      isAuthenticated: (response) =>
-          response.url.host == 'ovidius.uni-tuebingen.de' &&
-          !response.body.contains('j_password') &&
-          (response.body.contains('logout.php') ||
-              response.body.contains('il-mainbar-entries') ||
-              response.body.contains('baseClass=ilderivedtasksgui')),
+      isAuthenticated: isAuthenticatedIliasPage,
     );
     _authenticated = true;
   }
 
   @override
   void close() => _session.close();
+}
+
+bool isAuthenticatedIliasPage(PortalResponse response) {
+  if (response.url.host != 'ovidius.uni-tuebingen.de') return false;
+  const loginOrHandoffMarkers = <String>[
+    'SAMLResponse',
+    'j_username',
+    'j_password',
+    'Login mit zentraler Universitäts-Kennung',
+  ];
+  if (loginOrHandoffMarkers.any(response.body.contains)) return false;
+  const authenticatedMarkers = <String>[
+    'ILIAS Universität Tübingen',
+    'logout.php',
+    'il-mainbar-entries',
+    'il-maincontrols-metabar',
+    'baseClass=ilDashboardGUI',
+    'baseClass=ilmembershipoverviewgui',
+    'baseClass=ilderivedtasksgui',
+  ];
+  return authenticatedMarkers.any(response.body.contains);
 }
 
 class MoodlePortalClient implements MoodleStudySource {
