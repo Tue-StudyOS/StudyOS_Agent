@@ -200,6 +200,7 @@ void main() {
         (first['failures'] as List).single,
         containsPair('source', 'ilias'),
       );
+      expect(first['message'], contains('ilias: offline'));
       expect(jsonEncode(first), isNot(contains('secret')));
       expect(
         moodleCalls,

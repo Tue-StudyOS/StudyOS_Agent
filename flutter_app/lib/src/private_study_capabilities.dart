@@ -221,9 +221,7 @@ class PrivateStudyCapability {
       expiresAt: now.add(ttl),
       data: data,
       failures: failures,
-      message: failures.isEmpty
-          ? null
-          : 'Some requested portal sources failed.',
+      message: failures.isEmpty ? null : _failureSummary(failures),
     );
   }
 
@@ -261,6 +259,16 @@ CapabilityFailure _failure(
       ? 'authentication required: ${boundedCapabilityMessage(error.message)}'
       : boundedCapabilityMessage(error),
 );
+
+String _failureSummary(List<CapabilityFailure> failures) {
+  final details = failures
+      .map((failure) => '${failure.source}: ${failure.message}')
+      .join('; ');
+  return boundedCapabilityMessage(
+    'Some requested portal sources failed: $details',
+    maxLength: 520,
+  );
+}
 
 String _sourceKey(Set<StudyPortalSource> sources) =>
     (sources.toList()..sort((a, b) => a.index.compareTo(b.index)))
