@@ -95,6 +95,104 @@ void main() {
     session.close();
   });
 
+  test('SAML flow auto-accepts the attribute-release consent page', () async {
+    final requests = <http.Request>[];
+    final session = PortalHttpSession(
+      client: MockClient((request) async {
+        requests.add(request);
+        if (request.url.host == 'idp.uni-tuebingen.de') {
+          return http.Response(
+            '',
+            302,
+            headers: <String, String>{
+              'location': 'https://ovidius.uni-tuebingen.de/ilias.php',
+            },
+            request: request,
+          );
+        }
+        return http.Response(
+          '<html><nav class="il-maincontrols-metabar"></nav></html>',
+          200,
+          request: request,
+        );
+      }),
+    );
+
+    final response = await completeSaml(
+      PortalResponse(
+        // Mirrors the live Tübingen IdP: attributes are hidden inputs, and the
+        // form ships both an Accept and a Reject submit button.
+        response: http.Response('''
+          <title>Information to be Provided to Service</title>
+          <form action="/idp/profile/SAML2/Redirect/SSO?execution=e1s2" method="post">
+            <input id="mail" type="hidden" name="_shib_idp_consentIds" value="mail" checked>
+            <input id="uid" type="hidden" name="_shib_idp_consentIds" value="uid" checked>
+            <input type="radio" name="_shib_idp_consentOptions" value="_shib_idp_doNotRememberConsent" checked>
+            <input type="radio" name="_shib_idp_consentOptions" value="_shib_idp_rememberConsent">
+            <input type="submit" name="_eventId_AttributeReleaseRejected" value="Reject">
+            <input type="submit" name="_eventId_proceed" value="Accept">
+          </form>
+          ''', 200),
+        url: Uri.parse(
+          'https://idp.uni-tuebingen.de/idp/profile/SAML2/Redirect/SSO?execution=e1s2',
+        ),
+      ),
+      session,
+      isAuthenticated: isAuthenticatedIliasPage,
+    );
+
+    expect(response.url.host, 'ovidius.uni-tuebingen.de');
+    final consentPost = requests.first;
+    expect(consentPost.url.path, '/idp/profile/SAML2/Redirect/SSO');
+    expect(consentPost.url.query, contains('execution=e1s2'));
+    expect(consentPost.body, contains('_shib_idp_consentIds=mail'));
+    expect(consentPost.body, contains('_shib_idp_consentIds=uid'));
+    expect(
+      consentPost.body,
+      contains('_shib_idp_consentOptions=_shib_idp_rememberConsent'),
+    );
+    expect(consentPost.body, contains('_eventId_proceed=Accept'));
+    // The reject event must never ride along with proceed, or the IdP blocks
+    // the release ("release of information prevented").
+    expect(consentPost.body, isNot(contains('_eventId_AttributeReleaseRejected')));
+    session.close();
+  });
+
+  test('SAML failure names the blocking IdP page to distinguish MFA', () async {
+    final session = PortalHttpSession(
+      client: MockClient((_) async => http.Response('', 200)),
+    );
+
+    await expectLater(
+      completeSaml(
+        PortalResponse(
+          response: http.Response('''
+            <title>Two-step verification</title>
+            <form action="/mfa" method="post">
+              <input type="text" name="otp">
+              <button type="submit" name="_eventId_verify">Verify</button>
+            </form>
+            ''', 200),
+          url: Uri.parse('https://idp.uni-tuebingen.de/mfa'),
+        ),
+        session,
+        isAuthenticated: isAuthenticatedIliasPage,
+      ),
+      throwsA(
+        isA<PortalAuthenticationException>().having(
+          (error) => error.message,
+          'message',
+          allOf(
+            contains('Two-step verification'),
+            contains('otp'),
+            contains('_eventId_verify'),
+          ),
+        ),
+      ),
+    );
+    session.close();
+  });
+
   test('ILIAS parser preserves hints and normalizes reliable dates', () {
     final tasks = parseIliasTasks(
       _iliasTasksHtml,

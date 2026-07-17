@@ -43,16 +43,28 @@ class PortalHttpSession {
   Future<PortalResponse> postJson(Uri url, Object body, {Uri? referer}) =>
       _send('POST', url, jsonBody: jsonEncode(body), referer: referer);
 
+  /// Posts a form that may legitimately repeat a field name (for example the
+  /// Shibboleth attribute-release consent page, which renders one
+  /// `_shib_idp_consentIds` checkbox per attribute). A [Map] payload cannot
+  /// represent repeated keys, so these are encoded as an ordered list.
+  Future<PortalResponse> postFormFields(
+    Uri action,
+    List<MapEntry<String, String>> fields, {
+    Uri? referer,
+  }) => _send('POST', action, formBody: _encodeFields(fields), referer: referer);
+
   Future<PortalResponse> _send(
     String method,
     Uri url, {
     Map<String, String>? form,
+    String? formBody,
     String? jsonBody,
     Uri? referer,
   }) async {
     var nextMethod = method;
     var nextUrl = url;
     var nextForm = form;
+    var nextFormBody = formBody;
     var nextJson = jsonBody;
     for (var redirects = 0; redirects < 10; redirects += 1) {
       _validateUrl(nextUrl);
@@ -70,6 +82,11 @@ class PortalHttpSession {
           if (referer != null) 'Referer': referer.toString(),
         });
       if (nextForm != null) request.bodyFields = nextForm;
+      if (nextFormBody != null) {
+        request.headers['Content-Type'] =
+            'application/x-www-form-urlencoded; charset=utf-8';
+        request.body = nextFormBody;
+      }
       if (nextJson != null) {
         request.headers['Content-Type'] = 'application/json';
         request.body = nextJson;
@@ -91,6 +108,7 @@ class PortalHttpSession {
           (nextMethod == 'POST' && response.statusCode < 303)) {
         nextMethod = 'GET';
         nextForm = null;
+        nextFormBody = null;
         nextJson = null;
       }
     }
@@ -101,6 +119,14 @@ class PortalHttpSession {
     _cookiesByHost.clear();
     if (_ownsClient) _client.close();
   }
+
+  static String _encodeFields(List<MapEntry<String, String>> fields) => fields
+      .map(
+        (field) =>
+            '${Uri.encodeQueryComponent(field.key)}='
+            '${Uri.encodeQueryComponent(field.value)}',
+      )
+      .join('&');
 
   void _captureCookies(http.Response response, String host) {
     final header = response.headers['set-cookie'];
@@ -180,7 +206,7 @@ Future<PortalResponse> completeSaml(
   required bool Function(PortalResponse response) isAuthenticated,
 }) async {
   var current = initial;
-  for (var step = 0; step < 6; step += 1) {
+  for (var step = 0; step < 8; step += 1) {
     if (isAuthenticated(current)) return current;
     if (current.body.contains('SAMLResponse') &&
         current.body.contains('RelayState')) {
@@ -193,23 +219,122 @@ Future<PortalResponse> completeSaml(
       );
       continue;
     }
-    if (current.url.host == 'idp.uni-tuebingen.de' &&
-        current.body.contains('_eventId_proceed')) {
-      current = await session.postForm(
-        portalForm(
-          current.body,
-          current.url,
-          requiredFields: const <String>{'_eventId_proceed'},
-        ),
-      );
-      continue;
+    if (current.url.host == 'idp.uni-tuebingen.de') {
+      // The attribute-release consent page must be handled before the generic
+      // proceed step: it also carries `_eventId_proceed`, but proceeding
+      // without echoing the requested `_shib_idp_consentIds` attributes just
+      // re-serves the same page.
+      final consent = portalConsentForm(current.body, current.url);
+      if (consent != null) {
+        current = await session.postFormFields(
+          consent.action,
+          consent.fields,
+          referer: current.url,
+        );
+        continue;
+      }
+      if (current.body.contains('_eventId_proceed')) {
+        current = await session.postForm(
+          portalForm(
+            current.body,
+            current.url,
+            requiredFields: const <String>{'_eventId_proceed'},
+          ),
+        );
+        continue;
+      }
     }
     break;
   }
   final stage = current.url.host == 'idp.uni-tuebingen.de'
-      ? 'The university identity provider requires an unsupported interactive step, such as MFA or consent.'
+      ? 'The university identity provider requires an unsupported interactive '
+            'step, such as MFA or consent (${_idpDiagnostics(current.body)}).'
       : 'The university portal did not confirm the SAML login at ${current.url.host}${current.url.path}.';
   throw PortalAuthenticationException(stage);
+}
+
+/// Builds the submission for a Shibboleth attribute-release consent page, or
+/// returns null when [html] is not such a page. Releases exactly the
+/// attributes the service requested and, when offered, remembers the choice
+/// for this service so the page is a one-time step rather than a per-login one.
+({Uri action, List<MapEntry<String, String>> fields})? portalConsentForm(
+  String html,
+  Uri pageUrl,
+) {
+  final document = html_parser.parse(html);
+  for (final form in document.querySelectorAll('form')) {
+    final consentBoxes = form.querySelectorAll(
+      'input[name="_shib_idp_consentIds"]',
+    );
+    if (consentBoxes.isEmpty) continue;
+    final fields = <MapEntry<String, String>>[];
+    for (final box in consentBoxes) {
+      // Mirror a browser's default "Accept": disabled inputs are never sent,
+      // and an unchecked checkbox is omitted. Tübingen renders these as hidden
+      // inputs (always submitted); other templates use pre-checked checkboxes.
+      if (box.attributes.containsKey('disabled')) continue;
+      final type = box.attributes['type']?.toLowerCase();
+      if (type == 'checkbox' && !box.attributes.containsKey('checked')) continue;
+      final value = box.attributes['value'];
+      if (value != null && value.isNotEmpty) {
+        fields.add(MapEntry('_shib_idp_consentIds', value));
+      }
+    }
+    // Carry hidden fields (e.g. a CSRF token) but never a form control: this
+    // page ships both an Accept and a Reject submit button, and echoing the
+    // reject event alongside proceed is what the IdP treats as a denied
+    // release. Only the explicit proceed button below is submitted.
+    const skipTypes = <String>{
+      'checkbox',
+      'radio',
+      'submit',
+      'reset',
+      'button',
+      'image',
+    };
+    for (final input in form.querySelectorAll('input[name]')) {
+      final name = input.attributes['name']!;
+      final type = input.attributes['type']?.toLowerCase();
+      if (name == '_shib_idp_consentIds') continue;
+      if (skipTypes.contains(type)) continue;
+      fields.add(MapEntry(name, input.attributes['value'] ?? ''));
+    }
+    if (form.querySelector('[name="_shib_idp_consentOptions"]') != null) {
+      fields.add(
+        const MapEntry('_shib_idp_consentOptions', '_shib_idp_rememberConsent'),
+      );
+    }
+    final proceed =
+        form.querySelector('button[name="_eventId_proceed"]') ??
+        form.querySelector('input[name="_eventId_proceed"]');
+    fields.add(
+      MapEntry('_eventId_proceed', proceed?.attributes['value'] ?? ''),
+    );
+    return (
+      action: pageUrl.resolve(form.attributes['action'] ?? ''),
+      fields: fields,
+    );
+  }
+  return null;
+}
+
+/// Names the blocking IdP page (title and detected field names, never values)
+/// so a failed login report can distinguish a consent gate from an MFA gate.
+String _idpDiagnostics(String html) {
+  final document = html_parser.parse(html);
+  final title = document.querySelector('title')?.text.trim();
+  final fields = <String>{};
+  for (final node in document.querySelectorAll(
+    'input[name], select[name], button[name]',
+  )) {
+    final name = node.attributes['name'];
+    if (name != null && name.isNotEmpty) fields.add(name);
+  }
+  final parts = <String>[
+    if (title != null && title.isNotEmpty) 'page "$title"',
+    if (fields.isNotEmpty) 'fields: ${fields.take(12).join(', ')}',
+  ];
+  return parts.isEmpty ? 'no recognizable form' : parts.join('; ');
 }
 
 bool _isRedirect(int status) =>
