@@ -14,6 +14,20 @@ class DailySummary {
   final String body;
 }
 
+class ForYouAssistantBrief {
+  const ForYouAssistantBrief({
+    required this.text,
+    this.isGenerating = false,
+    this.llmSummary,
+  });
+
+  final String text;
+  final bool isGenerating;
+
+  /// Template slot for the local LLM to overwrite this compact feed greeting.
+  final String? llmSummary;
+}
+
 class NextAction {
   const NextAction({
     required this.title,
@@ -132,6 +146,7 @@ class FeedEmailCard {
 
 class HomeFeedSnapshot {
   const HomeFeedSnapshot({
+    required this.assistantBrief,
     required this.summary,
     required this.nextAction,
     required this.urgentItems,
@@ -192,6 +207,12 @@ class HomeFeedSnapshot {
     final todaySchedule = _scheduleCardsFor(timetable: timetable, now: now);
 
     return HomeFeedSnapshot(
+      assistantBrief: _assistantBriefFor(
+        profile: profile,
+        nextLecture: nextLecture,
+        todayCount: todayCount,
+        now: now,
+      ),
       summary: summary,
       nextAction: nextAction,
       urgentItems: List<UrgentItem>.unmodifiable(urgentItems),
@@ -205,6 +226,7 @@ class HomeFeedSnapshot {
     );
   }
 
+  final ForYouAssistantBrief assistantBrief;
   final DailySummary summary;
   final NextAction nextAction;
   final List<UrgentItem> urgentItems;
@@ -256,6 +278,40 @@ String? _lectureType(String? detail) {
   }
   if (normalized.contains('seminar')) return 'Seminar';
   return null;
+}
+
+ForYouAssistantBrief _assistantBriefFor({
+  required OnboardingProfile? profile,
+  required LectureEvent? nextLecture,
+  required int todayCount,
+  required DateTime now,
+}) {
+  if (profile == null) {
+    return const ForYouAssistantBrief(
+      text:
+          'Hi, I’m setting up your feed. Tübingen fact: the Neckarfront still wins at golden hour.',
+      isGenerating: true,
+    );
+  }
+  if (nextLecture != null) {
+    final count = todayCount == 1 ? 'one lecture' : '$todayCount lectures';
+    return ForYouAssistantBrief(
+      text:
+          'Good ${_dayPart(now)}. I see $count today. Next is ${nextLecture.title} ${nextLecture.relativeTimeLabel(now)}.',
+      isGenerating: true,
+    );
+  }
+  return ForYouAssistantBrief(
+    text:
+        'Good ${_dayPart(now)}. I’m checking campus updates; no lecture is blocking your day right now.',
+    isGenerating: true,
+  );
+}
+
+String _dayPart(DateTime now) {
+  if (now.hour < 12) return 'morning';
+  if (now.hour < 18) return 'afternoon';
+  return 'evening';
 }
 
 class FeedMessage {

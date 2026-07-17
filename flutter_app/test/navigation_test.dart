@@ -207,6 +207,7 @@ void main() {
     expect(find.text('Highlights Tübingen'), findsOneWidget);
     expect(find.text('News could not be loaded.'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
+    expect(find.textContaining('setting up your feed'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('StudyOS'),
       300,
@@ -274,6 +275,7 @@ void main() {
     );
 
     expect(find.text('For you'), findsOneWidget);
+    expect(find.textContaining('Next is ML Lecture'), findsOneWidget);
     expect(find.text('ML Lecture'), findsWidgets);
     expect(find.text('ML Practice'), findsNothing);
     expect(find.text('Refresh'), findsNothing);

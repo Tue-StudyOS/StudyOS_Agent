@@ -34,6 +34,8 @@ class ProactiveFeedSection extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            _AssistantBriefCard(brief: snapshot.assistantBrief),
             const SizedBox(height: StudyOsSpacing.lg),
             _FeedSectionTitle(
               title: 'Today’s Schedule',
@@ -59,6 +61,55 @@ class ProactiveFeedSection extends StatelessWidget {
               emails: snapshot.emails,
               onRefresh: onRefresh,
               onAskAssistant: onAskAssistant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AssistantBriefCard extends StatelessWidget {
+  const _AssistantBriefCard({required this.brief});
+
+  final ForYouAssistantBrief brief;
+
+  @override
+  Widget build(BuildContext context) {
+    final llmText = brief.llmSummary?.trim();
+    final text = llmText == null || llmText.isEmpty ? brief.text : llmText;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: StudyOsColors.surface.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(StudyOsRadii.md),
+        border: Border.all(color: StudyOsColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: StudyOsSpacing.md,
+          vertical: StudyOsSpacing.sm,
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              brief.isGenerating
+                  ? Icons.auto_awesome_outlined
+                  : Icons.check_circle_outline_rounded,
+              color: StudyOsColors.accent,
+              size: 18,
+            ),
+            const SizedBox(width: StudyOsSpacing.sm),
+            Expanded(
+              child: Text(
+                text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: StudyOsColors.text,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
