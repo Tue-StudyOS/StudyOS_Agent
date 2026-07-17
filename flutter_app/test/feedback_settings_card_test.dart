@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:studyos_agent/src/feedback_client.dart';
 import 'package:studyos_agent/src/feedback_token_store.dart';
+import 'package:studyos_agent/src/course_catalog_models.dart';
 import 'package:studyos_agent/src/widgets/feedback_settings_card.dart';
 
 void main() {
@@ -31,7 +32,7 @@ void main() {
           return http.Response(
             jsonEncode(<String, Object?>{
               'id': 'feedback-1',
-              'service_id': 'studyos-agent',
+              'course_id': _courseId,
               'rating': 4,
               'comment': 'Helpful service catalog',
               'comment_state': 'pending',
@@ -43,7 +44,8 @@ void main() {
         }
         return http.Response(
           jsonEncode(<String, Object?>{
-            'service_id': 'studyos-agent',
+            'course_id': _courseId,
+            'course_number': 'INFM1234',
             'rating': <String, Object?>{
               'count': request.method == 'GET' && requests.length > 3 ? 1 : 0,
               'average': requests.length > 3 ? 4.0 : null,
@@ -59,7 +61,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: FeedbackSettingsCard(client: client),
+            child: CourseFeedbackCard(course: _course, client: client),
           ),
         ),
       ),
@@ -87,7 +89,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: FeedbackSettingsCard(
+          body: CourseFeedbackCard(
+            course: _course,
             client: FeedbackClient(
               baseUrl: '',
               tokenStore: _MemoryTokenStore(),
@@ -111,14 +114,14 @@ void main() {
       httpClient: MockClient((request) async {
         if (request.url.path.endsWith('/public')) {
           return http.Response(
-            '{"service_id":"studyos-agent","rating":{"count":1,"average":2.0},"comments":[]}',
+            '{"course_id":"$_courseId","course_number":"INFM1234","rating":{"count":1,"average":2.0},"comments":[]}',
             200,
           );
         }
         return http.Response(
           jsonEncode(<String, Object?>{
             'id': 'feedback-1',
-            'service_id': 'studyos-agent',
+            'course_id': _courseId,
             'rating': 2,
             'comment': 'Needs work',
             'comment_state': 'rejected',
@@ -132,7 +135,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: FeedbackSettingsCard(client: client)),
+        home: Scaffold(
+          body: CourseFeedbackCard(course: _course, client: client),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -158,14 +163,14 @@ void main() {
         }
         if (request.url.path.endsWith('/public')) {
           return http.Response(
-            '{"service_id":"studyos-agent","rating":{"count":${deleted ? 0 : 1},"average":${deleted ? 'null' : '5.0'}},"comments":[]}',
+            '{"course_id":"$_courseId","course_number":"INFM1234","rating":{"count":${deleted ? 0 : 1},"average":${deleted ? 'null' : '5.0'}},"comments":[]}',
             200,
           );
         }
         return http.Response(
           jsonEncode(<String, Object?>{
             'id': 'feedback-1',
-            'service_id': 'studyos-agent',
+            'course_id': _courseId,
             'rating': 5,
             'comment': null,
             'comment_state': 'none',
@@ -179,7 +184,9 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: FeedbackSettingsCard(client: client)),
+        home: Scaffold(
+          body: CourseFeedbackCard(course: _course, client: client),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -208,7 +215,8 @@ void main() {
         }
         return http.Response(
           jsonEncode(<String, Object?>{
-            'service_id': 'studyos-agent',
+            'course_id': _courseId,
+            'course_number': 'INFM1234',
             'rating': <String, Object?>{'count': 1, 'average': 1.0},
             'comments': <Object?>[
               <String, Object?>{
@@ -228,7 +236,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: FeedbackSettingsCard(client: client),
+            child: CourseFeedbackCard(course: _course, client: client),
           ),
         ),
       ),
@@ -263,3 +271,14 @@ class _MemoryTokenStore implements FeedbackTokenStore {
 }
 
 const String _token = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const String _courseId = 'SU5GTTEyMzQ';
+const CourseCatalogEntry _course = CourseCatalogEntry(
+  catalogId: '598',
+  ratingCourseId: _courseId,
+  courseNumber: 'INFM1234',
+  title: 'Machine Learning',
+  periodLabel: 'Sommer 2026',
+  ects: 6,
+  lecturer: null,
+  types: <String>['Lecture'],
+);

@@ -1,14 +1,18 @@
 import sqlite3
+import base64
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
 
+from feedback_service.main import course_reference
 from feedback_service.security import token_hash
 from feedback_service.tests.conftest import admin, auth, issue
 
 
-MINE = "/v1/services/studyos-agent/feedback/mine"
-PUBLIC = "/v1/services/studyos-agent/feedback/public"
+COURSE_NUMBER = "INFM1234"
+COURSE_ID = base64.urlsafe_b64encode(COURSE_NUMBER.encode()).decode().rstrip("=")
+MINE = f"/v1/courses/{COURSE_ID}/feedback/mine"
+PUBLIC = f"/v1/courses/{COURSE_ID}/feedback/public"
 
 
 def put(client: TestClient, token: str, rating: int = 5, comment: str | None = None):
@@ -74,7 +78,7 @@ def test_report_queue_duplicate_and_comment_deletion_keep_rating(client: TestCli
         headers=admin(),
         json={"action": "publish"},
     )
-    report_url = f"/v1/services/studyos-agent/feedback/{feedback['id']}/reports"
+    report_url = f"/v1/courses/{COURSE_ID}/feedback/{feedback['id']}/reports"
     assert client.post(report_url, headers=auth(owner), json={}).status_code == 400
     assert (
         client.post(
@@ -137,6 +141,40 @@ def test_owner_delete_removes_rating_and_can_upsert_again(client: TestClient):
     assert client.get(PUBLIC).json()["rating"] == {"count": 1, "average": 3.0}
 
 
+def test_feedback_is_isolated_between_registered_courses(client: TestClient):
+    other_number = "INFM5678"
+    other_id = base64.urlsafe_b64encode(other_number.encode()).decode().rstrip("=")
+    client.app.state.database.register_courses([(other_id, other_number)])
+    token = issue(client)
+    other_mine = f"/v1/courses/{other_id}/feedback/mine"
+    other_public = f"/v1/courses/{other_id}/feedback/public"
+
+    assert put(client, token, 5).status_code == 200
+    assert (
+        client.put(
+            other_mine, headers=auth(token), json={"rating": 2, "comment": None}
+        ).status_code
+        == 200
+    )
+    assert client.get(PUBLIC).json()["rating"] == {"count": 1, "average": 5.0}
+    assert client.get(other_public).json()["rating"] == {
+        "count": 1,
+        "average": 2.0,
+    }
+    assert client.delete(other_mine, headers=auth(token)).status_code == 204
+    assert client.get(PUBLIC).json()["rating"]["count"] == 1
+    assert client.get(other_public).json()["rating"]["count"] == 0
+
+
+def test_unregistered_course_bucket_is_rejected(client: TestClient):
+    unknown = base64.urlsafe_b64encode(b"INFM9999").decode().rstrip("=")
+    assert client.get(f"/v1/courses/{unknown}/feedback/public").status_code == 404
+
+
+def test_course_reference_rejects_normalized_unicode_expansion():
+    assert course_reference("💥" * 120) is None
+
+
 def test_concurrent_upserts_keep_one_owned_feedback(client: TestClient):
     token = issue(client)
     database = client.app.state.database
@@ -147,7 +185,7 @@ def test_concurrent_upserts_keep_one_owned_feedback(client: TestClient):
             executor.map(
                 lambda rating: database.upsert_feedback(
                     installation_id,
-                    "studyos-agent",
+                    COURSE_ID,
                     rating,
                     None,
                 ),
@@ -234,9 +272,17 @@ def test_moderation_transitions_are_serialized_and_validated(client: TestClient)
     assert response.status_code == 409
 
 
-def test_unknown_service_and_health(client: TestClient):
+def test_invalid_course_and_health(client: TestClient):
     assert client.get("/healthz").json() == {"status": "ok"}
-    assert client.get("/v1/services/unknown/feedback/public").status_code == 404
+    assert client.get("/v1/courses/unknown!/feedback/public").status_code == 404
+    catalog = client.post("/v1/courses/search", json={"query": "machine", "limit": 1})
+    assert catalog.status_code == 200
+    assert catalog.json()["courses"][0]["courseNumber"] == COURSE_NUMBER
+    assert catalog.json()["courses"][0]["ratingCourseId"] == COURSE_ID
+    assert client.post("/v1/courses/search", json={"query": "x"}).status_code == 422
+    public = client.get(PUBLIC).json()
+    assert public["course_id"] == COURSE_ID
+    assert public["course_number"] == COURSE_NUMBER
     assert client.get(f"{PUBLIC}?limit=101").status_code == 422
     assert client.get(f"{PUBLIC}?offset=10001").status_code == 422
     assert (
@@ -248,12 +294,13 @@ def test_database_enforces_foreign_keys_and_wal(client: TestClient):
     with client.app.state.database.connect() as db:
         assert db.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         assert db.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
         try:
             db.execute(
                 """INSERT INTO feedback
-                (id, installation_id, service_id, rating, comment_state, created_at, updated_at)
-                VALUES ('bad', 'missing', 'studyos-agent', 5, 'none', 'now', 'now')"""
+                (id, installation_id, course_id, rating, comment_state, created_at, updated_at)
+                VALUES ('bad', 'missing', ?, 5, 'none', 'now', 'now')""",
+                (COURSE_ID,),
             )
         except sqlite3.IntegrityError:
             pass

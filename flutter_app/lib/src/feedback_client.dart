@@ -9,7 +9,6 @@ import 'feedback_token_store.dart';
 const studyOsFeedbackApiUrl = String.fromEnvironment(
   'STUDYOS_FEEDBACK_API_URL',
 );
-const studyOsFeedbackServiceId = 'studyos-agent';
 
 class FeedbackClient {
   FeedbackClient({
@@ -28,12 +27,10 @@ class FeedbackClient {
 
   bool get isConfigured => _baseUri != null;
 
-  Future<FeedbackPublicSnapshot> loadPublic({
-    String serviceId = studyOsFeedbackServiceId,
-  }) async {
+  Future<FeedbackPublicSnapshot> loadPublic({required String courseId}) async {
     final response = await _response(
       _httpClient.get(
-        _uri('/v1/services/${Uri.encodeComponent(serviceId)}/feedback/public'),
+        _uri('/v1/courses/${Uri.encodeComponent(courseId)}/feedback/public'),
         headers: _headers(),
       ),
     );
@@ -41,14 +38,12 @@ class FeedbackClient {
     return FeedbackPublicSnapshot.fromJson(json);
   }
 
-  Future<FeedbackSubmission?> loadOwn({
-    String serviceId = studyOsFeedbackServiceId,
-  }) async {
+  Future<FeedbackSubmission?> loadOwn({required String courseId}) async {
     final token = await _tokenStore.read();
     if (token == null || token.isEmpty) return null;
     final response = await _response(
       _httpClient.get(
-        _uri('/v1/services/${Uri.encodeComponent(serviceId)}/feedback/mine'),
+        _uri('/v1/courses/${Uri.encodeComponent(courseId)}/feedback/mine'),
         headers: _headers(token: token),
       ),
     );
@@ -62,8 +57,8 @@ class FeedbackClient {
 
   Future<FeedbackSubmission> submit({
     required int rating,
+    required String courseId,
     String? comment,
-    String serviceId = studyOsFeedbackServiceId,
   }) async {
     if (rating < 1 || rating > 5) {
       throw const FeedbackException('Choose a rating from 1 to 5 stars.');
@@ -81,7 +76,7 @@ class FeedbackClient {
     var token = await _installationToken();
     var response = await _response(
       _httpClient.put(
-        _uri('/v1/services/${Uri.encodeComponent(serviceId)}/feedback/mine'),
+        _uri('/v1/courses/${Uri.encodeComponent(courseId)}/feedback/mine'),
         headers: _headers(token: token),
         body: body,
       ),
@@ -91,7 +86,7 @@ class FeedbackClient {
       token = await _installationToken();
       response = await _response(
         _httpClient.put(
-          _uri('/v1/services/${Uri.encodeComponent(serviceId)}/feedback/mine'),
+          _uri('/v1/courses/${Uri.encodeComponent(courseId)}/feedback/mine'),
           headers: _headers(token: token),
           body: body,
         ),
@@ -100,14 +95,14 @@ class FeedbackClient {
     return FeedbackSubmission.fromJson(_successfulJson(response));
   }
 
-  Future<void> deleteOwn({String serviceId = studyOsFeedbackServiceId}) async {
+  Future<void> deleteOwn({required String courseId}) async {
     final token = await _tokenStore.read();
     if (token == null || token.isEmpty) {
       throw const FeedbackException('There is no saved feedback to delete.');
     }
     final response = await _response(
       _httpClient.delete(
-        _uri('/v1/services/${Uri.encodeComponent(serviceId)}/feedback/mine'),
+        _uri('/v1/courses/${Uri.encodeComponent(courseId)}/feedback/mine'),
         headers: _headers(token: token),
       ),
     );
@@ -116,16 +111,16 @@ class FeedbackClient {
 
   Future<void> report({
     required String feedbackId,
+    required String courseId,
     String? reason,
-    String serviceId = studyOsFeedbackServiceId,
   }) async {
     final body = jsonEncode(<String, Object?>{'reason': reason?.trim()});
     var token = await _installationToken();
-    final service = Uri.encodeComponent(serviceId);
+    final course = Uri.encodeComponent(courseId);
     final feedback = Uri.encodeComponent(feedbackId);
     var response = await _response(
       _httpClient.post(
-        _uri('/v1/services/$service/feedback/$feedback/reports'),
+        _uri('/v1/courses/$course/feedback/$feedback/reports'),
         headers: _headers(token: token),
         body: body,
       ),
@@ -135,7 +130,7 @@ class FeedbackClient {
       token = await _installationToken();
       response = await _response(
         _httpClient.post(
-          _uri('/v1/services/$service/feedback/$feedback/reports'),
+          _uri('/v1/courses/$course/feedback/$feedback/reports'),
           headers: _headers(token: token),
           body: body,
         ),

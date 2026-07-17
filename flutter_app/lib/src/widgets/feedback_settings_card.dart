@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../feedback_client.dart';
 import '../feedback_models.dart';
+import '../course_catalog_models.dart';
 import '../studyos_theme.dart';
 import 'feedback_components.dart';
 
-class FeedbackSettingsCard extends StatefulWidget {
-  const FeedbackSettingsCard({this.client, super.key});
+class CourseFeedbackCard extends StatefulWidget {
+  const CourseFeedbackCard({required this.course, this.client, super.key});
 
+  final CourseCatalogEntry course;
   final FeedbackClient? client;
 
   @override
-  State<FeedbackSettingsCard> createState() => _FeedbackSettingsCardState();
+  State<CourseFeedbackCard> createState() => _CourseFeedbackCardState();
 }
 
-class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
+class _CourseFeedbackCardState extends State<CourseFeedbackCard> {
   late final TextEditingController _controller;
   late final FeedbackClient _client;
   FeedbackPublicSnapshot? _snapshot;
@@ -46,8 +48,9 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
       return;
     }
     try {
-      final snapshot = await _client.loadPublic();
-      final own = await _client.loadOwn();
+      final courseId = widget.course.ratingCourseId;
+      final snapshot = await _client.loadPublic(courseId: courseId);
+      final own = await _client.loadOwn(courseId: courseId);
       if (!mounted) return;
       setState(() {
         _snapshot = snapshot;
@@ -71,10 +74,13 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
     setState(() => _isSending = true);
     try {
       final own = await _client.submit(
+        courseId: widget.course.ratingCourseId,
         rating: _rating,
         comment: _controller.text,
       );
-      final snapshot = await _client.loadPublic();
+      final snapshot = await _client.loadPublic(
+        courseId: widget.course.ratingCourseId,
+      );
       if (!mounted) return;
       setState(() {
         _ownFeedback = own;
@@ -116,8 +122,10 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
     if (confirmed != true || !mounted) return;
     setState(() => _isDeleting = true);
     try {
-      await _client.deleteOwn();
-      final snapshot = await _client.loadPublic();
+      await _client.deleteOwn(courseId: widget.course.ratingCourseId);
+      final snapshot = await _client.loadPublic(
+        courseId: widget.course.ratingCourseId,
+      );
       if (!mounted) return;
       setState(() {
         _ownFeedback = null;
@@ -163,7 +171,11 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
     if (reason == null || !mounted) return;
     setState(() => _reportingId = comment.id);
     try {
-      await _client.report(feedbackId: comment.id, reason: reason);
+      await _client.report(
+        courseId: widget.course.ratingCourseId,
+        feedbackId: comment.id,
+        reason: reason,
+      );
       _showMessage('Comment reported for review.');
     } on FeedbackException catch (error) {
       _showMessage(error.message);
@@ -185,10 +197,14 @@ class _FeedbackSettingsCardState extends State<FeedbackSettingsCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text('Rate StudyOS', style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          widget.course.title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: StudyOsSpacing.xs),
         Text(
-          'Ratings are public. Comments appear after moderation.',
+          '${widget.course.courseNumber} · ${widget.course.periodLabel}\n'
+          'Community ratings are public. Comments appear after moderation.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: StudyOsSpacing.sm),

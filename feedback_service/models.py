@@ -28,6 +28,21 @@ class FeedbackInput(BaseModel):
     _clean_comment = field_validator("comment")(clean_text)
 
 
+class CourseSearchInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=2, max_length=120)
+    limit: int = Field(default=20, ge=1, le=25, strict=True)
+
+    @field_validator("query")
+    @classmethod
+    def clean_query(cls, value: str) -> str:
+        cleaned = clean_text(value)
+        if cleaned is None or len(cleaned) < 2:
+            raise ValueError("query must contain at least two characters")
+        return cleaned
+
+
 class ReportInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

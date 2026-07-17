@@ -50,18 +50,21 @@ flutter run -d chrome \
   --dart-define=STUDYOS_DEMO_OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
 ```
 
-## Feedback Service
+## Course Ratings
 
-Ratings and comments use the repository's containerized feedback service. Point
-the app at an HTTPS deployment at build time; plain HTTP is accepted only for a
-loopback development endpoint:
+Course lookup, ratings, and comments use the repository's containerized service.
+It proxies the public StudyPlanner catalog so Flutter web does not depend on the
+catalog's browser CORS policy. Point the app at an HTTPS deployment at build
+time; plain HTTP is accepted only for a loopback development endpoint:
 
 ```sh
 flutter run -d chrome \
   --dart-define=STUDYOS_FEEDBACK_API_URL=https://feedback.example.edu
 ```
 
-The endpoint is public configuration, not a secret. The service creates a
+The endpoint is public configuration, not a secret. Open **Course ratings** in
+the secondary navigation, search by title/number, and select a result. The
+service creates a
 pseudonymous installation token on first submission, and the app stores it with
 `flutter_secure_storage` for later updates, deletion, and reports. Never put the
 service's moderator token or a GitHub credential in a Dart define.

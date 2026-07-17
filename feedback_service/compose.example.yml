@@ -14,7 +14,8 @@ services:
       FEEDBACK_ADMIN_TOKEN: ${FEEDBACK_ADMIN_TOKEN:?set a long random admin token}
       FEEDBACK_MODERATOR_ID: ${FEEDBACK_MODERATOR_ID:-studyos-admin}
       FEEDBACK_CORS_ORIGINS: ${FEEDBACK_CORS_ORIGINS:-}
-      FEEDBACK_SERVICE_IDS: studyos-agent
+      FEEDBACK_CATALOG_API_URL: ${FEEDBACK_CATALOG_API_URL:-https://studyplanner-api.ben-tischberger.workers.dev}
+      FEEDBACK_CATALOG_RATE_LIMIT: ${FEEDBACK_CATALOG_RATE_LIMIT:-30}
     volumes:
       - feedback-data:/data
       - feedback-backups:/backups

@@ -1,8 +1,10 @@
-# StudyOS feedback service
+# StudyOS course ratings service
 
-A small FastAPI service backed by SQLite. Ratings are public immediately while
-optional comments enter a moderation queue. Anonymous installation credentials
-are random 256-bit bearer tokens; only their SHA-256 digests are stored.
+A small FastAPI service backed by SQLite. It proxies public, read-only course
+lookup to StudyPlanner and stores ratings by stable course number. Ratings are
+public immediately while optional comments enter a moderation queue. Anonymous
+installation credentials are random 256-bit bearer tokens; only their SHA-256
+digests are stored.
 Moderation is manual by default, so there is no third-party API, data transfer,
 or usage-based moderation bill.
 
@@ -27,7 +29,8 @@ reason.
 - `FEEDBACK_DATABASE_PATH` (default `/data/feedback.sqlite3`)
 - `FEEDBACK_ADMIN_TOKEN` (admin endpoints remain inaccessible when empty)
 - `FEEDBACK_MODERATOR_ID` (audit identity bound to the admin token)
-- `FEEDBACK_SERVICE_IDS` (comma-separated, default `studyos-agent`)
+- `FEEDBACK_CATALOG_API_URL` (default: the public StudyPlanner API)
+- `FEEDBACK_CATALOG_RATE_LIMIT` (per peer/minute; default `30`)
 - `FEEDBACK_CORS_ORIGINS` (comma-separated exact origins; empty disables CORS)
 - `FEEDBACK_INSTALLATION_RATE_LIMIT` and `FEEDBACK_AUTHOR_RATE_LIMIT`
 
@@ -60,6 +63,25 @@ intentionally has no automated third-party moderation:
 provider privacy, retention, failure behavior, and billing must be reviewed
 before such an integration is enabled, and failures must fall back to pending
 human review.
+
+## Course identity and privacy boundary
+
+`POST /v1/courses/search` forwards only the public search text to the shared
+StudyPlanner catalog and caches up to 64 bounded results in memory for five
+minutes. POST keeps search terms out of URL history and ordinary access logs;
+operators must still avoid request-body logging. ALMA
+credentials, cookies, enrollment lists, profiles, and timetables never reach
+this service. Course feedback is grouped longitudinally by course number, so
+different semesters contribute to one course's aggregate.
+
+The “My courses” shortcuts are computed in the app and are not uploaded as a
+list; selecting one sends its title as a catalog search. Installation tokens do
+not prove a unique person, university membership,
+or enrollment. These are community ratings, not verified-student reviews.
+
+Schema v1 belonged to the abandoned app/service-rating prototype. The service
+refuses to relabel that data as course feedback; back it up and recreate the
+volume before starting this schema-v2 build.
 
 ## Launch and retention checklist
 

@@ -34,10 +34,16 @@ class Database:
                         token_hash TEXT NOT NULL UNIQUE,
                         created_at TEXT NOT NULL
                     );
+                    CREATE TABLE courses (
+                        id TEXT PRIMARY KEY,
+                        course_number TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    );
                     CREATE TABLE feedback (
                         id TEXT PRIMARY KEY,
                         installation_id TEXT NOT NULL REFERENCES installations(id),
-                        service_id TEXT NOT NULL,
+                        course_id TEXT NOT NULL REFERENCES courses(id),
                         rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
                         comment TEXT CHECK (comment IS NULL OR length(comment) <= 1000),
                         comment_state TEXT NOT NULL CHECK (
@@ -47,9 +53,9 @@ class Database:
                         updated_at TEXT NOT NULL,
                         published_at TEXT,
                         deleted_at TEXT,
-                        UNIQUE (installation_id, service_id)
+                        UNIQUE (installation_id, course_id)
                     );
-                    CREATE INDEX feedback_public_idx ON feedback(service_id, deleted_at, comment_state);
+                    CREATE INDEX feedback_public_idx ON feedback(course_id, deleted_at, comment_state);
                     CREATE TABLE reports (
                         id TEXT PRIMARY KEY,
                         feedback_id TEXT NOT NULL REFERENCES feedback(id),
@@ -67,10 +73,15 @@ class Database:
                         moderator_id TEXT NOT NULL,
                         created_at TEXT NOT NULL
                     );
-                    PRAGMA user_version = 1;
+                    PRAGMA user_version = 2;
                     """
                 )
-            elif version != 1:
+            elif version == 1:
+                raise RuntimeError(
+                    "prerelease service-feedback schema cannot be migrated as course ratings; "
+                    "back up and recreate the database"
+                )
+            elif version != 2:
                 raise RuntimeError(f"unsupported database schema version: {version}")
 
     def create_installation(self, digest: str) -> None:
@@ -87,17 +98,39 @@ class Database:
             ).fetchone()
         return row["id"] if row else None
 
+    def register_courses(self, courses: list[tuple[str, str]]) -> None:
+        timestamp = now()
+        with self.connect() as db:
+            db.executemany(
+                """INSERT INTO courses (id, course_number, created_at, updated_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(id) DO UPDATE SET
+                     course_number=excluded.course_number,
+                     updated_at=excluded.updated_at""",
+                [
+                    (course_id, number, timestamp, timestamp)
+                    for course_id, number in courses
+                ],
+            )
+
+    def course_number(self, course_id: str) -> str | None:
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT course_number FROM courses WHERE id=?", (course_id,)
+            ).fetchone()
+        return row["course_number"] if row else None
+
     def upsert_feedback(
-        self, installation_id: str, service_id: str, rating: int, comment: str | None
+        self, installation_id: str, course_id: str, rating: int, comment: str | None
     ):
         timestamp = now()
         state = "pending" if comment else "none"
         with self.connect() as db:
             row = db.execute(
                 """INSERT INTO feedback
-                   (id, installation_id, service_id, rating, comment, comment_state, created_at, updated_at)
+                   (id, installation_id, course_id, rating, comment, comment_state, created_at, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(installation_id, service_id) DO UPDATE SET
+                   ON CONFLICT(installation_id, course_id) DO UPDATE SET
                      rating=excluded.rating,
                      comment=excluded.comment,
                      comment_state=excluded.comment_state,
@@ -108,7 +141,7 @@ class Database:
                 (
                     str(uuid.uuid4()),
                     installation_id,
-                    service_id,
+                    course_id,
                     rating,
                     comment,
                     state,
@@ -120,40 +153,43 @@ class Database:
             # Reports describe the previous comment revision. Resubmission
             # returns the comment to review and must not inherit them.
             db.execute("DELETE FROM reports WHERE feedback_id=?", (feedback_id,))
-        return self.feedback_for_owner(installation_id, service_id)
+        return self.feedback_for_owner(installation_id, course_id)
 
-    def feedback_for_owner(self, installation_id: str, service_id: str):
+    def feedback_for_owner(self, installation_id: str, course_id: str):
         with self.connect() as db:
             return db.execute(
-                """SELECT id, service_id, rating, comment, comment_state, created_at, updated_at
-                   FROM feedback WHERE installation_id=? AND service_id=? AND deleted_at IS NULL""",
-                (installation_id, service_id),
+                """SELECT id, course_id, rating, comment, comment_state, created_at, updated_at
+                   FROM feedback WHERE installation_id=? AND course_id=? AND deleted_at IS NULL""",
+                (installation_id, course_id),
             ).fetchone()
 
-    def delete_feedback(self, installation_id: str, service_id: str) -> bool:
+    def delete_feedback(self, installation_id: str, course_id: str) -> bool:
         timestamp = now()
         with self.connect() as db:
             result = db.execute(
                 """UPDATE feedback SET comment=NULL, comment_state='deleted', deleted_at=?, updated_at=?
-                   WHERE installation_id=? AND service_id=? AND deleted_at IS NULL""",
-                (timestamp, timestamp, installation_id, service_id),
+                   WHERE installation_id=? AND course_id=? AND deleted_at IS NULL""",
+                (timestamp, timestamp, installation_id, course_id),
             )
         return result.rowcount == 1
 
-    def public_feedback(self, service_id: str, limit: int, offset: int) -> dict:
+    def public_feedback(
+        self, course_id: str, course_number: str, limit: int, offset: int
+    ) -> dict:
         with self.connect() as db:
             aggregate = db.execute(
-                "SELECT COUNT(*) count, AVG(rating) average FROM feedback WHERE service_id=? AND deleted_at IS NULL",
-                (service_id,),
+                "SELECT COUNT(*) count, AVG(rating) average FROM feedback WHERE course_id=? AND deleted_at IS NULL",
+                (course_id,),
             ).fetchone()
             comments = db.execute(
                 """SELECT id, rating, comment, published_at FROM feedback
-                   WHERE service_id=? AND deleted_at IS NULL AND comment_state='published'
+                   WHERE course_id=? AND deleted_at IS NULL AND comment_state='published'
                    ORDER BY published_at DESC, id LIMIT ? OFFSET ?""",
-                (service_id, limit, offset),
+                (course_id, limit, offset),
             ).fetchall()
         return {
-            "service_id": service_id,
+            "course_id": course_id,
+            "course_number": course_number,
             "rating": {"count": aggregate["count"], "average": aggregate["average"]},
             "comments": [dict(row) for row in comments],
             "pagination": {"limit": limit, "offset": offset},
@@ -162,15 +198,15 @@ class Database:
     def report(
         self,
         installation_id: str,
-        service_id: str,
+        course_id: str,
         feedback_id: str,
         reason: str | None,
     ) -> str:
         with self.connect() as db:
             target = db.execute(
-                """SELECT installation_id FROM feedback WHERE id=? AND service_id=?
+                """SELECT installation_id FROM feedback WHERE id=? AND course_id=?
                    AND comment_state='published' AND deleted_at IS NULL""",
-                (feedback_id, service_id),
+                (feedback_id, course_id),
             ).fetchone()
             if not target:
                 return "not_found"
@@ -188,7 +224,7 @@ class Database:
     def moderation_queue(
         self,
         state: str,
-        service_id: str | None,
+        course_id: str | None,
         limit: int,
         offset: int,
     ):
@@ -199,12 +235,12 @@ class Database:
         else:
             where += "f.comment_state=?"
             params.append(state)
-        if service_id:
-            where += " AND f.service_id=?"
-            params.append(service_id)
+        if course_id:
+            where += " AND f.course_id=?"
+            params.append(course_id)
         with self.connect() as db:
             return db.execute(
-                f"""SELECT f.id, f.service_id, f.rating, f.comment, f.comment_state,
+                f"""SELECT f.id, f.course_id, f.rating, f.comment, f.comment_state,
                     f.created_at, f.updated_at, COUNT(r.id) report_count
                     FROM feedback f LEFT JOIN reports r ON r.feedback_id=f.id
                     WHERE {where} GROUP BY f.id ORDER BY f.updated_at

@@ -1,7 +1,7 @@
 class FeedbackSubmission {
   const FeedbackSubmission({
     required this.id,
-    required this.serviceId,
+    required this.courseId,
     required this.rating,
     required this.comment,
     required this.commentState,
@@ -10,7 +10,7 @@ class FeedbackSubmission {
   });
 
   final String id;
-  final String serviceId;
+  final String courseId;
   final int rating;
   final String? comment;
   final String commentState;
@@ -30,7 +30,7 @@ class FeedbackSubmission {
   factory FeedbackSubmission.fromJson(Map<String, Object?> json) {
     return FeedbackSubmission(
       id: json['id']?.toString() ?? '',
-      serviceId: json['service_id']?.toString() ?? '',
+      courseId: json['course_id']?.toString() ?? '',
       rating: (json['rating'] as num?)?.toInt() ?? 0,
       comment: _optionalText(json['comment']),
       commentState: json['comment_state']?.toString() ?? 'none',
@@ -65,21 +65,24 @@ class PublishedFeedbackComment {
 
 class FeedbackPublicSnapshot {
   const FeedbackPublicSnapshot({
-    required this.serviceId,
+    required this.courseId,
+    required this.courseNumber,
     required this.ratingCount,
     required this.averageRating,
     required this.comments,
   });
 
-  const FeedbackPublicSnapshot.empty(String serviceId)
+  const FeedbackPublicSnapshot.empty(String courseId)
     : this(
-        serviceId: serviceId,
+        courseId: courseId,
+        courseNumber: '',
         ratingCount: 0,
         averageRating: null,
         comments: const <PublishedFeedbackComment>[],
       );
 
-  final String serviceId;
+  final String courseId;
+  final String courseNumber;
   final int ratingCount;
   final double? averageRating;
   final List<PublishedFeedbackComment> comments;
@@ -91,7 +94,8 @@ class FeedbackPublicSnapshot {
         : const <String, Object?>{};
     final rawComments = json['comments'];
     return FeedbackPublicSnapshot(
-      serviceId: json['service_id']?.toString() ?? '',
+      courseId: json['course_id']?.toString() ?? '',
+      courseNumber: json['course_number']?.toString() ?? '',
       ratingCount: (rating['count'] as num?)?.toInt() ?? 0,
       averageRating: (rating['average'] as num?)?.toDouble(),
       comments: rawComments is List

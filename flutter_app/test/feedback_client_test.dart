@@ -30,13 +30,14 @@ void main() {
     );
 
     final feedback = await client.submit(
+      courseId: _courseId,
       rating: 4,
       comment: '  Useful, but needs clearer sources.  ',
     );
 
     expect(requests.map((item) => item.url.path), <String>[
       '/v1/installations',
-      '/v1/services/studyos-agent/feedback/mine',
+      '/v1/courses/$_courseId/feedback/mine',
     ]);
     expect(requests.last.headers['Authorization'], 'Bearer $_newToken');
     expect(requests.last.body, contains('Useful, but needs clearer sources.'));
@@ -62,7 +63,7 @@ void main() {
       }),
     );
 
-    await client.submit(rating: 5);
+    await client.submit(courseId: _courseId, rating: 5);
 
     expect(requestCount, 1);
   });
@@ -95,7 +96,7 @@ void main() {
         }),
       );
 
-      await client.submit(rating: 4);
+      await client.submit(courseId: _courseId, rating: 4);
 
       expect(putCount, 2);
       expect(tokenStore.token, _newToken);
@@ -109,7 +110,8 @@ void main() {
       httpClient: MockClient(
         (_) async => http.Response(
           jsonEncode(<String, Object?>{
-            'service_id': 'studyos-agent',
+            'course_id': _courseId,
+            'course_number': 'INFM1234',
             'rating': <String, Object?>{'count': 2, 'average': 4.5},
             'comments': <Object?>[
               <String, Object?>{
@@ -125,7 +127,7 @@ void main() {
       ),
     );
 
-    final snapshot = await client.loadPublic();
+    final snapshot = await client.loadPublic(courseId: _courseId);
 
     expect(snapshot.ratingCount, 2);
     expect(snapshot.averageRating, 4.5);
@@ -147,12 +149,16 @@ void main() {
       }),
     );
 
-    await client.report(feedbackId: 'feedback-1', reason: 'spam');
-    await client.deleteOwn();
+    await client.report(
+      courseId: _courseId,
+      feedbackId: 'feedback-1',
+      reason: 'spam',
+    );
+    await client.deleteOwn(courseId: _courseId);
 
     expect(
       requests.first.url.path,
-      '/v1/services/studyos-agent/feedback/feedback-1/reports',
+      '/v1/courses/$_courseId/feedback/feedback-1/reports',
     );
     expect(requests.first.body, contains('spam'));
     expect(requests.last.method, 'DELETE');
@@ -173,7 +179,7 @@ void main() {
       httpClient: MockClient((_) async => throw StateError('not expected')),
     );
 
-    expect(await client.loadOwn(), isNull);
+    expect(await client.loadOwn(courseId: _courseId), isNull);
   });
 
   test('rejects insecure non-loopback endpoint and invalid ratings', () async {
@@ -188,7 +194,10 @@ void main() {
 
     expect(insecure.isConfigured, isFalse);
     expect(local.isConfigured, isTrue);
-    expect(() => local.submit(rating: 0), throwsA(isA<FeedbackException>()));
+    expect(
+      () => local.submit(courseId: _courseId, rating: 0),
+      throwsA(isA<FeedbackException>()),
+    );
   });
 
   test('surfaces bounded API error details', () async {
@@ -206,7 +215,7 @@ void main() {
     );
 
     expect(
-      () => client.submit(rating: 3),
+      () => client.submit(courseId: _courseId, rating: 3),
       throwsA(
         isA<FeedbackException>().having(
           (error) => error.message,
@@ -226,7 +235,7 @@ void main() {
     );
 
     expect(
-      () => client.loadPublic(),
+      () => client.loadPublic(courseId: _courseId),
       throwsA(
         isA<FeedbackException>().having(
           (error) => error.message,
@@ -247,7 +256,7 @@ void main() {
     );
 
     expect(
-      () => client.loadPublic(),
+      () => client.loadPublic(courseId: _courseId),
       throwsA(
         isA<FeedbackException>().having(
           (error) => error.message,
@@ -276,7 +285,7 @@ class _MemoryTokenStore implements FeedbackTokenStore {
 
 final String _submissionJson = jsonEncode(<String, Object?>{
   'id': 'feedback-1',
-  'service_id': 'studyos-agent',
+  'course_id': _courseId,
   'rating': 4,
   'comment': 'Useful, but needs clearer sources.',
   'comment_state': 'pending',
@@ -285,3 +294,4 @@ final String _submissionJson = jsonEncode(<String, Object?>{
 });
 
 const String _newToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const String _courseId = 'SU5GTTEyMzQ';

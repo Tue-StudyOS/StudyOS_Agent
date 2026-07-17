@@ -24,6 +24,11 @@ class SecondaryDestinationsDrawer extends StatelessWidget {
                 path: '/memories',
               ),
               _DrawerDestination(
+                icon: Icons.rate_review_outlined,
+                label: 'Course ratings',
+                path: '/courses',
+              ),
+              _DrawerDestination(
                 icon: Icons.map_outlined,
                 label: 'Map',
                 path: '/maps',
