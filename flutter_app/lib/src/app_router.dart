@@ -7,6 +7,7 @@ import 'models.dart';
 import 'onboarding_flow.dart';
 import 'studyos_theme.dart';
 import 'views/chat_route.dart';
+import 'views/course_ratings_view.dart';
 import 'views/home_view.dart';
 import 'views/maps_view.dart';
 import 'views/memories_view.dart';
@@ -131,6 +132,13 @@ GoRouter buildAppRouter({
             autosend: state.uri.queryParameters['autosend'] == 'true',
             sessionId: state.uri.queryParameters['sessionId'],
           ),
+        ),
+      ),
+      GoRoute(
+        path: '/courses',
+        builder: (context, state) => _ScopedAppRoute(
+          controller: shellController(),
+          child: _CourseRatingsRoute(controller: shellController()),
         ),
       ),
       GoRoute(
@@ -290,6 +298,25 @@ class _MapsRoute extends StatelessWidget {
     return _RouteScaffold(
       title: 'Map',
       child: MapsView(onAskAssistant: controller.prefillChatPrompt),
+    );
+  }
+}
+
+class _CourseRatingsRoute extends StatelessWidget {
+  const _CourseRatingsRoute({required this.controller});
+
+  final AppShellController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller ?? AppShellScope.of(context);
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => _RouteScaffold(
+        title: 'Course ratings',
+        showTitle: false,
+        child: CourseRatingsView(academicStatus: controller.academicStatus),
+      ),
     );
   }
 }
