@@ -169,10 +169,10 @@ class _EmptyDayText extends StatelessWidget {
       width: double.infinity,
       child: Text(
         'No lectures today, have a great day',
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontSize: 24,
-          height: 1.1,
-          fontWeight: FontWeight.w900,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          fontSize: 16,
+          height: 1.35,
+          fontWeight: FontWeight.w400,
         ),
       ),
     );
