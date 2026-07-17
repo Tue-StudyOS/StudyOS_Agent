@@ -243,16 +243,24 @@ void main() {
         ),
       ],
     );
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: null,
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+    );
 
     await tester.pumpWidget(
       MaterialApp(
         theme: buildStudyOsTheme(),
         home: Scaffold(
           body: HomeView(
-            profile: null,
+            profile: profile,
             config: const AgentConfig.defaults(),
             snapshot: HomeFeedSnapshot.fromLocalState(
-              profile: null,
+              profile: profile,
               timetable: timetable,
               memoryText: '',
               now: now,
