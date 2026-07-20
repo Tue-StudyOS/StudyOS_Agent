@@ -13,7 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.view.WindowCompat;
 
-import com.studyostue.app.R;
+import com.studyos.studyos_agent.R;
 import com.example.studyOS.Controller.JarvisController;
 import com.example.studyOS.DataStructures.WorldState;
 import com.example.studyOS.Memory.FileIO;

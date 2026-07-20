@@ -10,7 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.studyostue.app.R;
+import com.studyos.studyos_agent.R;
 import com.example.studyOS.DataStructures.Message;
 import com.example.studyOS.DataStructures.Speaker;
 

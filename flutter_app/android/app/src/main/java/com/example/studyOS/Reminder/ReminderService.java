@@ -18,7 +18,7 @@ import android.os.PowerManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
-import com.studyostue.app.R;
+import com.studyos.studyos_agent.R;
 import com.example.studyOS.Memory.FileIO;
 import com.example.studyOS.Sensors.WorldStateProvider;
 import com.example.studyOS.System.RuntimeEnvironment;

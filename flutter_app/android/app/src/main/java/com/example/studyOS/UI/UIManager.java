@@ -15,7 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.studyOS.Controller.JarvisController;
 import com.example.studyOS.DataStructures.Message;
 import com.example.studyOS.DataStructures.Speaker;
-import com.studyostue.app.R;
+import com.studyos.studyos_agent.R;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;

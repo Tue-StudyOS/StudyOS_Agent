@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.studyos.studyos_agent"
+        applicationId = "com.studyostue.app"
         minSdk = 31
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
