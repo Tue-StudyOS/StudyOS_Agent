@@ -11,7 +11,7 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 
 import com.studyos.studyos_agent.MainActivity;
-import com.studyos.studyos_agent.R;
+import com.studyostue.app.R;
 
 import org.json.JSONObject;
 
