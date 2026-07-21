@@ -92,6 +92,13 @@ class HomeView extends StatelessWidget {
                 detail: 'Upcoming public talks and guest lectures',
                 onTap: onOpenTalks,
               ),
+              _ToolRow(
+                itemKey: const ValueKey<String>('home-status-mail'),
+                icon: Icons.mail_outline_rounded,
+                title: 'University Mail',
+                detail: 'Read your Tübingen mailbox',
+                onTap: onOpenMail,
+              ),
             ],
           ),
         ],

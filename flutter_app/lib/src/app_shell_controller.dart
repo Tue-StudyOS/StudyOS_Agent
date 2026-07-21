@@ -83,6 +83,9 @@ class AppShellController extends ChangeNotifier {
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
   final MailRepository _mailRepository = MailRepository();
+
+  /// Shared mail repository so the mail view reuses the cached IMAP session.
+  MailRepository get mailRepository => _mailRepository;
   final MemoryStore _memoryStore = MemoryStore();
   final TimetableRepository _timetableRepository = TimetableRepository();
   final AcademicRepository _academicRepository = AcademicRepository();
