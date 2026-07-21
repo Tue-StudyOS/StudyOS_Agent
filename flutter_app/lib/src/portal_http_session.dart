@@ -275,8 +275,9 @@ Future<PortalResponse> completeSaml(
       // inputs (always submitted); other templates use pre-checked checkboxes.
       if (box.attributes.containsKey('disabled')) continue;
       final type = box.attributes['type']?.toLowerCase();
-      if (type == 'checkbox' && !box.attributes.containsKey('checked'))
+      if (type == 'checkbox' && !box.attributes.containsKey('checked')) {
         continue;
+      }
       final value = box.attributes['value'];
       if (value != null && value.isNotEmpty) {
         fields.add(MapEntry('_shib_idp_consentIds', value));

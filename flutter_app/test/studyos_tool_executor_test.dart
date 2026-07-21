@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:studyos_agent/src/alma_study_tools.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/native_tool_router.dart';
@@ -86,6 +87,43 @@ void main() {
 
     expect(response, 'Private results');
     expect(privateTools.calls, <String>[getTasksToolName]);
+  });
+
+  test('StudyOsToolExecutor routes the study planner locally', () async {
+    final privateTools = _FakePrivateStudyToolRunner('Planner results');
+
+    final response = await const StudyOsToolExecutor().execute(
+      getStudyPlannerToolName,
+      '{}',
+      _context(privateStudyTools: privateTools),
+    );
+
+    expect(response, 'Planner results');
+    expect(privateTools.calls, <String>[getStudyPlannerToolName]);
+  });
+
+  test('CombinedPrivateStudyToolRunner dispatches by tool name', () async {
+    final portal = _FakePrivateStudyToolRunner('Portal results');
+    final alma = _FakePrivateStudyToolRunner('Planner results');
+    final runner = CombinedPrivateStudyToolRunner(portal: portal, alma: alma);
+
+    expect(await runner.execute(getTasksToolName, '{}'), 'Portal results');
+    expect(
+      await runner.execute(getStudyPlannerToolName, '{}'),
+      'Planner results',
+    );
+    expect(portal.calls, <String>[getTasksToolName]);
+    expect(alma.calls, <String>[getStudyPlannerToolName]);
+  });
+
+  test('Study planner tool is advertised in cloud and local catalogs', () {
+    final localNames = studyOsTools.map((tool) => tool.name).toSet();
+    final cloudNames = cloudStudyOsTools(
+      const <String>{},
+    ).map((tool) => tool.name).toSet();
+
+    expect(localNames, contains(getStudyPlannerToolName));
+    expect(cloudNames, contains(getStudyPlannerToolName));
   });
 
   test(

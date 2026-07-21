@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'alma_study_tools.dart';
 import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'native_tool_router.dart';
@@ -55,7 +56,9 @@ class StudyOsToolExecutor {
       'search_talks' => _searchTalks(arguments, context.searchTalks),
       getMensaOptionsToolName || searchCampusLocationsToolName =>
         _executePublicStudyTool(toolName, arguments, context.publicStudyTools),
-      getTasksToolName || getDeadlinesToolName => _executePrivateStudyTool(
+      getTasksToolName ||
+      getDeadlinesToolName ||
+      getStudyPlannerToolName => _executePrivateStudyTool(
         toolName,
         arguments,
         context.privateStudyTools,

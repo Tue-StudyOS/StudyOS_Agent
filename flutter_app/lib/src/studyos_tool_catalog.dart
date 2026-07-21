@@ -1,3 +1,4 @@
+import 'alma_study_tools.dart';
 import 'native_tool_router.dart';
 import 'private_study_tools.dart';
 import 'public_study_tools.dart';
@@ -172,6 +173,16 @@ const getDeadlinesTool = StudyOsToolSpec(
       'description': 'Maximum deadlines to return. Capped at 100.',
     },
   },
+  required: <String>[],
+);
+
+const getStudyPlannerTool = StudyOsToolSpec(
+  name: getStudyPlannerToolName,
+  description:
+      'Read the on-device ALMA study planner: semesters, modules, and earned '
+      'versus required credits with progress. Read-only and executed locally.',
+  traceSummary: 'Loading your local ALMA study planner.',
+  properties: <String, Object?>{},
   required: <String>[],
 );
 
@@ -437,6 +448,7 @@ const studyOsTools = <StudyOsToolSpec>[
   searchCampusLocationsTool,
   getTasksTool,
   getDeadlinesTool,
+  getStudyPlannerTool,
   listMailboxesTool,
   getRecentMailTool,
   searchMailTool,
