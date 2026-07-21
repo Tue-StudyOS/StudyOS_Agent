@@ -60,3 +60,11 @@ when the current SDK/device supports the `FoundationModels` framework.
 
 Unsupported native features should return explicit platform errors rather than
 mock responses.
+
+## Assistant Tool Privacy
+
+The shared Dart catalog exposes public Mensa and Tübingen location tools to
+both local and cloud assistants. Authenticated `get_tasks` and `get_deadlines`
+tools use ephemeral on-device ILIAS/Moodle sessions and are advertised only to
+the local assistant. Passwords, cookies, SAML fields, Moodle session keys, and
+raw portal HTML must never enter prompts, tool results, traces, or caches.

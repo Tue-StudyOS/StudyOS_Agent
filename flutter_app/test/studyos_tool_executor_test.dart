@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:studyos_agent/src/alma_study_tools.dart';
 import 'package:studyos_agent/src/mail_repository.dart';
 import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/native_tool_router.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
+import 'package:studyos_agent/src/private_study_tools.dart';
+import 'package:studyos_agent/src/public_study_tools.dart';
 import 'package:studyos_agent/src/studyos_tool_catalog.dart';
 import 'package:studyos_agent/src/studyos_tool_executor.dart';
 
@@ -59,6 +62,70 @@ void main() {
     expect(requestedLimit, 20);
   });
 
+  test('StudyOsToolExecutor routes public study tools', () async {
+    final publicTools = _FakePublicStudyToolRunner('Public results');
+
+    final response = await const StudyOsToolExecutor().execute(
+      getMensaOptionsToolName,
+      '{"preference":"vegan"}',
+      _context(publicStudyTools: publicTools),
+    );
+
+    expect(response, 'Public results');
+    expect(publicTools.calls, <String>[getMensaOptionsToolName]);
+    expect(publicTools.arguments, <String>['{"preference":"vegan"}']);
+  });
+
+  test('StudyOsToolExecutor routes private study tools locally', () async {
+    final privateTools = _FakePrivateStudyToolRunner('Private results');
+
+    final response = await const StudyOsToolExecutor().execute(
+      getTasksToolName,
+      '{"sources":["ilias"]}',
+      _context(privateStudyTools: privateTools),
+    );
+
+    expect(response, 'Private results');
+    expect(privateTools.calls, <String>[getTasksToolName]);
+  });
+
+  test('StudyOsToolExecutor routes the study planner locally', () async {
+    final privateTools = _FakePrivateStudyToolRunner('Planner results');
+
+    final response = await const StudyOsToolExecutor().execute(
+      getStudyPlannerToolName,
+      '{}',
+      _context(privateStudyTools: privateTools),
+    );
+
+    expect(response, 'Planner results');
+    expect(privateTools.calls, <String>[getStudyPlannerToolName]);
+  });
+
+  test('CombinedPrivateStudyToolRunner dispatches by tool name', () async {
+    final portal = _FakePrivateStudyToolRunner('Portal results');
+    final alma = _FakePrivateStudyToolRunner('Planner results');
+    final runner = CombinedPrivateStudyToolRunner(portal: portal, alma: alma);
+
+    expect(await runner.execute(getTasksToolName, '{}'), 'Portal results');
+    expect(
+      await runner.execute(getStudyPlannerToolName, '{}'),
+      'Planner results',
+    );
+    expect(portal.calls, <String>[getTasksToolName]);
+    expect(alma.calls, <String>[getStudyPlannerToolName]);
+  });
+
+  test('Study planner tool is advertised in cloud and local catalogs', () {
+    final localNames = studyOsTools.map((tool) => tool.name).toSet();
+    final cloudNames = cloudStudyOsTools(
+      const <String>{},
+    ).map((tool) => tool.name).toSet();
+
+    expect(localNames, contains(getStudyPlannerToolName));
+    expect(cloudNames, contains(getStudyPlannerToolName));
+  });
+
   test(
     'StudyOsToolExecutor returns explicit errors for bad tool input',
     () async {
@@ -80,6 +147,10 @@ void main() {
     final toolNames = studyOsTools.map((tool) => tool.name).toSet();
 
     expect(toolNames, contains('search_talks'));
+    expect(toolNames, contains(getMensaOptionsToolName));
+    expect(toolNames, contains(searchCampusLocationsToolName));
+    expect(toolNames, contains(getTasksToolName));
+    expect(toolNames, contains(getDeadlinesToolName));
     expect(toolNames, contains(nativeDeviceStatusToolName));
     expect(toolNames, contains(nativeSetFlashlightToolName));
     expect(toolNames, contains(nativeOpenInstalledAppToolName));
@@ -141,6 +212,8 @@ StudyOsToolContext _context({
   Future<String> Function()? readSchedule,
   Future<String> Function(String query, int limit)? searchTalks,
   NativeToolRunner? nativeTools,
+  PublicStudyToolRunner? publicStudyTools,
+  PrivateStudyToolRunner? privateStudyTools,
 }) {
   return StudyOsToolContext(
     promptContext: const PromptContext(
@@ -154,7 +227,43 @@ StudyOsToolContext _context({
     searchTalks: searchTalks ?? (_, _) async => '',
     mailTools: MailToolRunner(repository: MailRepository(), profile: null),
     nativeTools: nativeTools,
+    publicStudyTools: publicStudyTools,
+    privateStudyTools: privateStudyTools,
   );
+}
+
+class _FakePrivateStudyToolRunner implements PrivateStudyToolRunner {
+  _FakePrivateStudyToolRunner(this.response);
+
+  final String response;
+  final calls = <String>[];
+
+  @override
+  Future<String> execute(String toolName, String arguments) async {
+    calls.add(toolName);
+    return response;
+  }
+
+  @override
+  void invalidate() {}
+}
+
+class _FakePublicStudyToolRunner implements PublicStudyToolRunner {
+  _FakePublicStudyToolRunner(this.response);
+
+  final String response;
+  final calls = <String>[];
+  final arguments = <String>[];
+
+  @override
+  Future<String> execute(String toolName, String arguments) async {
+    calls.add(toolName);
+    this.arguments.add(arguments);
+    return response;
+  }
+
+  @override
+  void close() {}
 }
 
 class _FakeNativeToolRunner implements NativeToolRunner {

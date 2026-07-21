@@ -1,9 +1,12 @@
 import 'dart:convert';
 
+import 'alma_study_tools.dart';
 import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
+import 'private_study_tools.dart';
+import 'public_study_tools.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
     'Academic status is not available.';
@@ -20,6 +23,8 @@ class StudyOsToolContext {
     this.searchTalks = _unavailableTalks,
     required this.mailTools,
     required this.nativeTools,
+    this.publicStudyTools,
+    this.privateStudyTools,
   });
 
   final PromptContext promptContext;
@@ -30,6 +35,8 @@ class StudyOsToolContext {
   final Future<String> Function(String query, int limit) searchTalks;
   final MailToolRunner mailTools;
   final NativeToolRunner? nativeTools;
+  final PublicStudyToolRunner? publicStudyTools;
+  final PrivateStudyToolRunner? privateStudyTools;
 }
 
 class StudyOsToolExecutor {
@@ -47,6 +54,15 @@ class StudyOsToolExecutor {
       'get_schedule' => context.readSchedule(),
       'get_academic_status' => context.readAcademicStatus(),
       'search_talks' => _searchTalks(arguments, context.searchTalks),
+      getMensaOptionsToolName || searchCampusLocationsToolName =>
+        _executePublicStudyTool(toolName, arguments, context.publicStudyTools),
+      getTasksToolName ||
+      getDeadlinesToolName ||
+      getStudyPlannerToolName => _executePrivateStudyTool(
+        toolName,
+        arguments,
+        context.privateStudyTools,
+      ),
       'list_mailboxes' ||
       'get_recent_mail' ||
       'search_mail' ||
@@ -59,6 +75,32 @@ class StudyOsToolExecutor {
       ),
       _ => 'Tool is not available: $toolName',
     };
+  }
+
+  Future<String> _executePrivateStudyTool(
+    String toolName,
+    String arguments,
+    PrivateStudyToolRunner? privateStudyTools,
+  ) {
+    if (privateStudyTools == null) {
+      return Future<String>.value(
+        'Private study tool is not available in this app runtime: $toolName',
+      );
+    }
+    return privateStudyTools.execute(toolName, arguments);
+  }
+
+  Future<String> _executePublicStudyTool(
+    String toolName,
+    String arguments,
+    PublicStudyToolRunner? publicStudyTools,
+  ) {
+    if (publicStudyTools == null) {
+      return Future<String>.value(
+        'Public study tool is not available in this runtime: $toolName',
+      );
+    }
+    return publicStudyTools.execute(toolName, arguments);
   }
 
   Future<String> _executeNativeTool(
@@ -126,6 +168,8 @@ StudyOsToolContext studyOsToolContext({
       _unavailableTalks,
   required MailToolRunner mailTools,
   NativeToolRunner? nativeTools,
+  PublicStudyToolRunner? publicStudyTools,
+  PrivateStudyToolRunner? privateStudyTools,
 }) {
   return StudyOsToolContext(
     promptContext: promptContext,
@@ -136,5 +180,7 @@ StudyOsToolContext studyOsToolContext({
     searchTalks: searchTalks,
     mailTools: mailTools,
     nativeTools: nativeTools,
+    publicStudyTools: publicStudyTools,
+    privateStudyTools: privateStudyTools,
   );
 }

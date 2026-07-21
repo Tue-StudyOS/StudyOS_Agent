@@ -3,9 +3,7 @@ import 'studyos_tool_catalog.dart';
 List<Map<String, Object?>> cloudToolDefinitions({
   Set<String> supportedNativeToolNames = const <String>{},
 }) {
-  return studyOsToolsForNativeSupport(
-    supportedNativeToolNames,
-  ).map(_tool).toList();
+  return cloudStudyOsTools(supportedNativeToolNames).map(_tool).toList();
 }
 
 Map<String, Object?> _tool(StudyOsToolSpec spec) {

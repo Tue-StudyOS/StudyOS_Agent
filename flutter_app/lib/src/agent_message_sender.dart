@@ -5,6 +5,8 @@ import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
 import 'prompt_context.dart';
+import 'private_study_tools.dart';
+import 'public_study_tools.dart';
 
 Future<String> _unavailableTalks(String query, int limit) async =>
     'Tübingen Talks are not available.';
@@ -27,6 +29,8 @@ Future<String> sendAgentMessage({
   Future<String> Function(String query, int limit) searchTalks =
       _unavailableTalks,
   required MailToolRunner mailTools,
+  required PublicStudyToolRunner publicStudyTools,
+  required PrivateStudyToolRunner privateStudyTools,
   required void Function(ToolTrace trace) onToolTrace,
   AgentStreamSink? onDelta,
   AgentCancelToken? cancelToken,
@@ -54,6 +58,8 @@ Future<String> sendAgentMessage({
     readAcademicStatus: readAcademicStatus,
     searchTalks: searchTalks,
     mailTools: mailTools,
+    publicStudyTools: publicStudyTools,
+    privateStudyTools: privateStudyTools,
     onDelta: onDelta,
     cancelToken: cancelToken,
   );

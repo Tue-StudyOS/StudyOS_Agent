@@ -1,4 +1,7 @@
+import 'alma_study_tools.dart';
 import 'native_tool_router.dart';
+import 'private_study_tools.dart';
+import 'public_study_tools.dart';
 
 class StudyOsToolSpec {
   const StudyOsToolSpec({
@@ -77,6 +80,109 @@ const searchTalksTool = StudyOsToolSpec(
       'description': 'Maximum talks to return. Capped at 20.',
     },
   },
+  required: <String>[],
+);
+
+const getMensaOptionsTool = StudyOsToolSpec(
+  name: getMensaOptionsToolName,
+  description:
+      'Get live Tübingen Mensa meal options, optionally filtered by date, canteen, and dietary preference.',
+  traceSummary: 'Loading live Tübingen Mensa options.',
+  properties: <String, Object?>{
+    'date': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional date in YYYY-MM-DD format.',
+    },
+    'canteen': <String, Object?>{
+      'type': 'string',
+      'description': 'Optional canteen ID or name filter.',
+    },
+    'preference': <String, Object?>{
+      'type': 'string',
+      'enum': <String>['any', 'vegetarian', 'vegan'],
+      'description': 'Optional dietary filter. Defaults to any.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum menu entries to return. Capped at 30.',
+    },
+  },
+  required: <String>[],
+);
+
+const searchCampusLocationsTool = StudyOsToolSpec(
+  name: searchCampusLocationsToolName,
+  description:
+      'Search public OpenStreetMap place data bounded to Tübingen without using the device location.',
+  traceSummary: 'Searching public Tübingen campus locations.',
+  properties: <String, Object?>{
+    'query': <String, Object?>{
+      'type': 'string',
+      'description': 'Campus building, facility, street, or place to find.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum locations to return. Capped at 8.',
+    },
+  },
+  required: <String>['query'],
+);
+
+const getTasksTool = StudyOsToolSpec(
+  name: getTasksToolName,
+  description:
+      'Read private ILIAS and Moodle tasks through the on-device portal client.',
+  traceSummary: 'Loading local ILIAS and Moodle tasks.',
+  properties: <String, Object?>{
+    'sources': <String, Object?>{
+      'type': 'array',
+      'items': <String, Object?>{
+        'type': 'string',
+        'enum': <String>['ilias', 'moodle'],
+      },
+      'description': 'Optional portal subset; defaults to both.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum tasks to return. Capped at 50.',
+    },
+  },
+  required: <String>[],
+);
+
+const getDeadlinesTool = StudyOsToolSpec(
+  name: getDeadlinesToolName,
+  description:
+      'Read confirmed private ILIAS and Moodle deadlines locally within a bounded window.',
+  traceSummary: 'Loading local ILIAS and Moodle deadlines.',
+  properties: <String, Object?>{
+    'days': <String, Object?>{
+      'type': 'integer',
+      'description': 'Upcoming window in days, from 1 to 180. Defaults to 30.',
+    },
+    'sources': <String, Object?>{
+      'type': 'array',
+      'items': <String, Object?>{
+        'type': 'string',
+        'enum': <String>['ilias', 'moodle'],
+      },
+      'description': 'Optional portal subset; defaults to both.',
+    },
+    'limit': <String, Object?>{
+      'type': 'integer',
+      'description': 'Maximum deadlines to return. Capped at 100.',
+    },
+  },
+  required: <String>[],
+);
+
+const getStudyPlannerTool = StudyOsToolSpec(
+  name: getStudyPlannerToolName,
+  description:
+      'Read the on-device ALMA study planner: semesters, modules, and earned '
+      'versus required credits with progress. Read-only and executed locally.',
+  traceSummary: 'Loading your local ALMA study planner.',
+  properties: <String, Object?>{},
   required: <String>[],
 );
 
@@ -338,6 +444,11 @@ const studyOsTools = <StudyOsToolSpec>[
   getScheduleTool,
   getAcademicStatusTool,
   searchTalksTool,
+  getMensaOptionsTool,
+  searchCampusLocationsTool,
+  getTasksTool,
+  getDeadlinesTool,
+  getStudyPlannerTool,
   listMailboxesTool,
   getRecentMailTool,
   searchMailTool,
@@ -364,6 +475,9 @@ List<StudyOsToolSpec> studyOsToolsForNativeSupport(
       )
       .toList();
 }
+
+List<StudyOsToolSpec> cloudStudyOsTools(Set<String> supportedNativeToolNames) =>
+    studyOsToolsForNativeSupport(supportedNativeToolNames);
 
 StudyOsToolSpec? studyOsToolByName(String name) {
   for (final tool in studyOsTools) {

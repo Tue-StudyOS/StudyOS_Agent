@@ -18,6 +18,11 @@ import 'native_bridge.dart';
 import 'official_document_models.dart';
 import 'official_documents_repository.dart';
 import 'profile_context.dart';
+import 'alma_study_capability.dart';
+import 'alma_study_tools.dart';
+import 'private_study_capabilities.dart';
+import 'private_study_tools.dart';
+import 'public_study_tools.dart';
 import 'send_error_message.dart';
 import 'session_store.dart';
 import 'timetable_repository.dart';
@@ -58,6 +63,14 @@ class AppShellController extends ChangeNotifier {
        _profile = initialProfile,
        _onLogout = initialOnLogout,
        _onSaveProfile = initialOnSaveProfile {
+    _privateStudyTools = CombinedPrivateStudyToolRunner(
+      portal: LivePrivateStudyToolRunner(
+        PrivateStudyCapability(profileProvider: () => _profile),
+      ),
+      alma: LiveAlmaStudyToolRunner(
+        AlmaStudyCapability(profileProvider: () => _profile),
+      ),
+    );
     this.calendarOverviewSource =
         calendarOverviewSource ??
         CalendarOverviewRepository(bridge, this.talksRepository);
@@ -75,6 +88,8 @@ class AppShellController extends ChangeNotifier {
   final AcademicRepository _academicRepository = AcademicRepository();
   final OfficialDocumentsRepository _documentsRepository =
       OfficialDocumentsRepository();
+  final PublicStudyToolRunner _publicStudyTools = LivePublicStudyToolRunner();
+  late final PrivateStudyToolRunner _privateStudyTools;
   final TextEditingController inputController = TextEditingController();
   final ScrollController messageScrollController = ScrollController();
 
@@ -183,6 +198,7 @@ class AppShellController extends ChangeNotifier {
       return;
     }
     _profile = profile;
+    _privateStudyTools.invalidate();
     _onLogout = onLogout;
     _onSaveProfile = onSaveProfile;
     _worldState = withProfileContext(
@@ -199,6 +215,7 @@ class AppShellController extends ChangeNotifier {
     _streamNotifyTimer?.cancel();
     _eventSubscription?.cancel();
     voice.dispose();
+    _publicStudyTools.close();
     if (_ownsTalksRepository) talksRepository.dispose();
     inputController.dispose();
     messageScrollController.dispose();
@@ -303,10 +320,11 @@ class AppShellController extends ChangeNotifier {
     _academicStatusError = null;
     _notify();
     try {
-      _academicStatus = await _academicRepository.refresh(
-        profile,
-        extractPdfText: bridge.extractPdfText,
-      );
+      // Use the term-aware ALMA enrollment overview for the status snapshot.
+      // The official registration report (PDF, native `extractPdfText`) stays
+      // behind the explicit report-download action so this works on every
+      // platform, not only where the native PDF extractor is implemented.
+      _academicStatus = await _academicRepository.refresh(profile);
     } on Object catch (error) {
       _academicStatusError = error.toString();
     } finally {
@@ -392,6 +410,7 @@ class AppShellController extends ChangeNotifier {
     }
     return jsonEncode(<String, Object?>{
       'term': resolved.term,
+      'available_terms': resolved.availableTerms,
       'refreshed_at': resolved.refreshedAt.toIso8601String(),
       'notice': resolved.notice,
       'entries': resolved.entries.map((entry) => entry.toJson()).toList(),
@@ -474,6 +493,8 @@ class AppShellController extends ChangeNotifier {
           repository: _mailRepository,
           profile: _profile,
         ),
+        publicStudyTools: _publicStudyTools,
+        privateStudyTools: _privateStudyTools,
         onToolTrace: addToolTrace,
         onDelta: _handleStreamDelta,
         cancelToken: cancelToken,

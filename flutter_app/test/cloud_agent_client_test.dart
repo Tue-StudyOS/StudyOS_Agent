@@ -12,6 +12,7 @@ import 'package:studyos_agent/src/mail_tools.dart';
 import 'package:studyos_agent/src/models.dart';
 import 'package:studyos_agent/src/native_tool_router.dart';
 import 'package:studyos_agent/src/prompt_context.dart';
+import 'package:studyos_agent/src/private_study_tools.dart';
 
 void main() {
   test('cloud tools are built from the StudyOS catalog', () {
@@ -28,6 +29,8 @@ void main() {
         'read_memories',
         'get_study_context',
         'get_schedule',
+        'get_mensa_options',
+        'search_campus_locations',
         'list_mailboxes',
         'get_recent_mail',
         'search_mail',
@@ -35,7 +38,62 @@ void main() {
         'find_mail_deadlines',
       ]),
     );
+    expect(toolNames, contains('get_tasks'));
+    expect(toolNames, contains('get_deadlines'));
     expect(toolNames, isNot(contains(nativeDeviceStatusToolName)));
+  });
+
+  test('executes private study tools locally for cloud models', () async {
+    var requestCount = 0;
+    final bodies = <Map<String, Object?>>[];
+    final privateTools = _FakePrivateStudyTools();
+    final client = CloudAgentClient(
+      httpClient: MockClient((request) async {
+        requestCount += 1;
+        bodies.add(jsonDecode(request.body) as Map<String, Object?>);
+        if (requestCount == 1) {
+          return _toolCallResponse(
+            request,
+            id: 'tasks_1',
+            name: getTasksToolName,
+            arguments: '{}',
+          );
+        }
+        return _contentResponse(request, 'You have one task.');
+      }),
+    );
+
+    final response = await client.sendMessage(
+      config: const AgentConfig(
+        provider: AgentProvider.cloud,
+        cloudEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
+        cloudModel: 'openai/gpt-4.1-mini',
+        hasApiKey: true,
+        localModelId: 'test-local',
+        localModelPath: '',
+      ),
+      apiKey: 'secret',
+      history: const <ChatMessage>[],
+      userText: 'What tasks do I have?',
+      context: const PromptContext(
+        profile: null,
+        memory: '',
+        worldState: <String, Object?>{},
+      ),
+      appendMemory: (_) async {},
+      readMemory: () async => '',
+      readSchedule: () async => '',
+      mailTools: _fakeMailTools(),
+      privateStudyTools: privateTools,
+    );
+
+    expect(response, 'You have one task.');
+    expect(privateTools.calls, <String>[getTasksToolName]);
+    final followUpMessages = bodies.last['messages'] as List<Object?>;
+    expect(
+      followUpMessages.whereType<Map>().last['content'],
+      contains('Linear Algebra sheet'),
+    );
   });
 
   test('cloud tools include only supported native tools', () {
@@ -592,6 +650,19 @@ http.Response _contentResponse(http.BaseRequest request, String content) {
 
 MailToolRunner _fakeMailTools() {
   return MailToolRunner(repository: _FakeMailRepository(), profile: null);
+}
+
+class _FakePrivateStudyTools implements PrivateStudyToolRunner {
+  final List<String> calls = <String>[];
+
+  @override
+  Future<String> execute(String toolName, String arguments) async {
+    calls.add(toolName);
+    return '{"state":"fresh","data":[{"title":"Linear Algebra sheet"}]}';
+  }
+
+  @override
+  void invalidate() {}
 }
 
 class _FakeMailRepository extends MailRepository {

@@ -7,6 +7,8 @@ import 'models.dart';
 import 'native_bridge.dart';
 import 'native_tool_router.dart';
 import 'prompt_context.dart';
+import 'private_study_tools.dart';
+import 'public_study_tools.dart';
 
 Future<String> _unavailableAcademicStatus() async =>
     'Academic status is not available.';
@@ -53,6 +55,8 @@ class AgentRequestRunner {
     Future<String> Function(String query, int limit) searchTalks =
         _unavailableTalks,
     required MailToolRunner mailTools,
+    PublicStudyToolRunner? publicStudyTools,
+    PrivateStudyToolRunner? privateStudyTools,
     AgentStreamSink? onDelta,
     AgentCancelToken? cancelToken,
   }) async {
@@ -71,6 +75,8 @@ class AgentRequestRunner {
         readAcademicStatus: readAcademicStatus,
         searchTalks: searchTalks,
         mailTools: mailTools,
+        publicStudyTools: publicStudyTools,
+        privateStudyTools: privateStudyTools,
         onToolTrace: onToolTrace,
         onDelta: onDelta,
         cancelToken: cancelToken,

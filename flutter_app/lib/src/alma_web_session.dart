@@ -46,12 +46,17 @@ class AlmaWebSession {
     return response;
   }
 
-  Future<http.Response> post(Uri url, Map<String, String> body) async {
+  Future<http.Response> post(
+    Uri url,
+    Map<String, String> body, {
+    Map<String, String> extraHeaders = const <String, String>{},
+  }) async {
     final response = await _http.post(
       url,
       headers: <String, String>{
         ..._headers(),
         'Content-Type': 'application/x-www-form-urlencoded',
+        ...extraHeaders,
       },
       body: body,
     );

@@ -113,40 +113,189 @@ class AlmaAcademicClient {
   }
 }
 
+final _headingPattern = RegExp(r'^(Veranstaltung|Prüfung):\s*(.+)$');
+final _codePattern = RegExp(
+  r'^([A-ZÄÖÜ]+[A-ZÄÖÜ0-9-]*\d+[A-Z]*|GTCNEURO)\s+(.+)$',
+);
+final _embeddedCodePattern = RegExp(
+  r'([A-ZÄÖÜ]+[A-ZÄÖÜ0-9-]*\d+[A-Z]*|GTCNEURO)\s+(.+)$',
+);
+final _scheduleNoisePattern = RegExp(
+  r'\b(?:Status|Aktionen|Details anzeigen|Informationen zu Belegzeiträumen|'
+  r'Ab-/Ummelden|Raumdetails für .+? anzeigen)\b',
+);
+
 AcademicStatusSnapshot parseAcademicStatus(
   String html, {
   required DateTime now,
 }) {
   final document = html_parser.parse(html);
-  final term = document
-      .querySelector('select[name*="termPeriodDropDownList"] option[selected]')
-      ?.text
-      .trim();
+  final scope =
+      document.getElementById('studentOverviewForm') ??
+      document.documentElement;
+
+  final availableTerms = <String>[];
+  String? selectedTerm;
+  final select = scope?.querySelector('select[name*="termPeriodDropDownList"]');
+  if (select != null) {
+    for (final option in select.querySelectorAll('option')) {
+      final label = _clean(option.text);
+      final value = (option.attributes['value'] ?? '').trim();
+      if (label.isEmpty || value.isEmpty) continue;
+      availableTerms.add(label);
+      if (option.attributes.containsKey('selected')) selectedTerm = label;
+    }
+  }
+
+  final preorder = <Element>[];
+  void collect(Element element) {
+    preorder.add(element);
+    for (final child in element.children) {
+      collect(child);
+    }
+  }
+
+  if (scope != null) collect(scope);
+
   final entries = <AcademicEntry>[];
-  for (final heading in document.querySelectorAll('h2')) {
-    final text = _clean(heading.text);
-    final match = RegExp(r'^(Veranstaltung|Prüfung):\s*(.+)$').firstMatch(text);
+  for (var index = 0; index < preorder.length; index++) {
+    final element = preorder[index];
+    if (element.localName != 'h2') continue;
+    final match = _headingPattern.firstMatch(_clean(element.text));
     if (match == null) continue;
-    final tableText = _clean(
-      heading.parent?.querySelector('table')?.text ?? '',
+    final category = match.group(1)!;
+    final table = _followingTable(preorder, index);
+    if (table == null) continue;
+    final scheduleText = _scheduleText(table);
+    final (eventType, number, title) = _entryIdentity(
+      category,
+      match.group(2)!,
+      scheduleText,
     );
+    final statusText = _statusText(table);
+    final semester = _afterLabel(statusText, 'Semester der Leistung');
     entries.add(
       AcademicEntry(
-        category: match.group(1)!,
-        title: match.group(2)!,
-        status: _afterLabel(tableText, 'Ihr aktueller Status'),
-        detail: _afterLabel(tableText, 'Semester der Leistung'),
+        category: category,
+        title: title,
+        eventType: eventType,
+        number: number,
+        status: _afterLabel(statusText, 'Ihr aktueller Status'),
+        semester: semester,
+        detail: semester,
+        scheduleText: scheduleText,
+        detailUrl: _detailUrl(table),
+        attempt: _afterLabel(statusText, 'Versuch (gilt nur für Prüfungen)'),
       ),
     );
   }
+
   return AcademicStatusSnapshot(
-    term: term,
+    term: selectedTerm,
+    availableTerms: availableTerms,
     entries: entries,
     refreshedAt: now,
     notice: entries.isEmpty
         ? 'ALMA did not expose registrations in the overview.'
         : null,
   );
+}
+
+Element? _followingTable(List<Element> preorder, int fromIndex) {
+  for (var index = fromIndex + 1; index < preorder.length; index++) {
+    if (preorder[index].localName == 'table') return preorder[index];
+  }
+  return null;
+}
+
+(String?, String?, String) _entryIdentity(
+  String category,
+  String headingTitle,
+  String? scheduleText,
+) {
+  if (category == 'Prüfung') {
+    final (number, fallbackTitle) = _splitCode(headingTitle);
+    return (category, number, _examTitle(scheduleText) ?? fallbackTitle);
+  }
+  final cleaned = _clean(headingTitle);
+  final embedded = _embeddedCodePattern.firstMatch(cleaned);
+  if (embedded == null) {
+    final (number, title) = _splitCode(headingTitle);
+    return (category, number, title);
+  }
+  final eventType = _clean(cleaned.substring(0, embedded.start));
+  return (
+    eventType.isEmpty ? category : eventType,
+    embedded.group(1),
+    embedded.group(2)!,
+  );
+}
+
+(String?, String) _splitCode(String value) {
+  final cleaned = _clean(value);
+  final match = _codePattern.firstMatch(cleaned);
+  if (match == null) return (null, cleaned);
+  return (match.group(1), match.group(2)!);
+}
+
+String? _examTitle(String? scheduleText) {
+  if (scheduleText == null || scheduleText.isEmpty) return null;
+  var value = scheduleText.replaceFirst(
+    RegExp(r'^\d+\.\s*Parallelgruppe\s+'),
+    '',
+  );
+  value = value
+      .split(
+        RegExp(
+          r'\s+(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)'
+          r'\s+\d{2}\.\d{2}\.\d{2}\b',
+        ),
+      )
+      .first;
+  value = value
+      .split(
+        RegExp(r'\s+(?:Keine Uhrzeit festgelegt|Prüfungsform:|Prüfer/-in:)'),
+      )
+      .first;
+  final cleaned = _clean(value);
+  return cleaned.isEmpty ? null : cleaned;
+}
+
+String? _scheduleText(Element table) {
+  final candidates = table
+      .querySelectorAll('td')
+      .map((cell) => _clean(cell.text))
+      .toList();
+  if (candidates.isEmpty) return null;
+  final datePattern = RegExp(r'\b\d{2}\.\d{2}\.\d{2}\b');
+  final value = candidates.firstWhere(
+    (candidate) =>
+        !candidate.contains('Ihr aktueller Status:') &&
+        (candidate.contains('Parallelgruppe') ||
+            candidate.contains('Prüfungsform:') ||
+            datePattern.hasMatch(candidate)),
+    orElse: () => candidates.first,
+  );
+  final cleaned = _clean(value.replaceAll(_scheduleNoisePattern, ' '));
+  return cleaned.isEmpty ? null : cleaned;
+}
+
+String _statusText(Element table) {
+  for (final cell in table.querySelectorAll('td')) {
+    final value = _clean(cell.text);
+    if (value.contains('Ihr aktueller Status:')) return value;
+  }
+  return _clean(table.text);
+}
+
+String? _detailUrl(Element table) {
+  for (final anchor in table.querySelectorAll('a')) {
+    final href = anchor.attributes['href'];
+    if (href != null && href.contains('_flowId=detailView-flow')) {
+      return Uri.parse('${AlmaWebSession.baseUrl}/').resolve(href).toString();
+    }
+  }
+  return null;
 }
 
 AcademicStatusSnapshot parseAcademicReport(
