@@ -63,6 +63,7 @@ class _ToolMailRepository extends MailRepository {
     String sender = '',
     String since = '',
     int scanLimit = 200,
+    bool forceRefresh = false,
   }) async {
     expect(limit, lessThanOrEqualTo(10));
     return const MailInboxSummary(
@@ -84,7 +85,10 @@ class _ToolMailRepository extends MailRepository {
   }
 
   @override
-  Future<List<MailboxSummary>> listMailboxes(OnboardingProfile? profile) async {
+  Future<List<MailboxSummary>> listMailboxes(
+    OnboardingProfile? profile, {
+    bool forceRefresh = false,
+  }) async {
     return const <MailboxSummary>[];
   }
 
@@ -93,6 +97,7 @@ class _ToolMailRepository extends MailRepository {
     OnboardingProfile? profile, {
     required String uid,
     String mailbox = 'INBOX',
+    bool forceRefresh = false,
   }) async {
     return const MailMessageDetail(
       uid: '42',

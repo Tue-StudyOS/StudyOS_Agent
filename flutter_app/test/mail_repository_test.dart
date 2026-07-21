@@ -35,6 +35,69 @@ void main() {
     expect(client.summaryCount, 1);
     expect(client.closeCount, 1);
   });
+
+  test('repeated snapshot within TTL is served from cache', () async {
+    final client = _CountingMailClient();
+    final repository = MailRepository.test(
+      profileStore: _FakeProfileStore(),
+      clientFactory: () => client,
+    );
+
+    await repository.fetchMailboxSnapshot(
+      _profile,
+      mailbox: 'INBOX',
+      limit: 20,
+      unreadOnly: true,
+    );
+    await repository.fetchMailboxSnapshot(
+      _profile,
+      mailbox: 'INBOX',
+      limit: 20,
+      unreadOnly: true,
+    );
+
+    // Second call reuses the cached snapshot: no extra login/fetch.
+    expect(client.loginCount, 1);
+    expect(client.listCount, 1);
+    expect(client.summaryCount, 1);
+
+    // forceRefresh bypasses the cache and hits the server again.
+    await repository.fetchMailboxSnapshot(
+      _profile,
+      mailbox: 'INBOX',
+      limit: 20,
+      unreadOnly: true,
+      forceRefresh: true,
+    );
+    expect(client.loginCount, 2);
+    expect(client.summaryCount, 2);
+  });
+
+  test('expired cache entries trigger a fresh fetch', () async {
+    final client = _CountingMailClient();
+    final repository = MailRepository.test(
+      profileStore: _FakeProfileStore(),
+      clientFactory: () => client,
+      cacheTtl: const Duration(milliseconds: 10),
+    );
+
+    await repository.fetchMailboxSnapshot(
+      _profile,
+      mailbox: 'INBOX',
+      limit: 20,
+      unreadOnly: true,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 25));
+    await repository.fetchMailboxSnapshot(
+      _profile,
+      mailbox: 'INBOX',
+      limit: 20,
+      unreadOnly: true,
+    );
+
+    expect(client.loginCount, 2);
+    expect(client.summaryCount, 2);
+  });
 }
 
 const _profile = OnboardingProfile(
