@@ -15,6 +15,7 @@ import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'native_tool_router.dart';
 import 'official_document_models.dart';
 import 'official_documents_repository.dart';
 import 'profile_context.dart';
@@ -47,6 +48,18 @@ class ChatRouteRequest {
   }
 }
 
+/// Chooses when a deadline reminder should fire: one day before the due time,
+/// stepping closer (one hour before, then a short delay) as the deadline nears
+/// so the reminder never lands in the past. Pure so it can be unit-tested.
+DateTime reminderTimeForDeadline(DateTime dueAt, {DateTime? now}) {
+  final reference = now ?? DateTime.now();
+  final dayBefore = dueAt.subtract(const Duration(days: 1));
+  if (dayBefore.isAfter(reference)) return dayBefore;
+  final hourBefore = dueAt.subtract(const Duration(hours: 1));
+  if (hourBefore.isAfter(reference)) return hourBefore;
+  return reference.add(const Duration(minutes: 10));
+}
+
 class AppShellController extends ChangeNotifier {
   AppShellController({
     required OnboardingProfile? initialProfile,
@@ -57,12 +70,14 @@ class AppShellController extends ChangeNotifier {
     NativeBridge? nativeBridge,
     TalksRepository? talksRepository,
     CalendarOverviewSource? calendarOverviewSource,
+    NativeToolRunner? nativeToolRunner,
   }) : bridge = nativeBridge ?? NativeBridge(),
        talksRepository = talksRepository ?? TalksRepository(),
        _ownsTalksRepository = talksRepository == null,
        _profile = initialProfile,
        _onLogout = initialOnLogout,
        _onSaveProfile = initialOnSaveProfile {
+    _nativeToolRunner = nativeToolRunner ?? NativeToolRouter(bridge);
     _privateStudyTools = CombinedPrivateStudyToolRunner(
       portal: LivePrivateStudyToolRunner(
         PrivateStudyCapability(profileProvider: () => _profile),
@@ -77,6 +92,7 @@ class AppShellController extends ChangeNotifier {
   }
 
   final NativeBridge bridge;
+  late final NativeToolRunner _nativeToolRunner;
   final TalksRepository talksRepository;
   final bool _ownsTalksRepository;
   late final CalendarOverviewSource calendarOverviewSource;
@@ -136,6 +152,11 @@ class AppShellController extends ChangeNotifier {
   StreamingAssistantMessage? _streaming;
   Timer? _streamNotifyTimer;
   AgentCancelToken? _cancelToken;
+
+  /// Generative-UI component produced by a tool during the in-flight turn, held
+  /// until the assistant's final message is committed so it can render beneath
+  /// the reply text (e.g. a mail-triage card) instead of in the trace stream.
+  Map<String, Object?>? _pendingTurnComponent;
 
   OnboardingProfile? get profile => _profile;
   VoidCallback? get onLogout => _onLogout;
@@ -435,6 +456,48 @@ class AppShellController extends ChangeNotifier {
     onOpenChatRequest?.call(ChatRouteRequest(prompt: text));
   }
 
+  /// Dispatches an action emitted by an interactive generative-UI component.
+  /// Prompt actions go back through the agent; reminder actions create a native
+  /// device reminder directly (the tap is the user's authorization).
+  void handleComponentAction(GeneratedComponentAction action) {
+    switch (action) {
+      case PromptComponentAction(:final prompt):
+        unawaited(runComponentPrompt(prompt));
+      case ReminderComponentAction(:final title, :final dueAt):
+        unawaited(addDeadlineReminder(title: title, dueAt: dueAt));
+    }
+  }
+
+  /// Runs a prompt requested by a component (e.g. mail Summarize): prefills the
+  /// composer and sends it, reusing the autosent chat-route path so a turn is
+  /// created immediately.
+  Future<void> runComponentPrompt(String text) {
+    return applyChatRoute(prompt: text, autosend: true);
+  }
+
+  /// Creates a native device reminder ahead of [dueAt] via the capability-gated
+  /// native tool runner, then reports the outcome as an assistant message. On
+  /// platforms without reminder support the runner returns a friendly message,
+  /// which is surfaced as-is.
+  Future<void> addDeadlineReminder({
+    required String title,
+    required DateTime dueAt,
+  }) async {
+    final when = reminderTimeForDeadline(dueAt);
+    final result = await _nativeToolRunner.execute(
+      nativeCreateReminderToolName,
+      jsonEncode(<String, Object?>{
+        'title': title,
+        'time': when.toIso8601String(),
+      }),
+    );
+    if (_disposed) return;
+    final detail = result.trim();
+    addAssistantMessage(
+      detail.isEmpty ? 'Reminder requested for "$title".' : detail,
+    );
+  }
+
   Future<void> applyChatRoute({
     String? prompt,
     bool autosend = false,
@@ -466,6 +529,7 @@ class AppShellController extends ChangeNotifier {
     if (text.isEmpty || _isSending) return;
 
     _isSending = true;
+    _pendingTurnComponent = null;
     inputController.clear();
     _notify();
     appendMessage(ChatMessage(author: 'You', text: text, isUser: true));
@@ -607,12 +671,15 @@ class AppShellController extends ChangeNotifier {
 
   void addAssistantMessage(String text, {String? reasoning}) {
     if (_disposed) return;
+    final component = _pendingTurnComponent;
+    _pendingTurnComponent = null;
     appendMessage(
       ChatMessage(
         author: 'StudyOS Agent',
         text: text,
         isUser: false,
         reasoning: reasoning,
+        component: component,
       ),
     );
     _status = text;
@@ -661,6 +728,12 @@ class AppShellController extends ChangeNotifier {
   }
 
   void addToolTrace(ToolTrace trace) {
+    // A tool that emitted a generative-UI component: hold it for the assistant
+    // message rather than rendering it in the trace stream. Last producer in
+    // the turn wins (mirrors how the reply summarises the latest fetch).
+    if (trace.component != null) {
+      _pendingTurnComponent = trace.component;
+    }
     _applySessionMutation(
       upsertToolTraceInSessions(
         sessions: _sessions,

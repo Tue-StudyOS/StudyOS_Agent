@@ -22,46 +22,47 @@ class AndroidLocalPromptClient(context: Context) {
         liteRtClient.cancel()
     }
 
+    /**
+     * Releases the LiteRT engine and its KV cache. Posted to the same single
+     * worker so it serializes behind any in-flight generation rather than
+     * blocking the caller (e.g. the main thread during onTrimMemory). The next
+     * generate() call transparently rebuilds the engine.
+     */
+    fun close() {
+        executor.execute { liteRtClient.close() }
+    }
+
+    /**
+     * Generates a reply for [prompt]. Tool routing is owned entirely by the Dart
+     * layer; this only produces text and streams tokens through [onDelta].
+     *
+     * [systemInstruction] is the stable system prompt: on the LiteRT path it is
+     * installed once as the conversation's system instruction (reused across
+     * turns); the stateless Gemini Nano path folds it into the prompt.
+     */
     fun generate(
         prompt: String,
+        systemInstruction: String,
         modelId: String,
         modelPath: String,
         backend: String,
-        canExecuteTool: (String) -> Boolean,
-        onToolRequest: (String, String) -> String,
         onDelta: (String) -> Unit,
-        onReset: () -> Unit,
         onSuccess: (String) -> Unit,
         onError: (String) -> Unit,
     ) {
-        // Locals so the anonymous StreamListener can call the lambdas without
-        // shadowing its own onReset() override.
         val deltaSink = onDelta
-        val resetSink = onReset
         executor.execute {
             try {
                 if (modelPath.isNotBlank()) {
                     liteRtClient.setBackendPreference(backend)
-                    val response = liteRtClient.generateWithToolsStreaming(
+                    val response = liteRtClient.generateStreaming(
                         modelPath,
                         prompt,
                         appContext.cacheDir.absolutePath,
-                        object : LiteRtLocalPromptClient.ToolExecutor {
-                            override fun canExecute(toolName: String): Boolean {
-                                return canExecuteTool(toolName)
-                            }
-
-                            override fun execute(toolName: String, argument: String): String {
-                                return onToolRequest(toolName, argument)
-                            }
-                        },
+                        systemInstruction,
                         object : LiteRtLocalPromptClient.StreamListener {
                             override fun onToken(token: String) {
                                 deltaSink(token)
-                            }
-
-                            override fun onReset() {
-                                resetSink()
                             }
                         },
                     )
@@ -73,16 +74,23 @@ class AndroidLocalPromptClient(context: Context) {
                     return@execute
                 }
 
+                // Gemini Nano through ML Kit is stateless per call, so fold the
+                // system instruction into the one-shot prompt.
+                val nanoPrompt = if (systemInstruction.isBlank()) {
+                    prompt
+                } else {
+                    "$systemInstruction\n\n$prompt"
+                }
                 val model = AndroidAiCoreModelCatalog.clientFor(modelId)
                 when (val status = model.checkStatus().get(2, TimeUnit.SECONDS)) {
                     FeatureStatus.AVAILABLE -> {
                         val future = model.generateContent(
-                            prompt,
+                            nanoPrompt,
                             StreamingCallback { text -> deltaSink(text) },
                         )
                         activeNanoFuture = future
                         val response = try {
-                            future.get()
+                            future.get(NANO_GENERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                         } finally {
                             activeNanoFuture = null
                         }
@@ -128,10 +136,14 @@ class AndroidLocalPromptClient(context: Context) {
                 "AICore does not expose a general installed-model list. " +
                     "Apps initialize a desired Gemini Nano configuration and check its status.",
             "androidLocalToolCalling" to
-                "ML Kit Prompt API does not expose native function calling. " +
-                    "Downloaded LiteRT-LM models can use StudyOS bracketed " +
-                    "[TOOL:NAME:ARG] calls executed by the Android bridge.",
+                "Tool routing is handled by the StudyOS Dart layer via bracketed " +
+                    "[TOOL:NAME:ARG] directives parsed from the model's output; the " +
+                    "native model only generates text.",
             "androidLocalModelContext" to appContext.packageName,
         )
+    }
+
+    private companion object {
+        const val NANO_GENERATION_TIMEOUT_SECONDS = 120L
     }
 }

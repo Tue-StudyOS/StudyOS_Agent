@@ -448,6 +448,9 @@ class CloudAgentClient {
       status: status,
       summary: '$summary$outputSuffix',
       callId: call.id,
+      component: output == null
+          ? null
+          : componentPayloadForTool(call.name, output),
     );
   }
 }

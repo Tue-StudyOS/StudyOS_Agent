@@ -13,11 +13,26 @@ class PromptContext {
   final Map<String, Object?> worldState;
   final TimetableSnapshot? timetable;
 
+  /// The full system prompt: the stable instruction plus the current ephemeral
+  /// context. The cloud path re-sends the whole prompt every request, so it uses
+  /// this. The local path installs [stableSystemPrompt] once as the
+  /// conversation's system instruction and carries [ephemeralContext] on the
+  /// turn instead (see `LocalNativeLlmProvider`).
   String systemPrompt() {
-    final now = DateTime.now().toLocal();
+    final stable = stableSystemPrompt();
+    final ephemeral = ephemeralContext();
+    if (ephemeral.isEmpty) return stable;
+    return '$stable\n\n$ephemeral';
+  }
+
+  /// The stable portion of the system prompt: identity, behaviour rules,
+  /// student profile, long-term memory, and the cached timetable. This only
+  /// changes when the profile/memory/timetable change, so the local model can
+  /// keep it as its system instruction across turns without re-encoding it (and
+  /// without invalidating the KV cache) every message.
+  String stableSystemPrompt() {
     final buffer = StringBuffer()
       ..writeln('You are StudyOS Agent, a tool-grounded study agent.')
-      ..writeln('Current local timestamp: ${now.toIso8601String()}.')
       ..writeln('Use Markdown when formatting helps readability.')
       ..writeln(
         'Use StudyOS tools when current data, actions, or durable memory updates are needed; answer directly when provided context is enough.',
@@ -30,6 +45,18 @@ class PromptContext {
       )
       ..writeln(
         'If required data is unavailable, say what is missing instead of guessing.',
+      )
+      ..writeln(
+        'The get_recent_mail and search_mail tools render their results as an '
+        'interactive mail card in the app. After calling them, reply with a '
+        'short lead-in only (for example "Here are your recent emails:") and do '
+        'not list, tabulate, or restate the individual messages — the card '
+        'already shows sender, subject, and preview.',
+      )
+      ..writeln(
+        'The get_deadlines tool likewise renders an interactive deadline card '
+        'with due dates and per-item actions. After calling it, give a short '
+        'lead-in only and do not re-list the individual deadlines.',
       )
       ..writeln('Do not expose secrets or credentials.');
     final profileBlock = _profileBlock();
@@ -52,9 +79,19 @@ class PromptContext {
         ..writeln('Cached timetable summary:')
         ..writeln(timetableBlock.trim());
     }
+    return buffer.toString().trim();
+  }
+
+  /// The per-turn volatile context: wall-clock time and the device world state.
+  /// Deliberately excluded from [stableSystemPrompt] because these change on
+  /// every call and would otherwise force the local model to re-encode its whole
+  /// system instruction each turn.
+  String ephemeralContext() {
+    final now = DateTime.now().toLocal();
+    final buffer = StringBuffer()
+      ..writeln('Current local timestamp: ${now.toIso8601String()}.');
     if (worldState.isNotEmpty) {
       buffer
-        ..writeln()
         ..writeln('Current local context:')
         ..writeln(worldState.toString());
     }

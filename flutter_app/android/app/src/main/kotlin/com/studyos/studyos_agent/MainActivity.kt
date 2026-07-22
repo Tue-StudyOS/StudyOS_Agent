@@ -1,6 +1,7 @@
 package com.studyos.studyos_agent
 
 import android.Manifest
+import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -29,11 +30,16 @@ class MainActivity : FlutterActivity() {
     private var nativeInitialized = false
     private var localPromptClient: AndroidLocalPromptClient? = null
     private var localModelStore: AndroidLocalModelStore? = null
-    private var liteRtToolExecutor: AndroidLiteRtToolExecutor? = null
     private var nativeToolExecutor: AndroidNativeToolExecutor? = null
     private var pdfPreview: AndroidPdfPreview? = null
     private var pendingCalendarOperation: (() -> Unit)? = null
     private lateinit var intentBridge: AndroidIntentBridge
+
+    // Idle-unload timer: releases the on-device model after a stretch of no
+    // activity so it does not hold RAM indefinitely on mid-range devices.
+    private val idleUnloadHandler = Handler(Looper.getMainLooper())
+    private val idleUnloadRunnable = Runnable { localPromptClient?.close() }
+    private val idleUnloadDelayMs = 5 * 60 * 1000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         intentBridge = AndroidIntentBridge(applicationContext)
@@ -47,9 +53,35 @@ class MainActivity : FlutterActivity() {
         intentBridge.captureIntent(intent)
     }
 
+    override fun onStop() {
+        // Backgrounded: release the on-device model so the OS is less likely to
+        // reclaim the app under memory pressure. The next message rebuilds it.
+        cancelIdleUnload()
+        localPromptClient?.close()
+        super.onStop()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE) {
+            localPromptClient?.close()
+        }
+    }
+
     override fun onDestroy() {
+        cancelIdleUnload()
+        localPromptClient?.close()
         aiCoreModelExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    private fun scheduleIdleUnload() {
+        idleUnloadHandler.removeCallbacks(idleUnloadRunnable)
+        idleUnloadHandler.postDelayed(idleUnloadRunnable, idleUnloadDelayMs)
+    }
+
+    private fun cancelIdleUnload() {
+        idleUnloadHandler.removeCallbacks(idleUnloadRunnable)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -108,8 +140,7 @@ class MainActivity : FlutterActivity() {
                 }
                 sendMessageToNativeLayer(
                     text = text,
-                    systemPrompt = call.argument<String>("systemPrompt").orEmpty(),
-                    memory = call.argument<String>("memory").orEmpty(),
+                    systemInstruction = call.argument<String>("systemInstruction").orEmpty(),
                     localModelId = call.argument<String>("localModelId").orEmpty(),
                     localModelPath = call.argument<String>("localModelPath").orEmpty(),
                     localBackend = call.argument<String>("localBackend").orEmpty(),
@@ -160,8 +191,7 @@ class MainActivity : FlutterActivity() {
 
     private fun sendMessageToNativeLayer(
         text: String,
-        systemPrompt: String,
-        memory: String,
+        systemInstruction: String,
         localModelId: String,
         localModelPath: String,
         localBackend: String,
@@ -170,34 +200,17 @@ class MainActivity : FlutterActivity() {
         if (!nativeInitialized) {
             initializeNativeLayer()
         }
+        scheduleIdleUnload()
 
         try {
-            val prompt = localPrompt(
-                systemPrompt = systemPrompt,
-                userText = text,
-                supportsLiteRtTools = localModelPath.isNotBlank(),
-            )
             localPromptClient().generate(
-                prompt = prompt,
+                prompt = text,
+                systemInstruction = systemInstruction,
                 modelId = localModelId,
                 modelPath = localModelPath,
                 backend = localBackend,
-                canExecuteTool = { toolName ->
-                    liteRtToolExecutor().canExecute(toolName)
-                },
-                onToolRequest = { toolName, argument ->
-                    liteRtToolExecutor().execute(
-                        toolName = toolName,
-                        argument = argument,
-                        systemPrompt = systemPrompt,
-                        memory = memory,
-                    )
-                },
                 onDelta = { token ->
-                    emitAssistantDelta(token, reset = false)
-                },
-                onReset = {
-                    emitAssistantDelta("", reset = true)
+                    emitAssistantDelta(token)
                 },
                 onSuccess = { response ->
                     emitStatus(
@@ -210,6 +223,7 @@ class MainActivity : FlutterActivity() {
                     Handler(Looper.getMainLooper()).post {
                         result.success(response)
                     }
+                    scheduleIdleUnload()
                 },
                 onError = { message ->
                     emitStatus(message)
@@ -220,6 +234,7 @@ class MainActivity : FlutterActivity() {
                             null,
                         )
                     }
+                    scheduleIdleUnload()
                 },
             )
         } catch (error: Throwable) {
@@ -227,81 +242,6 @@ class MainActivity : FlutterActivity() {
             emitStatus(message)
             result.error("android_native_error", message, null)
         }
-    }
-
-    private fun localPrompt(
-        systemPrompt: String,
-        userText: String,
-        supportsLiteRtTools: Boolean,
-    ): String {
-        return buildString {
-            appendLine(systemPrompt.ifBlank { "You are StudyOS Agent." })
-            appendLine()
-            if (supportsLiteRtTools) {
-                appendLine("Android LiteRT local tool protocol:")
-                appendLine(
-                    "Use tools only when they are helpful. For normal questions, " +
-                        "answer directly from the provided context.",
-                )
-                appendLine(
-                    "To call tools, respond only with one or more directives " +
-                        "in this exact form: [TOOL:TOOL_NAME:ARGUMENT].",
-                )
-                appendLine(
-                    "After the app returns tool results, answer naturally. " +
-                        "Do not show raw tool directives to the user in the final answer.",
-                )
-                appendLine("Only call tools from this list; do not invent tool names.")
-                appendLine()
-                appendLine("Available Android LiteRT tools:")
-                appendLine(
-                    "- GET_STUDY_CONTEXT, no argument: read the current StudyOS " +
-                        "profile, timetable summary, memory, and device context.",
-                )
-                appendLine(
-                    "  Example: [TOOL:GET_STUDY_CONTEXT:]",
-                )
-                appendLine(
-                    "- READ_MEMORIES, no argument: read the provided local " +
-                        "StudyOS long-term memories.",
-                )
-                appendLine("  Example: [TOOL:READ_MEMORIES:]")
-                appendLine(
-                    "- GET_SCHEDULE, no argument: read cached timetable context " +
-                        "when it is present in the StudyOS prompt.",
-                )
-                appendLine("  Example: [TOOL:GET_SCHEDULE:]")
-                appendLine(
-                    "- GET_STATUS, no argument: read Android device status such " +
-                        "as volume, Wi-Fi, location, and airplane mode.",
-                )
-                appendLine("  Example: [TOOL:GET_STATUS:]")
-                appendLine(
-                    "- LIGHT_CONTROL, argument ON or OFF: turn the flashlight on " +
-                        "or off.",
-                )
-                appendLine("  Example: [TOOL:LIGHT_CONTROL:ON]")
-                appendLine(
-                    "- OPEN_APP, argument app name: open an installed Android app " +
-                        "by its display name.",
-                )
-                appendLine("  Example: [TOOL:OPEN_APP:Camera]")
-                appendLine(
-                    "- SEARCH_YOUTUBE, argument search query: open YouTube search " +
-                        "results for the query.",
-                )
-                appendLine("  Example: [TOOL:SEARCH_YOUTUBE:study techniques]")
-            } else {
-                appendLine(
-                    "Runtime note: Android Gemini Nano through ML Kit Prompt API " +
-                        "does not expose tool calling in this app. Answer from " +
-                        "provided context and say what is missing.",
-                )
-            }
-            appendLine()
-            appendLine("User request:")
-            appendLine(userText)
-        }.trim()
     }
 
     private fun localPromptClient(): AndroidLocalPromptClient {
@@ -377,14 +317,6 @@ class MainActivity : FlutterActivity() {
                 "Android built-in AI download failed: ${error.message}",
                 null,
             )
-        }
-    }
-
-    private fun liteRtToolExecutor(): AndroidLiteRtToolExecutor {
-        val existing = liteRtToolExecutor
-        if (existing != null) return existing
-        return AndroidLiteRtToolExecutor(applicationContext, ::emitToolTrace).also {
-            liteRtToolExecutor = it
         }
     }
 
@@ -691,37 +623,11 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun emitToolTrace(
-        toolName: String,
-        status: String,
-        summary: String,
-        callId: String,
-    ) {
-        val payload = mapOf(
-            "type" to "toolTrace",
-            "message" to summary,
-            "trace" to mapOf(
-                "toolName" to toolName,
-                "status" to status,
-                "summary" to summary,
-                "callId" to callId,
-            ),
-            "timestamp" to SimpleDateFormat(
-                "yyyy-MM-dd'T'HH:mm:ss",
-                Locale.US
-            ).format(Date()),
-        )
-
-        Handler(Looper.getMainLooper()).post {
-            eventSink?.success(payload)
-        }
-    }
-
-    private fun emitAssistantDelta(text: String, reset: Boolean) {
+    private fun emitAssistantDelta(text: String) {
         val payload = mapOf(
             "type" to "assistantDelta",
             "message" to text,
-            "reset" to reset,
+            "reset" to false,
             "timestamp" to SimpleDateFormat(
                 "yyyy-MM-dd'T'HH:mm:ss",
                 Locale.US

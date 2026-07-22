@@ -192,10 +192,16 @@ class NativeBridge {
     });
   }
 
+  /// Sends one turn to the local (native) model.
+  ///
+  /// [systemInstruction] is the stable system prompt; the native LiteRT path
+  /// installs it once as the conversation's system instruction and only rebuilds
+  /// the conversation when it changes, so callers should pass the same stable
+  /// value across a turn's tool rounds. [text] carries only the per-turn content
+  /// (the user message with ephemeral context, or tool feedback).
   Future<String> sendMessage(
     String text, {
-    String? systemPrompt,
-    String? memory,
+    String? systemInstruction,
     String? localModelId,
     String? localModelPath,
     String? localBackend,
@@ -203,8 +209,7 @@ class NativeBridge {
     final result = await _methods
         .invokeMethod<String>('sendMessage', <String, Object?>{
           'text': text,
-          'systemPrompt': systemPrompt,
-          'memory': memory,
+          'systemInstruction': systemInstruction,
           'localModelId': localModelId,
           'localModelPath': localModelPath,
           'localBackend': localBackend,

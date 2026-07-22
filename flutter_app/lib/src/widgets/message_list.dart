@@ -4,6 +4,8 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../message_trace_compaction.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import 'deadline_card.dart';
+import 'mail_triage_card.dart';
 import 'thinking_trace.dart';
 
 class MessageList extends StatelessWidget {
@@ -12,6 +14,7 @@ class MessageList extends StatelessWidget {
     required this.compact,
     required this.controller,
     this.streaming,
+    this.onComponentAction,
     super.key,
   });
 
@@ -22,6 +25,10 @@ class MessageList extends StatelessWidget {
   /// The reply currently streaming in, rendered as a live bubble after the
   /// committed messages. Null when no reply is in flight.
   final StreamingAssistantMessage? streaming;
+
+  /// Dispatches an action requested by an interactive generative-UI component
+  /// (e.g. a mail or deadline card). Null disables component actions.
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +47,41 @@ class MessageList extends StatelessWidget {
         if (message.isTrace) {
           return _ToolTraceRow(message: message, compact: compact);
         }
-        return _MessageBubble(message: message, compact: compact);
+        return _MessageBubble(
+          message: message,
+          compact: compact,
+          onComponentAction: onComponentAction,
+        );
       },
     );
   }
+}
+
+/// Returns a rich generative-UI card for a message's component payload, or null
+/// to render nothing extra. Only the mail-list kind has a bespoke renderer
+/// today; unknown or invalid payloads are ignored so the reply degrades to
+/// plain text.
+Widget? generatedComponentCard(
+  Map<String, Object?>? payload, {
+  ValueChanged<GeneratedComponentAction>? onAction,
+  bool compact = false,
+}) {
+  if (payload == null) return null;
+  final component = GenerativeUiRegistry.validate(payload).component;
+  if (component == null) return null;
+  return switch (component.kind) {
+    GeneratedComponentKind.mailList => MailTriageCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.deadlineList => DeadlineCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    _ => null,
+  };
 }
 
 class _ToolTraceRow extends StatelessWidget {
@@ -150,15 +188,24 @@ class _TraceStatusStyle {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.compact});
+  const _MessageBubble({
+    required this.message,
+    required this.compact,
+    this.onComponentAction,
+  });
 
   final ChatMessage message;
   final bool compact;
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
 
   @override
   Widget build(BuildContext context) {
     if (!message.isUser) {
-      return _AssistantText(message: message, compact: compact);
+      return _AssistantText(
+        message: message,
+        compact: compact,
+        onComponentAction: onComponentAction,
+      );
     }
 
     return Align(
@@ -190,14 +237,24 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _AssistantText extends StatelessWidget {
-  const _AssistantText({required this.message, required this.compact});
+  const _AssistantText({
+    required this.message,
+    required this.compact,
+    this.onComponentAction,
+  });
 
   final ChatMessage message;
   final bool compact;
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
 
   @override
   Widget build(BuildContext context) {
     final reasoning = message.reasoning?.trim() ?? '';
+    final card = generatedComponentCard(
+      message.component,
+      onAction: onComponentAction,
+      compact: compact,
+    );
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -207,11 +264,13 @@ class _AssistantText extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             if (reasoning.isNotEmpty) ThinkingTrace(reasoning: reasoning),
-            MarkdownBody(
-              data: message.text,
-              selectable: true,
-              styleSheet: assistantMarkdownStyle(context),
-            ),
+            if (message.text.trim().isNotEmpty)
+              MarkdownBody(
+                data: message.text,
+                selectable: true,
+                styleSheet: assistantMarkdownStyle(context),
+              ),
+            ?card,
           ],
         ),
       ),

@@ -135,14 +135,16 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
   Future<String> send(AgentLlmRequest request) async {
     final nativeTools = NativeToolRouter(_bridge);
     final supportedNativeToolNames = await nativeTools.supportedToolNames();
-    final systemPrompt = _localSystemPrompt(
-      request.context.systemPrompt(),
+    // The stable system prompt + tool protocol is installed once as the native
+    // conversation's system instruction; only the volatile per-turn context and
+    // the user text travel on the message itself.
+    final systemInstruction = _localSystemPrompt(
+      request.context.stableSystemPrompt(),
       supportedNativeToolNames,
     );
     var response = await _bridge.sendMessage(
-      request.userText,
-      systemPrompt: systemPrompt,
-      memory: request.memoryText,
+      _composeFirstTurn(request.context.ephemeralContext(), request.userText),
+      systemInstruction: systemInstruction,
       localModelId: request.config.localModelId,
       localModelPath: request.config.localModelPath,
       localBackend: request.config.localBackend.name,
@@ -163,6 +165,12 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
     for (var round = 0; round < _maxToolRounds; round += 1) {
       final calls = _toolCalls(response);
       if (calls.isEmpty) return response;
+
+      // This streamed turn resolved into tool directives, not a user-facing
+      // answer. Clear the live buffer so the bracketed calls don't linger on
+      // screen before the follow-up answer streams. Mirrors CloudLlmProvider;
+      // this replaces the tool-round reset the native loop used to emit.
+      request.onDelta?.call(const AgentStreamDelta(reset: true));
 
       final feedback = <String>[];
       for (final call in calls) {
@@ -193,8 +201,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
 
       response = await _bridge.sendMessage(
         _localToolFeedbackPrompt(feedback),
-        systemPrompt: systemPrompt,
-        memory: request.memoryText,
+        systemInstruction: systemInstruction,
         localModelId: request.config.localModelId,
         localModelPath: request.config.localModelPath,
         localBackend: request.config.localBackend.name,
@@ -242,6 +249,16 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
     return buffer.toString().trim();
   }
 
+  /// Prepends the volatile per-turn context (wall-clock time, world state) to
+  /// the user's message for the first turn. The stable system prompt already
+  /// lives in the conversation's system instruction, so only this ephemeral
+  /// slice needs to ride the message.
+  String _composeFirstTurn(String ephemeralContext, String userText) {
+    final ephemeral = ephemeralContext.trim();
+    if (ephemeral.isEmpty) return userText;
+    return '$ephemeral\n\n$userText';
+  }
+
   String _localToolFeedbackPrompt(List<String> feedback) {
     return <String>[
       'System feedback from executed StudyOS tools:',
@@ -287,6 +304,9 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       status: status,
       summary: '$summary$outputSuffix',
       callId: callId,
+      component: output == null
+          ? null
+          : componentPayloadForTool(call.name, output),
     );
   }
 }

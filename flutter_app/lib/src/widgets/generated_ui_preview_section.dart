@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../studyos_theme.dart';
+import 'deadline_card.dart';
+import 'mail_triage_card.dart';
 
 class GeneratedUiPreviewSection extends StatefulWidget {
   const GeneratedUiPreviewSection({super.key});
@@ -45,7 +47,15 @@ class _GeneratedUiPreviewSectionState extends State<GeneratedUiPreviewSection> {
         ),
         const SizedBox(height: StudyOsSpacing.sm),
         if (validation.component case final component?)
-          _GeneratedComponentCard(component: component)
+          switch (component.kind) {
+            GeneratedComponentKind.mailList => MailTriageCard(
+              component: component,
+            ),
+            GeneratedComponentKind.deadlineList => DeadlineCard(
+              component: component,
+            ),
+            _ => _GeneratedComponentCard(component: component),
+          }
         else
           _InvalidComponentCard(errors: validation.errors),
       ],
@@ -113,6 +123,8 @@ class _GeneratedComponentCard extends StatelessWidget {
       GeneratedComponentKind.routeHint => Icons.map_outlined,
       GeneratedComponentKind.deadlineCard => Icons.assignment_late_outlined,
       GeneratedComponentKind.quickReply => Icons.quickreply_outlined,
+      GeneratedComponentKind.mailList => Icons.mail_outline_rounded,
+      GeneratedComponentKind.deadlineList => Icons.assignment_late_outlined,
     };
   }
 }

@@ -13,23 +13,45 @@ import com.google.ai.edge.litertlm.MessageCallback;
 import com.google.ai.edge.litertlm.SamplerConfig;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+/**
+ * Thin wrapper over the LiteRT-LM engine for on-device generation.
+ *
+ * <p>This client is a <em>pure generator</em>: it streams tokens for one turn
+ * and keeps no tool-calling logic. All StudyOS tool routing lives in the Dart
+ * layer ({@code LocalNativeLlmProvider}), which owns the single {@code [TOOL:…]}
+ * loop; the native side only produces text.
+ *
+ * <p>The system prompt is installed <em>once</em> as the conversation's system
+ * instruction and reused across turns; the conversation (and its KV cache) is
+ * only rebuilt when the model path, backend preference, or system instruction
+ * actually changes (see {@link #ensureConversation}).
+ */
 public class LiteRtLocalPromptClient implements AutoCloseable {
     private static final String TAG = "LiteRtLocalPrompt";
-    private static final Pattern TOOL_CALL_PATTERN = Pattern.compile("\\[TOOL:([^:\\]]+):?([^\\]]*)\\]");
-    private static final int MAX_TOOL_ROUNDS = 3;
-    private static final int TOOL_SAMPLER_TOP_K = 10;
-    private static final double TOOL_SAMPLER_TOP_P = 0.95;
-    private static final double TOOL_SAMPLER_TEMPERATURE = 0.2;
-    private static final int TOOL_SAMPLER_RANDOM_SEED = 0;
+
+    // Deterministic on-device sampling profile. LiteRT-LM 0.13.1 binds the
+    // sampler once at conversation creation — there is no per-message override
+    // (LiteRT-LM issue #2249), and rebuilding a conversation to change it would
+    // drop the KV cache. So a single low-temperature profile is used for all
+    // local generation, favouring reliable tool-directive/JSON formatting.
+    private static final int LOCAL_SAMPLER_TOP_K = 10;
+    private static final double LOCAL_SAMPLER_TOP_P = 0.95;
+    private static final double LOCAL_SAMPLER_TEMPERATURE = 0.2;
+    private static final int LOCAL_SAMPLER_RANDOM_SEED = 0;
+
+    /** Upper bound on a single generation before it is cancelled and surfaced as an error. */
+    private static final long GENERATION_TIMEOUT_SECONDS = 120;
+
+    private static final String DEFAULT_SYSTEM_INSTRUCTION =
+            "You are StudyOS Agent. Answer from the provided context.";
 
     /** Prefer the GPU backend, falling back to CPU when GPU init fails. */
     public static final String BACKEND_GPU = "gpu";
@@ -39,9 +61,15 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
     private Engine engine;
     private Conversation conversation;
     private String activeModelPath;
+    private String activeSystemInstruction;
     private String activeBackend;
     private String activeBackendPreference;
     private volatile String backendPreference = BACKEND_GPU;
+
+    /** Receives streamed tokens as they are generated. */
+    public interface StreamListener {
+        void onToken(String token);
+    }
 
     /** The accelerator the live engine initialized on ("GPU" or "CPU"), or null. */
     public String getActiveBackend() {
@@ -58,114 +86,20 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         backendPreference = BACKEND_CPU.equals(preference) ? BACKEND_CPU : BACKEND_GPU;
     }
 
-    public interface ToolExecutor {
-        boolean canExecute(String toolName);
-
-        String execute(String toolName, String argument);
-    }
-
-    /** Receives streamed tokens and a reset signal between tool rounds. */
-    public interface StreamListener {
-        void onToken(String token);
-
-        void onReset();
-    }
-
-    public synchronized String generate(String modelPath, String prompt, String cacheDir) throws Exception {
-        ensureConversation(modelPath, cacheDir);
-        return extractText(conversation.sendMessage(prompt, Collections.emptyMap()));
-    }
-
-    public synchronized String generateWithTools(
-            String modelPath,
-            String prompt,
-            String cacheDir,
-            ToolExecutor toolExecutor
-    ) throws Exception {
-        ensureConversation(modelPath, cacheDir);
-        String responseText = extractText(conversation.sendMessage(prompt, Collections.emptyMap()));
-
-        for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
-            List<ToolCall> toolCalls = parseToolCalls(responseText);
-            if (toolCalls.isEmpty()) {
-                return responseText;
-            }
-            if (!allCallsCanExecute(toolCalls, toolExecutor)) {
-                return responseText;
-            }
-
-            StringBuilder feedback = new StringBuilder();
-            for (ToolCall call : toolCalls) {
-                String output = toolExecutor.execute(call.name, call.argument);
-                feedback
-                        .append("- ")
-                        .append(call.name)
-                        .append(": ")
-                        .append(output == null ? "" : output.trim())
-                        .append("\n");
-            }
-
-            String instruction = "System feedback from executed Android local tools:\n"
-                    + feedback.toString().trim()
-                    + "\n\nIf another tool is still needed, respond only with "
-                    + "[TOOL:TOOL_NAME:ARGUMENT]. Otherwise answer the user naturally "
-                    + "using the tool results and provided StudyOS context.";
-            responseText = extractText(conversation.sendMessage(instruction, Collections.emptyMap()));
-        }
-
-        return responseText;
-    }
-
     /**
-     * Like {@link #generateWithTools}, but streams each round's tokens to
-     * {@code streamListener}. When a round resolves into a tool directive, the
-     * listener is reset so the bracketed call does not linger in the live UI
-     * before the follow-up answer streams.
+     * Generates a reply for {@code prompt}, streaming tokens to {@code listener}.
+     * {@code systemInstruction} is installed as the conversation's system prompt
+     * and only triggers a conversation rebuild when it changes.
      */
-    public synchronized String generateWithToolsStreaming(
+    public synchronized String generateStreaming(
             String modelPath,
             String prompt,
             String cacheDir,
-            ToolExecutor toolExecutor,
+            String systemInstruction,
             StreamListener streamListener
     ) throws Exception {
-        ensureConversation(modelPath, cacheDir);
-        String responseText = streamSendMessage(prompt, streamListener);
-
-        for (int round = 0; round < MAX_TOOL_ROUNDS; round++) {
-            List<ToolCall> toolCalls = parseToolCalls(responseText);
-            if (toolCalls.isEmpty()) {
-                return responseText;
-            }
-            if (!allCallsCanExecute(toolCalls, toolExecutor)) {
-                return responseText;
-            }
-
-            // This round was a tool directive, not a user-facing answer.
-            if (streamListener != null) {
-                streamListener.onReset();
-            }
-
-            StringBuilder feedback = new StringBuilder();
-            for (ToolCall call : toolCalls) {
-                String output = toolExecutor.execute(call.name, call.argument);
-                feedback
-                        .append("- ")
-                        .append(call.name)
-                        .append(": ")
-                        .append(output == null ? "" : output.trim())
-                        .append("\n");
-            }
-
-            String instruction = "System feedback from executed Android local tools:\n"
-                    + feedback.toString().trim()
-                    + "\n\nIf another tool is still needed, respond only with "
-                    + "[TOOL:TOOL_NAME:ARGUMENT]. Otherwise answer the user naturally "
-                    + "using the tool results and provided StudyOS context.";
-            responseText = streamSendMessage(instruction, streamListener);
-        }
-
-        return responseText;
+        ensureConversation(modelPath, cacheDir, systemInstruction);
+        return streamSendMessage(prompt, streamListener);
     }
 
     private String streamSendMessage(String prompt, StreamListener streamListener) throws Exception {
@@ -197,7 +131,14 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
             }
         }, Collections.emptyMap());
 
-        latch.await();
+        boolean completed = latch.await(GENERATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        if (!completed) {
+            // The callback never settled. Cancel the in-flight decode and surface
+            // a timeout instead of blocking the executor thread forever.
+            cancel();
+            throw new TimeoutException(
+                    "Local generation timed out after " + GENERATION_TIMEOUT_SECONDS + "s.");
+        }
         if (failure[0] != null) {
             if (failure[0] instanceof Exception) {
                 throw (Exception) failure[0];
@@ -207,19 +148,12 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         return full.toString().trim();
     }
 
-    private boolean allCallsCanExecute(List<ToolCall> toolCalls, ToolExecutor toolExecutor) {
-        for (ToolCall call : toolCalls) {
-            if (!toolExecutor.canExecute(call.name)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void ensureConversation(String modelPath, String cacheDir) throws Exception {
+    private void ensureConversation(String modelPath, String cacheDir, String systemInstruction)
+            throws Exception {
         if (conversation != null
                 && modelPath.equals(activeModelPath)
-                && backendPreference.equals(activeBackendPreference)) {
+                && backendPreference.equals(activeBackendPreference)
+                && Objects.equals(systemInstruction, activeSystemInstruction)) {
             return;
         }
         close();
@@ -230,19 +164,23 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         }
 
         engine = initializeEngine(modelFile, cacheDir);
+        String instruction = (systemInstruction == null || systemInstruction.isBlank())
+                ? DEFAULT_SYSTEM_INSTRUCTION
+                : systemInstruction;
         ConversationConfig config = new ConversationConfig(
-                Contents.Companion.of("You are StudyOS Agent. Answer from the provided context."),
-                List.of(Message.Companion.user("System ready.")),
+                Contents.Companion.of(instruction),
+                List.of(),
                 List.of(),
                 new SamplerConfig(
-                        TOOL_SAMPLER_TOP_K,
-                        TOOL_SAMPLER_TOP_P,
-                        TOOL_SAMPLER_TEMPERATURE,
-                        TOOL_SAMPLER_RANDOM_SEED
+                        LOCAL_SAMPLER_TOP_K,
+                        LOCAL_SAMPLER_TOP_P,
+                        LOCAL_SAMPLER_TEMPERATURE,
+                        LOCAL_SAMPLER_RANDOM_SEED
                 )
         );
         conversation = engine.createConversation(config);
         activeModelPath = modelFile.getAbsolutePath();
+        activeSystemInstruction = systemInstruction;
     }
 
     /**
@@ -306,10 +244,6 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         }
     }
 
-    private String extractText(Message message) {
-        return extractChunk(message).trim();
-    }
-
     /** Joins a message's contents without trimming, preserving token spacing. */
     private String extractChunk(Message message) {
         if (message == null || message.getContents() == null || message.getContents().getContents() == null) {
@@ -319,32 +253,6 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
                 .filter(Objects::nonNull)
                 .map(Object::toString)
                 .collect(Collectors.joining());
-    }
-
-    private List<ToolCall> parseToolCalls(String text) {
-        if (text == null || text.isBlank()) {
-            return Collections.emptyList();
-        }
-        Matcher matcher = TOOL_CALL_PATTERN.matcher(text);
-        List<ToolCall> toolCalls = new ArrayList<>();
-        while (matcher.find()) {
-            String name = matcher.group(1) == null ? "" : matcher.group(1).trim();
-            String argument = matcher.group(2) == null ? "" : matcher.group(2).trim();
-            if (!name.isEmpty()) {
-                toolCalls.add(new ToolCall(name, argument));
-            }
-        }
-        return toolCalls;
-    }
-
-    private static final class ToolCall {
-        private final String name;
-        private final String argument;
-
-        private ToolCall(String name, String argument) {
-            this.name = name;
-            this.argument = argument;
-        }
     }
 
     /**
@@ -375,6 +283,7 @@ public class LiteRtLocalPromptClient implements AutoCloseable {
         conversation = null;
         engine = null;
         activeModelPath = null;
+        activeSystemInstruction = null;
         activeBackend = null;
         activeBackendPreference = null;
     }

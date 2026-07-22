@@ -79,6 +79,7 @@ class ChatMessage {
     required this.isUser,
     this.trace,
     this.reasoning,
+    this.component,
   });
 
   ChatMessage.toolTrace({
@@ -90,6 +91,7 @@ class ChatMessage {
        text = summary,
        isUser = false,
        reasoning = null,
+       component = null,
        trace = ToolTrace(
          toolName: toolName,
          status: status,
@@ -105,6 +107,11 @@ class ChatMessage {
   /// Optional model "thinking"/reasoning trace, shown in a collapsed panel.
   final String? reasoning;
 
+  /// Optional generative-UI component (validated by [GenerativeUiRegistry])
+  /// rendered beneath this message's text. Set on the assistant turn whose tool
+  /// call produced it — e.g. a mail-triage card under "Here are your emails:".
+  final Map<String, Object?>? component;
+
   bool get isTrace => trace != null;
 
   Map<String, Object?> toJson() {
@@ -114,6 +121,7 @@ class ChatMessage {
       'isUser': isUser,
       if (trace != null) 'trace': trace!.toJson(),
       if (reasoning != null && reasoning!.isNotEmpty) 'reasoning': reasoning,
+      if (component != null) 'component': component,
     };
   }
 
@@ -123,12 +131,16 @@ class ChatMessage {
         ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
         : null;
     final reasoning = json['reasoning']?.toString();
+    final rawComponent = json['component'];
     return ChatMessage(
       author: json['author']?.toString() ?? 'StudyOS Agent',
       text: json['text']?.toString() ?? '',
       isUser: json['isUser'] == true,
       trace: trace,
       reasoning: reasoning == null || reasoning.isEmpty ? null : reasoning,
+      component: rawComponent is Map
+          ? Map<String, Object?>.from(rawComponent)
+          : null,
     );
   }
 }
