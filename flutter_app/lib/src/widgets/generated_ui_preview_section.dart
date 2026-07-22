@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../models.dart';
 import '../studyos_theme.dart';
+import 'academic_status_card.dart';
+import 'campus_location_card.dart';
 import 'deadline_card.dart';
 import 'mail_triage_card.dart';
+import 'mensa_card.dart';
+import 'schedule_card.dart';
+import 'study_progress_card.dart';
+import 'talk_card.dart';
 
 class GeneratedUiPreviewSection extends StatefulWidget {
   const GeneratedUiPreviewSection({super.key});
@@ -52,6 +58,20 @@ class _GeneratedUiPreviewSectionState extends State<GeneratedUiPreviewSection> {
               component: component,
             ),
             GeneratedComponentKind.deadlineList => DeadlineCard(
+              component: component,
+            ),
+            GeneratedComponentKind.talkList => TalkCard(component: component),
+            GeneratedComponentKind.academicStatus => AcademicStatusCard(
+              component: component,
+            ),
+            GeneratedComponentKind.studyProgress => StudyProgressCard(
+              component: component,
+            ),
+            GeneratedComponentKind.mensaMenu => MensaCard(component: component),
+            GeneratedComponentKind.campusLocations => CampusLocationCard(
+              component: component,
+            ),
+            GeneratedComponentKind.scheduleAgenda => ScheduleCard(
               component: component,
             ),
             _ => _GeneratedComponentCard(component: component),
@@ -125,6 +145,12 @@ class _GeneratedComponentCard extends StatelessWidget {
       GeneratedComponentKind.quickReply => Icons.quickreply_outlined,
       GeneratedComponentKind.mailList => Icons.mail_outline_rounded,
       GeneratedComponentKind.deadlineList => Icons.assignment_late_outlined,
+      GeneratedComponentKind.talkList => Icons.forum_outlined,
+      GeneratedComponentKind.academicStatus => Icons.school_outlined,
+      GeneratedComponentKind.studyProgress => Icons.donut_large_outlined,
+      GeneratedComponentKind.mensaMenu => Icons.restaurant_outlined,
+      GeneratedComponentKind.campusLocations => Icons.place_outlined,
+      GeneratedComponentKind.scheduleAgenda => Icons.calendar_month_outlined,
     };
   }
 }

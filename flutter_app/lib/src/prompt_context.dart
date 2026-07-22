@@ -47,16 +47,16 @@ class PromptContext {
         'If required data is unavailable, say what is missing instead of guessing.',
       )
       ..writeln(
-        'The get_recent_mail and search_mail tools render their results as an '
-        'interactive mail card in the app. After calling them, reply with a '
-        'short lead-in only (for example "Here are your recent emails:") and do '
-        'not list, tabulate, or restate the individual messages — the card '
-        'already shows sender, subject, and preview.',
-      )
-      ..writeln(
-        'The get_deadlines tool likewise renders an interactive deadline card '
-        'with due dates and per-item actions. After calling it, give a short '
-        'lead-in only and do not re-list the individual deadlines.',
+        'These tools display their own results visually in the app: '
+        'get_recent_mail, search_mail, get_deadlines, search_talks, '
+        'get_schedule, get_academic_status, get_study_planner, '
+        'get_mensa_options, search_campus_locations. After '
+        'calling one, reply with a single short, natural lead-in sentence (for '
+        'example "Here are your recent emails:") and nothing more. Do not list, '
+        'tabulate, or restate the returned items, and never mention, describe, '
+        'or promise a card, widget, or that something "will appear" — just the '
+        'lead-in. If the tool returned no items, say briefly and plainly what '
+        'was empty or missing instead.',
       )
       ..writeln('Do not expose secrets or credentials.');
     final profileBlock = _profileBlock();

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'agent_config_store.dart';
 import 'agent_message_sender.dart';
@@ -60,6 +61,20 @@ DateTime reminderTimeForDeadline(DateTime dueAt, {DateTime? now}) {
   return reference.add(const Duration(minutes: 10));
 }
 
+/// Builds the Google Maps search URL for coordinates. Mirrors the deep link the
+/// in-app map view uses for its "Open in maps" control, so both surfaces behave
+/// identically. Pure so it can be unit-tested.
+Uri campusMapsUri(double latitude, double longitude) {
+  return Uri.https('www.google.com', '/maps/search/', <String, String>{
+    'api': '1',
+    'query': '$latitude,$longitude',
+  });
+}
+
+Future<bool> _launchExternal(Uri uri) {
+  return launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 class AppShellController extends ChangeNotifier {
   AppShellController({
     required OnboardingProfile? initialProfile,
@@ -71,9 +86,15 @@ class AppShellController extends ChangeNotifier {
     TalksRepository? talksRepository,
     CalendarOverviewSource? calendarOverviewSource,
     NativeToolRunner? nativeToolRunner,
+    AcademicRepository? academicRepository,
+    TimetableRepository? timetableRepository,
+    Future<bool> Function(Uri uri)? urlLauncher,
   }) : bridge = nativeBridge ?? NativeBridge(),
        talksRepository = talksRepository ?? TalksRepository(),
        _ownsTalksRepository = talksRepository == null,
+       _academicRepository = academicRepository ?? AcademicRepository(),
+       _timetableRepository = timetableRepository ?? TimetableRepository(),
+       _urlLauncher = urlLauncher ?? _launchExternal,
        _profile = initialProfile,
        _onLogout = initialOnLogout,
        _onSaveProfile = initialOnSaveProfile {
@@ -93,6 +114,7 @@ class AppShellController extends ChangeNotifier {
 
   final NativeBridge bridge;
   late final NativeToolRunner _nativeToolRunner;
+  final Future<bool> Function(Uri uri) _urlLauncher;
   final TalksRepository talksRepository;
   final bool _ownsTalksRepository;
   late final CalendarOverviewSource calendarOverviewSource;
@@ -103,8 +125,8 @@ class AppShellController extends ChangeNotifier {
   /// Shared mail repository so the mail view reuses the cached IMAP session.
   MailRepository get mailRepository => _mailRepository;
   final MemoryStore _memoryStore = MemoryStore();
-  final TimetableRepository _timetableRepository = TimetableRepository();
-  final AcademicRepository _academicRepository = AcademicRepository();
+  final TimetableRepository _timetableRepository;
+  final AcademicRepository _academicRepository;
   final OfficialDocumentsRepository _documentsRepository =
       OfficialDocumentsRepository();
   final PublicStudyToolRunner _publicStudyTools = LivePublicStudyToolRunner();
@@ -131,8 +153,10 @@ class AppShellController extends ChangeNotifier {
   AgentConfig _agentConfig = const AgentConfig.defaults();
   String _memoryText = '';
   TimetableSnapshot? _timetable;
+  Future<void>? _timetableRefresh;
   AcademicStatusSnapshot? _academicStatus;
   String? _academicStatusError;
+  Future<void>? _academicStatusRefresh;
   String? _academicReportError;
   List<OfficialDocument> _officialDocuments = <OfficialDocument>[];
   String? _officialDocumentsError;
@@ -337,9 +361,21 @@ class AppShellController extends ChangeNotifier {
     unawaited(refreshAcademicStatus());
   }
 
-  Future<void> refreshAcademicStatus() async {
+  Future<void> refreshAcademicStatus() {
     final profile = _profile;
-    if (profile == null || _isRefreshingAcademicStatus) return;
+    if (profile == null) return Future<void>.value();
+    // Coalesce concurrent refreshes so callers await the in-flight fetch
+    // instead of racing past a still-running one. Previously the guard made a
+    // second caller (e.g. the get_academic_status tool, fired while the
+    // background refresh started in initialize() was still running) return
+    // immediately and read a null snapshot — surfacing "Academic status is not
+    // available." and masking the real error. Callers now share one future.
+    return _academicStatusRefresh ??= _runAcademicStatusRefresh(
+      profile,
+    ).whenComplete(() => _academicStatusRefresh = null);
+  }
+
+  Future<void> _runAcademicStatusRefresh(OnboardingProfile profile) async {
     _isRefreshingAcademicStatus = true;
     _academicStatusError = null;
     _notify();
@@ -424,13 +460,18 @@ class AppShellController extends ChangeNotifier {
   }
 
   Future<String> readAcademicStatusForAgent() async {
-    final status = _academicStatus;
-    if (status == null) {
+    if (_profile == null) {
+      return 'Academic status is unavailable: no student profile is signed in.';
+    }
+    if (_academicStatus == null) {
       await refreshAcademicStatus();
     }
     final resolved = _academicStatus;
     if (resolved == null) {
-      return _academicStatusError ?? 'Academic status is not available.';
+      // The refresh finished without a snapshot; surface the real reason
+      // (e.g. an authentication prompt) instead of a generic string.
+      return _academicStatusError ??
+          'Academic status could not be loaded right now. Please try again in a moment.';
     }
     return jsonEncode(<String, Object?>{
       'term': resolved.term,
@@ -465,6 +506,14 @@ class AppShellController extends ChangeNotifier {
         unawaited(runComponentPrompt(prompt));
       case ReminderComponentAction(:final title, :final dueAt):
         unawaited(addDeadlineReminder(title: title, dueAt: dueAt));
+      case MapComponentAction(:final name, :final latitude, :final longitude):
+        unawaited(
+          openLocationInMaps(
+            name: name,
+            latitude: latitude,
+            longitude: longitude,
+          ),
+        );
     }
   }
 
@@ -496,6 +545,25 @@ class AppShellController extends ChangeNotifier {
     addAssistantMessage(
       detail.isEmpty ? 'Reminder requested for "$title".' : detail,
     );
+  }
+
+  /// Opens a geocoded place in the device's external maps app. Reports a message
+  /// only on failure (success hands off to the maps app).
+  Future<void> openLocationInMaps({
+    required String name,
+    required double latitude,
+    required double longitude,
+  }) async {
+    bool opened;
+    try {
+      opened = await _urlLauncher(campusMapsUri(latitude, longitude));
+    } on Object {
+      opened = false;
+    }
+    if (_disposed) return;
+    if (!opened) {
+      addAssistantMessage('Could not open $name in maps.');
+    }
   }
 
   Future<void> applyChatRoute({
@@ -786,14 +854,22 @@ class AppShellController extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshTimetable() async {
-    if (_isRefreshingTimetable) return;
+  Future<void> refreshTimetable() {
     final profile = _profile;
     if (profile == null) {
       _timetableError = 'Sign in again to refresh your timetable.';
       _notify();
-      return;
+      return Future<void>.value();
     }
+    // Coalesce concurrent refreshes so a caller (e.g. the get_schedule tool)
+    // awaits the in-flight fetch instead of racing past it — same fix as
+    // academic status.
+    return _timetableRefresh ??= _runTimetableRefresh(
+      profile,
+    ).whenComplete(() => _timetableRefresh = null);
+  }
+
+  Future<void> _runTimetableRefresh(OnboardingProfile profile) async {
     _isRefreshingTimetable = true;
     _timetableError = null;
     _notify();
@@ -874,8 +950,30 @@ class AppShellController extends ChangeNotifier {
       await refreshTimetable();
       snapshot = _timetable;
     }
-    return snapshot?.compactSummary(limit: 12) ??
-        'No timetable has been synced yet.';
+    if (snapshot == null || snapshot.events.isEmpty) {
+      return _timetableError ?? 'No timetable has been synced yet.';
+    }
+    final upcoming = snapshot.upcoming.take(12).toList(growable: false);
+    if (upcoming.isEmpty) {
+      return 'No upcoming lectures in the synced timetable.';
+    }
+    // Structured output so the client can render an interactive schedule card
+    // (see schedule_agenda in GenerativeUiRegistry). The model gets the same
+    // data as JSON instead of a prose summary.
+    return jsonEncode(<String, Object?>{
+      'source_term': snapshot.sourceTerm,
+      'refreshed_at': snapshot.refreshedAt.toIso8601String(),
+      'events': upcoming
+          .map(
+            (event) => <String, Object?>{
+              'title': event.title,
+              'start': event.start.toIso8601String(),
+              'end': event.end?.toIso8601String(),
+              'location': event.location,
+            },
+          )
+          .toList(growable: false),
+    });
   }
 
   Future<String> searchTalksForAgent(String query, int limit) async {

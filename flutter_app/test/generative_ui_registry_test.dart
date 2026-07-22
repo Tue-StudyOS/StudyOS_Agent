@@ -198,4 +198,318 @@ void main() {
       );
     });
   });
+
+  group('talkListComponentPayload', () {
+    String talksJson({bool withItems = true}) {
+      return jsonEncode(<String, Object?>{
+        'scope': 'upcoming',
+        'query': 'ml',
+        'items': withItems
+            ? <Map<String, Object?>>[
+                <String, Object?>{
+                  'id': 42,
+                  'title': 'Foundation models for science',
+                  'timestamp': '2026-12-09T16:15:00.000Z',
+                  'speaker_name': 'Dr. Amelie Roth',
+                  'location': 'Kupferbau',
+                  'tags': <Object?>[],
+                },
+              ]
+            : <Map<String, Object?>>[],
+      });
+    }
+
+    test('builds a valid talk_list from search_talks output', () {
+      final payload = talkListComponentPayload('search_talks', talksJson());
+      expect(payload, isNotNull);
+
+      final validation = GenerativeUiRegistry.validate(payload!);
+      expect(validation.errors, isEmpty);
+      expect(validation.component!.kind, GeneratedComponentKind.talkList);
+
+      final talks = validation.component!.arguments['talks'] as List<Object?>;
+      final first = talks.first as Map<Object?, Object?>;
+      expect(first['title'], 'Foundation models for science');
+      expect(first['speaker'], 'Dr. Amelie Roth');
+      expect(first['timestamp'], '2026-12-09T16:15:00.000Z');
+    });
+
+    test('the dispatcher routes search_talks; empty items yield no card', () {
+      expect(componentPayloadForTool('search_talks', talksJson()), isNotNull);
+      expect(
+        talkListComponentPayload('search_talks', talksJson(withItems: false)),
+        isNull,
+      );
+    });
+  });
+
+  group('academicStatusComponentPayload', () {
+    String statusJson({bool withEntries = true}) {
+      return jsonEncode(<String, Object?>{
+        'term': 'WS 2026/27',
+        'entries': withEntries
+            ? <Map<String, Object?>>[
+                <String, Object?>{
+                  'category': 'Exams',
+                  'title': 'ML written exam',
+                  'status': 'Registered',
+                  'semester': 'WS 2026/27',
+                },
+              ]
+            : <Map<String, Object?>>[],
+      });
+    }
+
+    test('builds a valid academic_status from get_academic_status output', () {
+      final payload = academicStatusComponentPayload(
+        'get_academic_status',
+        statusJson(),
+      );
+      expect(payload, isNotNull);
+
+      final validation = GenerativeUiRegistry.validate(payload!);
+      expect(validation.errors, isEmpty);
+      final component = validation.component!;
+      expect(component.kind, GeneratedComponentKind.academicStatus);
+      expect(component.title, 'Academic status · WS 2026/27');
+
+      final entries = component.arguments['entries'] as List<Object?>;
+      final first = entries.first as Map<Object?, Object?>;
+      expect(first['category'], 'Exams');
+      expect(first['status'], 'Registered');
+    });
+
+    test('empty entries and non-status tools yield no card', () {
+      expect(
+        academicStatusComponentPayload(
+          'get_academic_status',
+          statusJson(withEntries: false),
+        ),
+        isNull,
+      );
+      expect(
+        componentPayloadForTool('get_recent_mail', statusJson()),
+        isNull,
+      );
+    });
+  });
+
+  group('studyProgressComponentPayload', () {
+    String plannerJson({bool withModules = true}) {
+      return jsonEncode(<String, Object?>{
+        'state': 'fresh',
+        'data': <String, Object?>{
+          'title': 'M.Sc. Machine Learning',
+          'pageUrl': 'https://alma.uni-tuebingen.de/planner',
+          'modules': withModules
+              ? <Map<String, Object?>>[
+                  <String, Object?>{
+                    'rowIndex': 0,
+                    'columnStart': 0,
+                    'columnSpan': 1,
+                    'title': 'Core ML',
+                    'number': 'ML-4100',
+                    'creditsEarned': 27,
+                    'creditsRequired': 30,
+                    'creditsSummary': '27 / 30 ECTS',
+                  },
+                  <String, Object?>{
+                    'rowIndex': 1,
+                    'columnStart': 0,
+                    'columnSpan': 1,
+                    'title': 'Theory',
+                    'creditsEarned': 18,
+                    'creditsRequired': 30,
+                  },
+                ]
+              : <Map<String, Object?>>[],
+          'viewState': <String, Object?>{
+            'showRecommendedPlan': true,
+            'showMyModules': true,
+            'showAlternativeSemesters': false,
+          },
+        },
+      });
+    }
+
+    test('builds a study_progress card and totals the ECTS', () {
+      final payload = studyProgressComponentPayload(
+        'get_study_planner',
+        plannerJson(),
+      );
+      expect(payload, isNotNull);
+
+      final validation = GenerativeUiRegistry.validate(payload!);
+      expect(validation.errors, isEmpty);
+      final component = validation.component!;
+      expect(component.kind, GeneratedComponentKind.studyProgress);
+      expect(component.arguments['total_earned'], 45.0);
+      expect(component.arguments['total_required'], 60.0);
+      expect(component.body, '45 / 60 ECTS');
+    });
+
+    test('empty modules and non-planner tools yield no card', () {
+      expect(
+        studyProgressComponentPayload(
+          'get_study_planner',
+          plannerJson(withModules: false),
+        ),
+        isNull,
+      );
+      expect(
+        componentPayloadForTool('get_deadlines', plannerJson()),
+        isNull,
+      );
+    });
+  });
+
+  group('mensaMenuComponentPayload', () {
+    String mensaJson({bool withData = true}) {
+      return jsonEncode(<String, Object?>{
+        'state': 'fresh',
+        'data': withData
+            ? <Map<String, Object?>>[
+                <String, Object?>{
+                  'id': 'wilhelm:1',
+                  'canteen': 'Mensa Wilhelmstraße',
+                  'date': '2026-07-22',
+                  'line': 'Line 1',
+                  'items': <String>['Gemüse-Lasagne', 'Salat'],
+                  'dietary_markers': <String>['Vegetarisch'],
+                  'student_price': '3,20 €',
+                },
+              ]
+            : <Map<String, Object?>>[],
+      });
+    }
+
+    test('builds a mensa_menu card from get_mensa_options output', () {
+      final payload = mensaMenuComponentPayload('get_mensa_options', mensaJson());
+      expect(payload, isNotNull);
+
+      final validation = GenerativeUiRegistry.validate(payload!);
+      expect(validation.errors, isEmpty);
+      final component = validation.component!;
+      expect(component.kind, GeneratedComponentKind.mensaMenu);
+      expect(component.title, 'Mensa Wilhelmstraße');
+
+      final options = component.arguments['options'] as List<Object?>;
+      final first = options.first as Map<Object?, Object?>;
+      expect(first['line'], 'Line 1');
+      expect(first['items'], <String>['Gemüse-Lasagne', 'Salat']);
+      expect(first['markers'], <String>['Vegetarisch']);
+      expect(first['price'], '3,20 €');
+    });
+
+    test('empty data and non-mensa tools yield no card', () {
+      expect(
+        mensaMenuComponentPayload('get_mensa_options', mensaJson(withData: false)),
+        isNull,
+      );
+      expect(componentPayloadForTool('search_talks', mensaJson()), isNull);
+    });
+  });
+
+  group('campusLocationsComponentPayload', () {
+    String locationsJson({bool withData = true}) {
+      return jsonEncode(<String, Object?>{
+        'state': 'fresh',
+        'data': withData
+            ? <Map<String, Object?>>[
+                <String, Object?>{
+                  'id': 'nominatim:48.529600,9.059600',
+                  'name': 'Universitätsbibliothek Tübingen',
+                  'address': 'Wilhelmstraße 32, 72074 Tübingen',
+                  'category': 'library',
+                  'latitude': 48.5296,
+                  'longitude': 9.0596,
+                },
+              ]
+            : <Map<String, Object?>>[],
+      });
+    }
+
+    test('builds a campus_locations card keeping coordinates', () {
+      final payload = campusLocationsComponentPayload(
+        'search_campus_locations',
+        locationsJson(),
+      );
+      expect(payload, isNotNull);
+
+      final validation = GenerativeUiRegistry.validate(payload!);
+      expect(validation.errors, isEmpty);
+      final component = validation.component!;
+      expect(component.kind, GeneratedComponentKind.campusLocations);
+
+      final locations = component.arguments['locations'] as List<Object?>;
+      final first = locations.first as Map<Object?, Object?>;
+      expect(first['name'], 'Universitätsbibliothek Tübingen');
+      expect(first['latitude'], 48.5296);
+      expect(first['longitude'], 9.0596);
+    });
+
+    test('empty data and non-location tools yield no card', () {
+      expect(
+        campusLocationsComponentPayload(
+          'search_campus_locations',
+          locationsJson(withData: false),
+        ),
+        isNull,
+      );
+      expect(componentPayloadForTool('get_mensa_options', locationsJson()), isNull);
+    });
+  });
+
+  group('scheduleAgendaComponentPayload', () {
+    String scheduleJson({bool withEvents = true}) {
+      return jsonEncode(<String, Object?>{
+        'source_term': 'WS 2026/27',
+        'refreshed_at': '2026-12-08T09:00:00.000Z',
+        'events': withEvents
+            ? <Map<String, Object?>>[
+                <String, Object?>{
+                  'title': 'Machine Learning',
+                  'start': '2026-12-09T10:15:00',
+                  'end': '2026-12-09T11:45:00',
+                  'location': 'Hörsaal 21',
+                },
+              ]
+            : <Map<String, Object?>>[],
+      });
+    }
+
+    test('builds a schedule_agenda card from get_schedule output', () {
+      final payload = scheduleAgendaComponentPayload(
+        'get_schedule',
+        scheduleJson(),
+      );
+      expect(payload, isNotNull);
+
+      final validation = GenerativeUiRegistry.validate(payload!);
+      expect(validation.errors, isEmpty);
+      final component = validation.component!;
+      expect(component.kind, GeneratedComponentKind.scheduleAgenda);
+      expect(component.title, 'Schedule · WS 2026/27');
+
+      final events = component.arguments['events'] as List<Object?>;
+      final first = events.first as Map<Object?, Object?>;
+      expect(first['title'], 'Machine Learning');
+      expect(first['location'], 'Hörsaal 21');
+    });
+
+    test('the prose "not synced" fallback does not produce a card', () {
+      expect(
+        scheduleAgendaComponentPayload(
+          'get_schedule',
+          'No timetable has been synced yet.',
+        ),
+        isNull,
+      );
+      expect(
+        scheduleAgendaComponentPayload('get_schedule', scheduleJson(withEvents: false)),
+        isNull,
+      );
+      expect(componentPayloadForTool('get_deadlines', scheduleJson()), isNull);
+    });
+  });
 }

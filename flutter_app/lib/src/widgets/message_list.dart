@@ -4,8 +4,14 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../message_trace_compaction.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import 'academic_status_card.dart';
+import 'campus_location_card.dart';
 import 'deadline_card.dart';
 import 'mail_triage_card.dart';
+import 'mensa_card.dart';
+import 'schedule_card.dart';
+import 'study_progress_card.dart';
+import 'talk_card.dart';
 import 'thinking_trace.dart';
 
 class MessageList extends StatelessWidget {
@@ -78,6 +84,32 @@ Widget? generatedComponentCard(
     GeneratedComponentKind.deadlineList => DeadlineCard(
       component: component,
       onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.talkList => TalkCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.academicStatus => AcademicStatusCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.studyProgress => StudyProgressCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.mensaMenu => MensaCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.campusLocations => CampusLocationCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.scheduleAgenda => ScheduleCard(
+      component: component,
       compact: compact,
     ),
     _ => null,
@@ -255,6 +287,13 @@ class _AssistantText extends StatelessWidget {
       onAction: onComponentAction,
       compact: compact,
     );
+    // When a card is attached it *is* the answer, so drop everything after the
+    // model's lead-in line. The models don't reliably honour the "don't restate
+    // the data" prompt rule, and a restated table/list beneath the card reads as
+    // duplication. Keeping just the first line preserves "Here are your …:".
+    final text = card == null
+        ? message.text
+        : _leadInLine(message.text);
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -264,9 +303,9 @@ class _AssistantText extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             if (reasoning.isNotEmpty) ThinkingTrace(reasoning: reasoning),
-            if (message.text.trim().isNotEmpty)
+            if (text.trim().isNotEmpty)
               MarkdownBody(
-                data: message.text,
+                data: text,
                 selectable: true,
                 styleSheet: assistantMarkdownStyle(context),
               ),
@@ -276,6 +315,20 @@ class _AssistantText extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Returns the first non-empty line of [text], used as the lead-in above a
+/// generative-UI card. Anything after it (a restated list or table the card
+/// already shows) is dropped. A leading Markdown list/heading/quote marker is
+/// treated as "no lead-in" so a card-only restatement collapses to nothing.
+String _leadInLine(String text) {
+  for (final line in text.split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
+    if (RegExp(r'^([-*+>#]|\d+[.)]|\|)').hasMatch(trimmed)) return '';
+    return trimmed;
+  }
+  return '';
 }
 
 /// Live bubble for the reply that is still streaming in. Shows accumulated

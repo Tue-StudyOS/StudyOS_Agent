@@ -363,6 +363,7 @@ class CloudLlmProvider implements AgentLlmProvider {
       appendMemory: _appendMemory,
       readMemory: _memoryStore.read,
       readSchedule: request.readSchedule,
+      readAcademicStatus: request.readAcademicStatus,
       searchTalks: request.searchTalks,
       mailTools: request.mailTools,
       publicStudyTools: request.publicStudyTools,
