@@ -6,6 +6,7 @@ import '../native_bridge.dart';
 import '../studyos_theme.dart';
 import '../widgets/feedback_settings_card.dart';
 import '../widgets/cloud_assistant_settings.dart';
+import '../widgets/generated_ui_preview_section.dart';
 import '../widgets/local_model_settings_card.dart';
 import '../widgets/profile_row.dart';
 import '../widgets/settings_card.dart';
@@ -238,6 +239,13 @@ class _SettingsViewState extends State<SettingsView> {
           title: 'Support',
           child: SettingsCard(
             children: <Widget>[FeedbackSettingsCard(status: widget.status)],
+          ),
+        ),
+        const SizedBox(height: StudyOsSpacing.xl),
+        const _SettingsSection(
+          title: 'Developer',
+          child: SettingsCard(
+            children: <Widget>[GeneratedUiPreviewSection()],
           ),
         ),
       ],

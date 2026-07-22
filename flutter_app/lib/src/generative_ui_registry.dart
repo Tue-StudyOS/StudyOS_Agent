@@ -1,5 +1,17 @@
 import 'dart:convert';
 
+/// Bounds on a `custom_view` node tree, enforced during validation so a
+/// malformed or oversized payload from a small model can't blow up layout or
+/// recursion. The renderer stays tolerant of individual bad leaf nodes (it
+/// skips them); these caps only guard the overall shape.
+const int customViewMaxNodes = 48;
+const int customViewMaxDepth = 4;
+const int customViewMaxChildrenPerContainer = 24;
+
+/// The one recursive container node in the `custom_view` vocabulary. Its
+/// children live under the same `blocks` key the root uses.
+const String customViewContainerNode = 'group';
+
 enum GeneratedComponentKind {
   nextAction('next_action'),
   scheduleSummary('schedule_summary'),
@@ -13,7 +25,8 @@ enum GeneratedComponentKind {
   studyProgress('study_progress'),
   mensaMenu('mensa_menu'),
   campusLocations('campus_locations'),
-  scheduleAgenda('schedule_agenda');
+  scheduleAgenda('schedule_agenda'),
+  customView('custom_view');
 
   const GeneratedComponentKind(this.wireName);
 
@@ -156,7 +169,52 @@ abstract final class GenerativeUiRegistry {
         arguments,
         'events',
       ),
+      GeneratedComponentKind.customView => _validateCustomView(arguments),
     };
+  }
+
+  /// Validates only the *structure* of a `custom_view` tree: a non-empty
+  /// `blocks` list within the node-count, depth, and per-container caps. Leaf
+  /// nodes are intentionally not field-checked here — the renderer skips any it
+  /// can't draw — so a mostly-good tree from a weak model still renders instead
+  /// of collapsing to plain text.
+  static List<String> _validateCustomView(Map<String, Object?> arguments) {
+    final blocks = arguments['blocks'];
+    if (blocks is! List || blocks.isEmpty) {
+      return <String>['Missing non-empty list argument: blocks'];
+    }
+    final errors = <String>[];
+    var nodeCount = 0;
+
+    void walk(List<Object?> nodes, int depth) {
+      if (errors.isNotEmpty) return;
+      if (depth > customViewMaxDepth) {
+        errors.add('Custom view nesting exceeds depth $customViewMaxDepth');
+        return;
+      }
+      if (nodes.length > customViewMaxChildrenPerContainer) {
+        errors.add(
+          'Custom view container exceeds '
+          '$customViewMaxChildrenPerContainer children',
+        );
+        return;
+      }
+      for (final node in nodes) {
+        nodeCount++;
+        if (nodeCount > customViewMaxNodes) {
+          errors.add('Custom view exceeds $customViewMaxNodes nodes');
+          return;
+        }
+        if (node is Map && node['node'] == customViewContainerNode) {
+          final children = node['blocks'];
+          if (children is List) walk(children, depth + 1);
+          if (errors.isNotEmpty) return;
+        }
+      }
+    }
+
+    walk(blocks, 1);
+    return errors;
   }
 }
 
@@ -833,6 +891,60 @@ generativeUiFixturePayloads = <Map<String, Object?>>[
           'start': '2026-12-10T08:15:00',
           'end': '2026-12-10T09:45:00',
           'location': null,
+        },
+      ],
+    },
+  },
+  <String, Object?>{
+    'type': 'custom_view',
+    'title': 'Supervised vs. unsupervised',
+    'body': 'A quick comparison for your exam prep.',
+    'arguments': <String, Object?>{
+      'blocks': <Map<String, Object?>>[
+        <String, Object?>{
+          'node': 'badges',
+          'items': <Map<String, Object?>>[
+            <String, Object?>{'text': 'Exam topic', 'tone': 'positive'},
+            <String, Object?>{'text': 'ML core', 'tone': 'neutral'},
+          ],
+        },
+        <String, Object?>{
+          'node': 'table',
+          'columns': <String>['Aspect', 'Supervised', 'Unsupervised'],
+          'rows': <List<String>>[
+            <String>['Labels', 'Required', 'None'],
+            <String>['Goal', 'Predict targets', 'Find structure'],
+            <String>['Example', 'Classification', 'Clustering'],
+          ],
+        },
+        <String, Object?>{
+          'node': 'stats',
+          'items': <Map<String, Object?>>[
+            <String, Object?>{'value': '2', 'label': 'Lectures left'},
+            <String, Object?>{'value': '5 days', 'label': 'Until exam'},
+          ],
+        },
+        <String, Object?>{
+          'node': 'group',
+          'blocks': <Map<String, Object?>>[
+            <String, Object?>{'node': 'heading', 'text': 'Revise next'},
+            <String, Object?>{
+              'node': 'bullets',
+              'items': <String>[
+                'k-means and its assumptions',
+                'Bias–variance trade-off',
+              ],
+            },
+          ],
+        },
+        <String, Object?>{'node': 'divider'},
+        <String, Object?>{
+          'node': 'button',
+          'label': 'Plan a review block',
+          'action': <String, Object?>{
+            'type': 'prompt',
+            'prompt': 'Plan a 45 minute review block on unsupervised learning.',
+          },
         },
       ],
     },

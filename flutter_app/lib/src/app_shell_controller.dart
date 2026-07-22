@@ -11,6 +11,7 @@ import 'academic_repository.dart';
 import 'calendar_overview_repository.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
+import 'generated_ui_message.dart';
 import 'mail_repository.dart';
 import 'mail_tools.dart';
 import 'memory_store.dart';
@@ -177,10 +178,14 @@ class AppShellController extends ChangeNotifier {
   Timer? _streamNotifyTimer;
   AgentCancelToken? _cancelToken;
 
-  /// Generative-UI component produced by a tool during the in-flight turn, held
-  /// until the assistant's final message is committed so it can render beneath
-  /// the reply text (e.g. a mail-triage card) instead of in the trace stream.
-  Map<String, Object?>? _pendingTurnComponent;
+  /// Generative-UI card payloads produced by tools during the in-flight turn,
+  /// keyed by tool name (last call of each tool wins). Nothing is shown just
+  /// because a tool ran: a card surfaces only if the assistant's final reply
+  /// references it with a `tool_card` block, which is resolved against this map
+  /// when the message is committed (see [addAssistantMessage]). Cleared at the
+  /// start of every turn.
+  final Map<String, Map<String, Object?>> _turnToolComponents =
+      <String, Map<String, Object?>>{};
 
   OnboardingProfile? get profile => _profile;
   VoidCallback? get onLogout => _onLogout;
@@ -597,7 +602,7 @@ class AppShellController extends ChangeNotifier {
     if (text.isEmpty || _isSending) return;
 
     _isSending = true;
-    _pendingTurnComponent = null;
+    _turnToolComponents.clear();
     inputController.clear();
     _notify();
     appendMessage(ChatMessage(author: 'You', text: text, isUser: true));
@@ -710,7 +715,8 @@ class AppShellController extends ChangeNotifier {
     // interfere with the live streaming text.
     _scheduleStreamNotify();
     if (hasContent && voice.isVoicingReply) {
-      voice.pushReplyText(streaming.text);
+      // Never speak the trailing `ui` component block.
+      voice.pushReplyText(streamingVisibleText(streaming.text));
     }
   }
 
@@ -739,21 +745,31 @@ class AppShellController extends ChangeNotifier {
 
   void addAssistantMessage(String text, {String? reasoning}) {
     if (_disposed) return;
-    final component = _pendingTurnComponent;
-    _pendingTurnComponent = null;
+    // Split off any model-emitted `ui` block (always stripped from the visible
+    // text so raw JSON is never shown), then decide the card: an explicit
+    // reference or composed component if present, else the most recent tool
+    // card when the reply reads as a short lead-in. A long pivot answer that
+    // merely ran a tool gets no card.
+    final parts = splitAssistantComponent(text);
+    final component = resolveMessageComponent(
+      emitted: parts.component,
+      capturedToolComponents: _turnToolComponents,
+      replyText: parts.text,
+    );
+    _turnToolComponents.clear();
     appendMessage(
       ChatMessage(
         author: 'StudyOS Agent',
-        text: text,
+        text: parts.text,
         isUser: false,
         reasoning: reasoning,
         component: component,
       ),
     );
-    _status = text;
+    _status = parts.text;
     _notify();
     unawaited(HapticFeedback.lightImpact());
-    voice.endSpokenReply(text);
+    voice.endSpokenReply(parts.text);
   }
 
   Future<void> loadSessions() async {
@@ -796,11 +812,12 @@ class AppShellController extends ChangeNotifier {
   }
 
   void addToolTrace(ToolTrace trace) {
-    // A tool that emitted a generative-UI component: hold it for the assistant
-    // message rather than rendering it in the trace stream. Last producer in
-    // the turn wins (mirrors how the reply summarises the latest fetch).
-    if (trace.component != null) {
-      _pendingTurnComponent = trace.component;
+    // Capture a tool's card payload for the turn, keyed by tool name. It is only
+    // shown if the assistant's final reply opts it in with a `tool_card`
+    // reference — running the tool alone never surfaces a card.
+    final component = trace.component;
+    if (component != null) {
+      _turnToolComponents[trace.toolName] = component;
     }
     _applySessionMutation(
       upsertToolTraceInSessions(

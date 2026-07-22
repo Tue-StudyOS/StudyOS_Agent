@@ -4,9 +4,13 @@ import '../models.dart';
 import '../studyos_theme.dart';
 import 'academic_status_card.dart';
 import 'campus_location_card.dart';
+import 'custom_view_card.dart';
 import 'deadline_card.dart';
+import 'deadline_highlight_card.dart';
 import 'mail_triage_card.dart';
 import 'mensa_card.dart';
+import 'next_action_card.dart';
+import 'quick_reply_card.dart';
 import 'schedule_card.dart';
 import 'study_progress_card.dart';
 import 'talk_card.dart';
@@ -72,6 +76,18 @@ class _GeneratedUiPreviewSectionState extends State<GeneratedUiPreviewSection> {
               component: component,
             ),
             GeneratedComponentKind.scheduleAgenda => ScheduleCard(
+              component: component,
+            ),
+            GeneratedComponentKind.quickReply => QuickReplyCard(
+              component: component,
+            ),
+            GeneratedComponentKind.nextAction => NextActionCard(
+              component: component,
+            ),
+            GeneratedComponentKind.deadlineCard => DeadlineHighlightCard(
+              component: component,
+            ),
+            GeneratedComponentKind.customView => CustomViewCard(
               component: component,
             ),
             _ => _GeneratedComponentCard(component: component),
@@ -151,6 +167,7 @@ class _GeneratedComponentCard extends StatelessWidget {
       GeneratedComponentKind.mensaMenu => Icons.restaurant_outlined,
       GeneratedComponentKind.campusLocations => Icons.place_outlined,
       GeneratedComponentKind.scheduleAgenda => Icons.calendar_month_outlined,
+      GeneratedComponentKind.customView => Icons.dashboard_customize_outlined,
     };
   }
 }

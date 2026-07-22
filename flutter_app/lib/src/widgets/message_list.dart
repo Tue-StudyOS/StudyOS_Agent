@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../generated_ui_message.dart';
 import '../message_trace_compaction.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
 import 'academic_status_card.dart';
 import 'campus_location_card.dart';
+import 'custom_view_card.dart';
 import 'deadline_card.dart';
+import 'deadline_highlight_card.dart';
 import 'mail_triage_card.dart';
+import 'markdown_math.dart';
 import 'mensa_card.dart';
+import 'next_action_card.dart';
+import 'quick_reply_card.dart';
 import 'schedule_card.dart';
 import 'study_progress_card.dart';
 import 'talk_card.dart';
@@ -112,8 +118,49 @@ Widget? generatedComponentCard(
       component: component,
       compact: compact,
     ),
+    GeneratedComponentKind.quickReply => QuickReplyCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.nextAction => NextActionCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.deadlineCard => DeadlineHighlightCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.customView => CustomViewCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
     _ => null,
   };
+}
+
+/// Component kinds produced by a tool from fetched data (mail, deadlines, …).
+/// Their reply text is a one-line lead-in over a list the card already shows, so
+/// [_AssistantText] trims it to the lead-in. Model-emitted kinds (quick_reply,
+/// next_action, deadline_card) instead sit under a full prose answer, which is
+/// kept intact.
+const Set<String> _dataRestatingComponentTypes = <String>{
+  'mail_list',
+  'deadline_list',
+  'talk_list',
+  'academic_status',
+  'study_progress',
+  'mensa_menu',
+  'campus_locations',
+  'schedule_agenda',
+};
+
+bool _restatesData(Map<String, Object?>? payload) {
+  return payload != null &&
+      _dataRestatingComponentTypes.contains(payload['type']);
 }
 
 class _ToolTraceRow extends StatelessWidget {
@@ -287,13 +334,15 @@ class _AssistantText extends StatelessWidget {
       onAction: onComponentAction,
       compact: compact,
     );
-    // When a card is attached it *is* the answer, so drop everything after the
+    // A tool-backed data card *is* the answer, so drop everything after the
     // model's lead-in line. The models don't reliably honour the "don't restate
     // the data" prompt rule, and a restated table/list beneath the card reads as
     // duplication. Keeping just the first line preserves "Here are your …:".
-    final text = card == null
-        ? message.text
-        : _leadInLine(message.text);
+    // Model-emitted cards (quick_reply, next_action, deadline_card) instead
+    // accompany a full prose answer, so their text is kept intact.
+    final text = card != null && _restatesData(message.component)
+        ? _leadInLine(message.text)
+        : message.text;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -308,6 +357,8 @@ class _AssistantText extends StatelessWidget {
                 data: text,
                 selectable: true,
                 styleSheet: assistantMarkdownStyle(context),
+                extensionSet: mathMarkdownExtensionSet(),
+                builders: mathMarkdownBuilders(),
               ),
             ?card,
           ],
@@ -343,6 +394,9 @@ class _StreamingBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reasoning = streaming.reasoning.trim();
+    // Hide a trailing `ui` component block while it streams in, so its raw JSON
+    // never flashes before the reply is committed and the card takes over.
+    final visibleText = streamingVisibleText(streaming.text);
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -353,11 +407,13 @@ class _StreamingBubble extends StatelessWidget {
           children: <Widget>[
             if (reasoning.isNotEmpty)
               ThinkingTrace(reasoning: reasoning, live: true),
-            if (streaming.hasText)
+            if (visibleText.trim().isNotEmpty)
               MarkdownBody(
-                data: streaming.text,
+                data: visibleText,
                 selectable: true,
                 styleSheet: assistantMarkdownStyle(context),
+                extensionSet: mathMarkdownExtensionSet(),
+                builders: mathMarkdownBuilders(),
               )
             else if (reasoning.isEmpty)
               const _TypingDots(),
