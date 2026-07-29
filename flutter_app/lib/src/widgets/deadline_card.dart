@@ -220,8 +220,9 @@ class _DeadlineRow extends StatelessWidget {
   static _Urgency _urgencyFor(DateTime? due) {
     if (due == null) return const _Urgency(StudyOsColors.textMuted, 'no date');
     final now = DateTime.now();
-    if (due.isBefore(now))
+    if (due.isBefore(now)) {
       return const _Urgency(StudyOsColors.warning, 'overdue');
+    }
     final hours = due.difference(now).inHours;
     if (hours <= 48) {
       return const _Urgency(StudyOsColors.warning, 'soon');
