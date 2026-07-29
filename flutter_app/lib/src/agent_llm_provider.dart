@@ -132,7 +132,35 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
   String get displayName => 'Local native model';
 
   @override
-  Future<String> send(AgentLlmRequest request) async {
+  Future<String> send(AgentLlmRequest request) {
+    // Behind a settings flag: the proven bracket `[TOOL:]` text protocol, or
+    // LiteRT-LM's structured native function calling. Both drive the tool loop
+    // from Dart (tools execute here, not natively).
+    return request.config.localToolProtocol ==
+            LocalToolProtocol.nativeFunctionCalling
+        ? _sendNativeFunctionCalling(request)
+        : _sendBracket(request);
+  }
+
+  StudyOsToolContext _toolContextFor(
+    AgentLlmRequest request,
+    NativeToolRouter nativeTools,
+  ) {
+    return StudyOsToolContext(
+      promptContext: request.context,
+      appendMemory: request.appendMemory,
+      readMemory: request.readMemory,
+      readSchedule: request.readSchedule,
+      readAcademicStatus: request.readAcademicStatus,
+      searchTalks: request.searchTalks,
+      mailTools: request.mailTools,
+      nativeTools: nativeTools,
+      publicStudyTools: request.publicStudyTools,
+      privateStudyTools: request.privateStudyTools,
+    );
+  }
+
+  Future<String> _sendBracket(AgentLlmRequest request) async {
     final nativeTools = NativeToolRouter(_bridge);
     final supportedNativeToolNames = await nativeTools.supportedToolNames();
     // The stable system prompt + tool protocol is installed once as the native
@@ -149,18 +177,7 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
       localModelPath: request.config.localModelPath,
       localBackend: request.config.localBackend.name,
     );
-    final toolContext = StudyOsToolContext(
-      promptContext: request.context,
-      appendMemory: request.appendMemory,
-      readMemory: request.readMemory,
-      readSchedule: request.readSchedule,
-      readAcademicStatus: request.readAcademicStatus,
-      searchTalks: request.searchTalks,
-      mailTools: request.mailTools,
-      nativeTools: nativeTools,
-      publicStudyTools: request.publicStudyTools,
-      privateStudyTools: request.privateStudyTools,
-    );
+    final toolContext = _toolContextFor(request, nativeTools);
 
     for (var round = 0; round < _maxToolRounds; round += 1) {
       final calls = _toolCalls(response);
@@ -217,6 +234,108 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
     }
     return response;
   }
+
+  /// Native function-calling path (experimental, flag-gated). The model returns
+  /// structured tool calls instead of `[TOOL:]` text; the schema replaces the
+  /// prose protocol, so only the stable system prompt is installed. The tool
+  /// loop, execution, and tracing are identical to [_sendBracket] — only the
+  /// transport differs. Like the bracket path, a plain-answer turn streams its
+  /// text live via the native `assistantDelta` events (out of band from the
+  /// structured turn map returned here); [request.onDelta] carries the
+  /// between-round reset so streamed tokens never linger before a tool follow-up.
+  Future<String> _sendNativeFunctionCalling(AgentLlmRequest request) async {
+    final nativeTools = NativeToolRouter(_bridge);
+    final supportedNativeToolNames = await nativeTools.supportedToolNames();
+    final toolSchemas = studyOsToolsForNativeSupport(supportedNativeToolNames)
+        .map((tool) => tool.toOpenApiToolJson())
+        .toList();
+    final toolContext = _toolContextFor(request, nativeTools);
+
+    var turn = await _bridge.sendMessageWithTools(
+      text: _composeFirstTurn(
+        request.context.ephemeralContext(),
+        request.userText,
+      ),
+      systemInstruction: request.context.stableSystemPrompt(),
+      toolSchemas: toolSchemas,
+      localModelId: request.config.localModelId,
+      localModelPath: request.config.localModelPath,
+      localBackend: request.config.localBackend.name,
+    );
+
+    for (var round = 0; round < _maxToolRounds; round += 1) {
+      final calls = _nativeToolCalls(turn);
+      if (calls.isEmpty) return _turnText(turn);
+
+      // The turn resolved into tool calls, not an answer; clear the live buffer
+      // so nothing lingers before the follow-up answer. Mirrors _sendBracket.
+      request.onDelta?.call(const AgentStreamDelta(reset: true));
+
+      final results = <Map<String, Object?>>[];
+      for (final call in calls) {
+        final callId =
+            'local-${call.name}-${DateTime.now().microsecondsSinceEpoch}';
+        request.onToolTrace(_traceForCall(call, 'running', callId: callId));
+        final String output;
+        try {
+          output = await _toolExecutor.execute(
+            call.name,
+            call.arguments,
+            toolContext,
+          );
+        } on Object catch (error) {
+          final failedOutput = _toolFailureOutput(error);
+          request.onToolTrace(
+            _traceForCall(call, 'failed', callId: callId, output: failedOutput),
+          );
+          results.add(<String, Object?>{
+            'name': call.name,
+            'response': failedOutput,
+          });
+          continue;
+        }
+        request.onToolTrace(
+          _traceForCall(call, 'done', callId: callId, output: output),
+        );
+        results.add(<String, Object?>{'name': call.name, 'response': output});
+      }
+
+      turn = await _bridge.sendToolResults(results);
+    }
+
+    // Still requesting tools after the round budget: a stuck loop, not an
+    // answer. Mirror _sendBracket and surface it as an error.
+    if (_nativeToolCalls(turn).isNotEmpty) {
+      throw const AgentException(
+        'Local tool loop exceeded the maximum number of tool rounds.',
+      );
+    }
+    return _turnText(turn);
+  }
+
+  /// Parses a native turn's structured tool calls, keeping only known StudyOS
+  /// tools. Argument JSON is passed through untouched to the tool executor,
+  /// which parses it (same contract as the bracket path's arguments string).
+  List<_LocalToolCall> _nativeToolCalls(Map<String, Object?> turn) {
+    final raw = turn['calls'];
+    if (raw is! List) return const <_LocalToolCall>[];
+    final calls = <_LocalToolCall>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final name = entry['name']?.toString().trim().toLowerCase() ?? '';
+      if (name.isEmpty || studyOsToolByName(name) == null) continue;
+      final arguments = entry['arguments']?.toString();
+      calls.add(
+        _LocalToolCall(
+          name: name,
+          arguments: arguments == null || arguments.isEmpty ? '{}' : arguments,
+        ),
+      );
+    }
+    return calls;
+  }
+
+  String _turnText(Map<String, Object?> turn) => turn['text']?.toString() ?? '';
 
   String _localSystemPrompt(
     String basePrompt,

@@ -151,6 +151,82 @@ class MainActivity : FlutterActivity() {
                 localPromptClient?.cancel()
                 result.success(null)
             }
+            "sendMessageWithTools" -> {
+                val text = call.argument<String>("text")?.trim().orEmpty()
+                if (text.isBlank()) {
+                    result.error("empty_message", "Message text must not be empty.", null)
+                    return
+                }
+                val toolSchemas = call.argument<List<Any?>>("toolSchemas")
+                    ?.map { it.toString() }
+                    ?: emptyList()
+                if (!nativeInitialized) initializeNativeLayer()
+                scheduleIdleUnload()
+                localPromptClient().generateWithTools(
+                    prompt = text,
+                    systemInstruction = call.argument<String>("systemInstruction").orEmpty(),
+                    modelId = call.argument<String>("localModelId").orEmpty(),
+                    modelPath = call.argument<String>("localModelPath").orEmpty(),
+                    backend = call.argument<String>("localBackend").orEmpty(),
+                    toolSchemas = toolSchemas,
+                    onDelta = { token -> emitAssistantDelta(token) },
+                    onResult = { turn ->
+                        Handler(Looper.getMainLooper()).post { result.success(turn) }
+                        scheduleIdleUnload()
+                    },
+                    onError = { message ->
+                        emitStatus(message)
+                        Handler(Looper.getMainLooper()).post {
+                            result.error("android_local_model_unavailable", message, null)
+                        }
+                        scheduleIdleUnload()
+                    },
+                )
+            }
+            "sendToolResults" -> {
+                val results = call.argument<List<Any?>>("results")
+                    ?.filterIsInstance<Map<*, *>>()
+                    ?.map { entry ->
+                        entry.entries.associate { (k, v) -> k.toString() to v }
+                    }
+                    ?: emptyList()
+                localPromptClient().continueWithToolResults(
+                    results = results,
+                    onDelta = { token -> emitAssistantDelta(token) },
+                    onResult = { turn ->
+                        Handler(Looper.getMainLooper()).post { result.success(turn) }
+                    },
+                    onError = { message ->
+                        emitStatus(message)
+                        Handler(Looper.getMainLooper()).post {
+                            result.error("android_local_model_unavailable", message, null)
+                        }
+                    },
+                )
+            }
+            "probeNativeToolCall" -> {
+                val modelPath = call.argument<String>("localModelPath")?.trim().orEmpty()
+                if (modelPath.isBlank()) {
+                    result.error(
+                        "empty_model_path",
+                        "A downloaded LiteRT-LM model path is required for the probe.",
+                        null,
+                    )
+                    return
+                }
+                if (!nativeInitialized) initializeNativeLayer()
+                localPromptClient().probeToolCall(
+                    modelPath = modelPath,
+                    onSuccess = { report ->
+                        Handler(Looper.getMainLooper()).post { result.success(report) }
+                    },
+                    onError = { message ->
+                        Handler(Looper.getMainLooper()).post {
+                            result.error("native_tool_probe_failed", message, null)
+                        }
+                    },
+                )
+            }
             else -> result.notImplemented()
         }
     }

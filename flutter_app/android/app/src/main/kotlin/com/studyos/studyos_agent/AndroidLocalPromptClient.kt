@@ -127,6 +127,104 @@ class AndroidLocalPromptClient(context: Context) {
         }
     }
 
+    /**
+     * Native function-calling first turn (flag-gated). Only the LiteRT-LM path
+     * supports structured tools; Gemini Nano via ML Kit does not, so a blank
+     * [modelPath] is surfaced as an error. Text of a plain-answer turn streams
+     * through [onDelta] as it is generated; the structured turn map
+     * ({@code tool_calls} or {@code text}) is returned via [onResult].
+     */
+    fun generateWithTools(
+        prompt: String,
+        systemInstruction: String,
+        modelId: String,
+        modelPath: String,
+        backend: String,
+        toolSchemas: List<String>,
+        onDelta: (String) -> Unit,
+        onResult: (Map<String, Any?>) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        executor.execute {
+            try {
+                if (modelPath.isBlank()) {
+                    onError(
+                        "Native function calling requires a downloaded LiteRT-LM model.",
+                    )
+                    return@execute
+                }
+                liteRtClient.setBackendPreference(backend)
+                onResult(
+                    liteRtClient.generateWithTools(
+                        modelPath,
+                        prompt,
+                        appContext.cacheDir.absolutePath,
+                        systemInstruction,
+                        toolSchemas,
+                        object : LiteRtLocalPromptClient.StreamListener {
+                            override fun onToken(token: String) {
+                                onDelta(token)
+                            }
+                        },
+                    ),
+                )
+            } catch (error: Throwable) {
+                onError("LiteRT-LM function calling failed: ${error.message}")
+            }
+        }
+    }
+
+    /**
+     * Feeds executed tool results back into the active native tool conversation,
+     * streaming the next turn's text through [onDelta] and returning the
+     * structured turn map via [onResult].
+     */
+    fun continueWithToolResults(
+        results: List<Map<String, Any?>>,
+        onDelta: (String) -> Unit,
+        onResult: (Map<String, Any?>) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        executor.execute {
+            try {
+                @Suppress("UNCHECKED_CAST")
+                onResult(
+                    liteRtClient.continueWithToolResults(
+                        results as List<Map<String, Any>>,
+                        object : LiteRtLocalPromptClient.StreamListener {
+                            override fun onToken(token: String) {
+                                onDelta(token)
+                            }
+                        },
+                    ),
+                )
+            } catch (error: Throwable) {
+                onError("LiteRT-LM tool result handling failed: ${error.message}")
+            }
+        }
+    }
+
+    /**
+     * Debug spike: runs the LiteRT-LM native (manual) tool-calling probe against
+     * [modelPath] and returns a diagnostic report. Isolated from the production
+     * generate() path; only meaningful for a downloaded .litertlm model.
+     */
+    fun probeToolCall(
+        modelPath: String,
+        onSuccess: (String) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        executor.execute {
+            try {
+                onSuccess(
+                    liteRtClient.probeToolCall(modelPath, appContext.cacheDir.absolutePath),
+                )
+            } catch (error: Throwable) {
+                onError("Native tool-calling probe failed: ${error.message}")
+            }
+        }
+    }
+
     fun capabilities(): Map<String, Any?> {
         return mapOf(
             "androidLocalModelProvider" to
