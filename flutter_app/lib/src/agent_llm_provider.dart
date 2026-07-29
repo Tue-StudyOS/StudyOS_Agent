@@ -246,9 +246,9 @@ class LocalNativeLlmProvider implements AgentLlmProvider {
   Future<String> _sendNativeFunctionCalling(AgentLlmRequest request) async {
     final nativeTools = NativeToolRouter(_bridge);
     final supportedNativeToolNames = await nativeTools.supportedToolNames();
-    final toolSchemas = studyOsToolsForNativeSupport(supportedNativeToolNames)
-        .map((tool) => tool.toOpenApiToolJson())
-        .toList();
+    final toolSchemas = studyOsToolsForNativeSupport(
+      supportedNativeToolNames,
+    ).map((tool) => tool.toOpenApiToolJson()).toList();
     final toolContext = _toolContextFor(request, nativeTools);
 
     var turn = await _bridge.sendMessageWithTools(

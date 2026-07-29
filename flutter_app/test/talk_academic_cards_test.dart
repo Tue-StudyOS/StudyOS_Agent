@@ -59,7 +59,9 @@ void main() {
   });
 
   group('AcademicStatusCard', () {
-    testWidgets('groups entries by category with status badges', (tester) async {
+    testWidgets('groups entries by category with status badges', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

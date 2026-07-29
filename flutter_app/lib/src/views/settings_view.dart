@@ -244,9 +244,7 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(height: StudyOsSpacing.xl),
         const _SettingsSection(
           title: 'Developer',
-          child: SettingsCard(
-            children: <Widget>[GeneratedUiPreviewSection()],
-          ),
+          child: SettingsCard(children: <Widget>[GeneratedUiPreviewSection()]),
         ),
       ],
     );

@@ -6,11 +6,7 @@ import '../studyos_theme.dart';
 /// Renders a `mensa_menu` generative-UI component: canteen menu lines with their
 /// dishes, dietary markers, and student price. Read-only.
 class MensaCard extends StatelessWidget {
-  const MensaCard({
-    required this.component,
-    this.compact = false,
-    super.key,
-  });
+  const MensaCard({required this.component, this.compact = false, super.key});
 
   final GeneratedUiComponent component;
   final bool compact;
@@ -84,12 +80,14 @@ class _OptionRow extends StatelessWidget {
     final theme = Theme.of(context);
     final line = option['line']?.toString() ?? 'Menu';
     final price = option['price']?.toString().trim() ?? '';
-    final items = (option['items'] as List?)
+    final items =
+        (option['items'] as List?)
             ?.map((item) => item.toString())
             .where((item) => item.isNotEmpty)
             .join(', ') ??
         '';
-    final markers = (option['markers'] as List?)
+    final markers =
+        (option['markers'] as List?)
             ?.map((marker) => marker.toString())
             .where((marker) => marker.isNotEmpty)
             .toList() ??
@@ -155,8 +153,9 @@ class _MarkerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vegetarian =
-        label.toLowerCase().contains('veg'); // vegan/vegetarisch/vegetarian
+    final vegetarian = label.toLowerCase().contains(
+      'veg',
+    ); // vegan/vegetarisch/vegetarian
     final color = vegetarian ? StudyOsColors.success : StudyOsColors.textMuted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

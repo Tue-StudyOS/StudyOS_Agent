@@ -91,8 +91,9 @@ class _DeadlineRow extends StatelessWidget {
     final title = deadline['title']?.toString() ?? 'Deadline';
     final course = deadline['course']?.toString().trim() ?? '';
     final requirement = deadline['requirement']?.toString().trim() ?? '';
-    final due = DateTime.tryParse(deadline['due_at']?.toString() ?? '')
-        ?.toLocal();
+    final due = DateTime.tryParse(
+      deadline['due_at']?.toString() ?? '',
+    )?.toLocal();
     final urgency = _urgencyFor(due);
 
     return Padding(
@@ -104,7 +105,10 @@ class _DeadlineRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.only(top: 5, right: StudyOsSpacing.sm),
+                padding: const EdgeInsets.only(
+                  top: 5,
+                  right: StudyOsSpacing.sm,
+                ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: urgency.color,
@@ -192,15 +196,7 @@ class _DeadlineRow extends StatelessWidget {
   }
 
   static String _formatDue(DateTime due) {
-    const weekdays = <String>[
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ];
+    const weekdays = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = <String>[
       'Jan',
       'Feb',
@@ -224,7 +220,8 @@ class _DeadlineRow extends StatelessWidget {
   static _Urgency _urgencyFor(DateTime? due) {
     if (due == null) return const _Urgency(StudyOsColors.textMuted, 'no date');
     final now = DateTime.now();
-    if (due.isBefore(now)) return const _Urgency(StudyOsColors.warning, 'overdue');
+    if (due.isBefore(now))
+      return const _Urgency(StudyOsColors.warning, 'overdue');
     final hours = due.difference(now).inHours;
     if (hours <= 48) {
       return const _Urgency(StudyOsColors.warning, 'soon');

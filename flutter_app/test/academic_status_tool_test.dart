@@ -27,7 +27,8 @@ void main() {
   });
   tearDown(() => SharedPreferencesAsyncPlatform.instance = null);
 
-  AppShellController controllerWith(AcademicRepository repository, {
+  AppShellController controllerWith(
+    AcademicRepository repository, {
     OnboardingProfile? initialProfile = profile,
   }) {
     final controller = AppShellController(
@@ -40,39 +41,47 @@ void main() {
     return controller;
   }
 
-  test('surfaces the real error instead of the generic unavailable string', () async {
-    final controller = controllerWith(
-      _FakeAcademicRepository.throwing(
-        const AlmaAcademicException('Sign in again to refresh your academic status.'),
-      ),
-    );
+  test(
+    'surfaces the real error instead of the generic unavailable string',
+    () async {
+      final controller = controllerWith(
+        _FakeAcademicRepository.throwing(
+          const AlmaAcademicException(
+            'Sign in again to refresh your academic status.',
+          ),
+        ),
+      );
 
-    final result = await controller.readAcademicStatusForAgent();
+      final result = await controller.readAcademicStatusForAgent();
 
-    expect(result, 'Sign in again to refresh your academic status.');
-    expect(result, isNot(contains('not available')));
-  });
+      expect(result, 'Sign in again to refresh your academic status.');
+      expect(result, isNot(contains('not available')));
+    },
+  );
 
-  test('a concurrent background refresh no longer masks a fetch as unavailable', () async {
-    // Reproduces the race: a refresh is already in flight (as initialize()
-    // starts one) when the tool reader runs. It must await that fetch and
-    // return the data, not a stale null snapshot.
-    final repository = _FakeAcademicRepository.snapshot(
-      _snapshotWith('Machine Learning'),
-      delay: const Duration(milliseconds: 40),
-    );
-    final controller = controllerWith(repository);
+  test(
+    'a concurrent background refresh no longer masks a fetch as unavailable',
+    () async {
+      // Reproduces the race: a refresh is already in flight (as initialize()
+      // starts one) when the tool reader runs. It must await that fetch and
+      // return the data, not a stale null snapshot.
+      final repository = _FakeAcademicRepository.snapshot(
+        _snapshotWith('Machine Learning'),
+        delay: const Duration(milliseconds: 40),
+      );
+      final controller = controllerWith(repository);
 
-    final inFlight = controller.refreshAcademicStatus(); // background refresh
-    final result = await controller.readAcademicStatusForAgent();
-    await inFlight;
+      final inFlight = controller.refreshAcademicStatus(); // background refresh
+      final result = await controller.readAcademicStatusForAgent();
+      await inFlight;
 
-    final decoded = jsonDecode(result) as Map<String, Object?>;
-    final entries = decoded['entries'] as List<Object?>;
-    expect(entries, hasLength(1));
-    // Both callers shared one fetch rather than racing separate ones.
-    expect(repository.refreshCalls, 1);
-  });
+      final decoded = jsonDecode(result) as Map<String, Object?>;
+      final entries = decoded['entries'] as List<Object?>;
+      expect(entries, hasLength(1));
+      // Both callers shared one fetch rather than racing separate ones.
+      expect(repository.refreshCalls, 1);
+    },
+  );
 
   test('reports a clear message when no profile is signed in', () async {
     final controller = controllerWith(

@@ -43,10 +43,9 @@ void main() {
   ) async {
     GeneratedComponentAction? action;
     await tester.pumpWidget(
-      hostMessages(
-        <ChatMessage>[assistant('Want a plan?', fixture('quick_reply'))],
-        onAction: (value) => action = value,
-      ),
+      hostMessages(<ChatMessage>[
+        assistant('Want a plan?', fixture('quick_reply')),
+      ], onAction: (value) => action = value),
     );
 
     expect(find.byType(QuickReplyCard), findsOneWidget);
@@ -65,10 +64,9 @@ void main() {
   ) async {
     GeneratedComponentAction? action;
     await tester.pumpWidget(
-      hostMessages(
-        <ChatMessage>[assistant('You could:', fixture('next_action'))],
-        onAction: (value) => action = value,
-      ),
+      hostMessages(<ChatMessage>[
+        assistant('You could:', fixture('next_action')),
+      ], onAction: (value) => action = value),
     );
 
     expect(find.byType(NextActionCard), findsOneWidget);
@@ -84,10 +82,9 @@ void main() {
   ) async {
     GeneratedComponentAction? action;
     await tester.pumpWidget(
-      hostMessages(
-        <ChatMessage>[assistant('Heads up:', fixture('deadline_card'))],
-        onAction: (value) => action = value,
-      ),
+      hostMessages(<ChatMessage>[
+        assistant('Heads up:', fixture('deadline_card')),
+      ], onAction: (value) => action = value),
     );
 
     expect(find.byType(DeadlineHighlightCard), findsOneWidget);

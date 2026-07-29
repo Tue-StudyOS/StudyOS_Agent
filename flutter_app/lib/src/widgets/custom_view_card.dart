@@ -170,7 +170,10 @@ class CustomViewCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Padding(
-                  padding: const EdgeInsets.only(top: 7, right: StudyOsSpacing.sm),
+                  padding: const EdgeInsets.only(
+                    top: 7,
+                    right: StudyOsSpacing.sm,
+                  ),
                   child: DecoratedBox(
                     decoration: const BoxDecoration(
                       color: StudyOsColors.accent,
@@ -189,7 +192,10 @@ class CustomViewCard extends StatelessWidget {
 
   Widget? _keyValues(List<Map<String, Object?>> rows, ThemeData theme) {
     final visible = rows
-        .where((row) => _str(row, 'label').isNotEmpty || _str(row, 'value').isNotEmpty)
+        .where(
+          (row) =>
+              _str(row, 'label').isNotEmpty || _str(row, 'value').isNotEmpty,
+        )
         .toList(growable: false);
     if (visible.isEmpty) return null;
     return Column(

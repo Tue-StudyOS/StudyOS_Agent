@@ -16,18 +16,21 @@ void main() {
       expect(params['required'], isEmpty);
     });
 
-    test('carries JSON-schema properties and required for a tool with args', () {
-      final decl = appendMemoryTool.toOpenApiFunctionDeclaration();
+    test(
+      'carries JSON-schema properties and required for a tool with args',
+      () {
+        final decl = appendMemoryTool.toOpenApiFunctionDeclaration();
 
-      expect(decl['name'], 'append_memory');
-      final params = decl['parameters']! as Map<String, Object?>;
-      final properties = params['properties']! as Map<String, Object?>;
-      expect(properties.containsKey('text'), isTrue);
-      final textSchema = properties['text']! as Map<String, Object?>;
-      expect(textSchema['type'], 'string');
-      expect(textSchema['description'], isNotEmpty);
-      expect(params['required'], contains('text'));
-    });
+        expect(decl['name'], 'append_memory');
+        final params = decl['parameters']! as Map<String, Object?>;
+        final properties = params['properties']! as Map<String, Object?>;
+        expect(properties.containsKey('text'), isTrue);
+        final textSchema = properties['text']! as Map<String, Object?>;
+        expect(textSchema['type'], 'string');
+        expect(textSchema['description'], isNotEmpty);
+        expect(params['required'], contains('text'));
+      },
+    );
 
     test('every catalog tool serializes to valid, well-formed JSON', () {
       for (final tool in studyOsTools) {
@@ -36,7 +39,11 @@ void main() {
 
         expect(decoded['name'], tool.name, reason: '${tool.name} name');
         final params = decoded['parameters']! as Map<String, Object?>;
-        expect(params['type'], 'object', reason: '${tool.name} parameters.type');
+        expect(
+          params['type'],
+          'object',
+          reason: '${tool.name} parameters.type',
+        );
 
         // Every declared required field must exist in properties.
         final properties = params['properties']! as Map<String, Object?>;

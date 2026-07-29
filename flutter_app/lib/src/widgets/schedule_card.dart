@@ -83,8 +83,9 @@ class ScheduleCard extends StatelessWidget {
     for (final item in raw) {
       if (item is! Map) continue;
       final event = Map<String, Object?>.from(item);
-      final start = DateTime.tryParse(event['start']?.toString() ?? '')
-          ?.toLocal();
+      final start = DateTime.tryParse(
+        event['start']?.toString() ?? '',
+      )?.toLocal();
       if (start == null) continue;
       final key =
           '${start.year}-${start.month.toString().padLeft(2, '0')}-'
@@ -116,7 +117,9 @@ class _EventRow extends StatelessWidget {
     final theme = Theme.of(context);
     final title = event['title']?.toString() ?? 'Lecture';
     final location = event['location']?.toString().trim() ?? '';
-    final start = DateTime.tryParse(event['start']?.toString() ?? '')?.toLocal();
+    final start = DateTime.tryParse(
+      event['start']?.toString() ?? '',
+    )?.toLocal();
     final end = DateTime.tryParse(event['end']?.toString() ?? '')?.toLocal();
 
     return Padding(

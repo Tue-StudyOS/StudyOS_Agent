@@ -124,12 +124,13 @@ class _MailRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Padding(
-                padding: const EdgeInsets.only(top: 6, right: StudyOsSpacing.sm),
+                padding: const EdgeInsets.only(
+                  top: 6,
+                  right: StudyOsSpacing.sm,
+                ),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: isUnread
-                        ? StudyOsColors.accent
-                        : Colors.transparent,
+                    color: isUnread ? StudyOsColors.accent : Colors.transparent,
                     shape: BoxShape.circle,
                     border: isUnread
                         ? null

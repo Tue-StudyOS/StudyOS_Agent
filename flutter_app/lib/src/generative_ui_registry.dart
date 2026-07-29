@@ -241,7 +241,10 @@ Map<String, Object?>? componentPayloadForTool(String toolName, String output) {
 /// Kept provider-agnostic (pure, no Flutter imports) so both the local and the
 /// cloud tool loops can attach the result to the tool's [ToolTrace]. It only
 /// forwards the summary fields the card renders — no message bodies.
-Map<String, Object?>? mailTriageComponentPayload(String toolName, String output) {
+Map<String, Object?>? mailTriageComponentPayload(
+  String toolName,
+  String output,
+) {
   const producers = <String>{'get_recent_mail', 'search_mail'};
   if (!producers.contains(toolName)) return null;
 
@@ -425,10 +428,7 @@ Map<String, Object?>? academicStatusComponentPayload(
     'type': 'academic_status',
     'title': term == null ? 'Academic status' : 'Academic status · $term',
     'body': count == 1 ? '1 entry' : '$count entries',
-    'arguments': <String, Object?>{
-      'term': ?term,
-      'entries': entries,
-    },
+    'arguments': <String, Object?>{'term': ?term, 'entries': entries},
   };
 }
 

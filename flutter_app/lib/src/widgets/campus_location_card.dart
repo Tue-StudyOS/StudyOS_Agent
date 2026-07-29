@@ -150,8 +150,9 @@ class _LocationRow extends StatelessWidget {
                   _LocationAction(
                     icon: Icons.auto_awesome_outlined,
                     label: 'Ask',
-                    onPressed: () =>
-                        onAction!(PromptComponentAction(_askPrompt(name, address))),
+                    onPressed: () => onAction!(
+                      PromptComponentAction(_askPrompt(name, address)),
+                    ),
                   ),
                 ],
               ),

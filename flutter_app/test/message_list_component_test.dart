@@ -41,7 +41,9 @@ void main() {
     expect(find.byType(MailTriageCard), findsOneWidget);
 
     // The card sits below the lead-in text in the vertical layout.
-    final textY = tester.getTopLeft(find.text('Here are your recent emails:')).dy;
+    final textY = tester
+        .getTopLeft(find.text('Here are your recent emails:'))
+        .dy;
     final cardY = tester.getTopLeft(find.byType(MailTriageCard)).dy;
     expect(cardY, greaterThan(textY));
   });

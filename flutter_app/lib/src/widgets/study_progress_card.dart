@@ -108,17 +108,17 @@ class _ModuleRow extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: StudyOsColors.text,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: StudyOsColors.text),
             ),
           ),
           if (summary.isNotEmpty)
             Text(
               summary,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: StudyOsColors.textMuted,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: StudyOsColors.textMuted),
             ),
         ],
       );
@@ -183,5 +183,6 @@ double? _double(Object? value) {
   return double.tryParse(value?.toString() ?? '');
 }
 
-String _trim(double value) =>
-    value == value.roundToDouble() ? value.toInt().toString() : value.toString();
+String _trim(double value) => value == value.roundToDouble()
+    ? value.toInt().toString()
+    : value.toString();

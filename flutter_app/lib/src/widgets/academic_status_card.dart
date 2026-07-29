@@ -67,8 +67,7 @@ class AcademicStatusCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  for (final entry in group.entries)
-                    _EntryRow(entry: entry),
+                  for (final entry in group.entries) _EntryRow(entry: entry),
                 ],
               ],
             ),

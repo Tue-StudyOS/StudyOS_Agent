@@ -217,72 +217,15 @@ void main() {
     expect(bridge.systemInstructions.toSet(), hasLength(1));
   });
 
-  test(
-    'local provider keeps stable context in the system instruction and '
-    'ephemeral context on the turn',
-    () async {
-      final prompts = <String>[];
-      final bridge = _FakeNativeBridge.sequence(<String>[
-        'Plain local response.',
-      ], prompts: prompts);
-      final provider = LocalNativeLlmProvider(bridge);
-
-      await provider.send(
-        AgentLlmRequest(
-          config: const AgentConfig(
-            provider: AgentProvider.local,
-            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
-            cloudModel: 'test-model',
-            hasApiKey: false,
-            localModelId: 'test-local',
-            localModelPath: '/tmp/model.litertlm',
-          ),
-          sessions: const <ChatSession>[],
-          activeSessionId: null,
-          userText: 'How is my day?',
-          context: const PromptContext(
-            profile: null,
-            memory: 'Prefers morning study blocks.',
-            worldState: <String, Object?>{'platform': 'test-device'},
-          ),
-          memoryText: 'Prefers morning study blocks.',
-          appendMemory: (_) async {},
-          readMemory: () async => '',
-          readSchedule: () async => 'No schedule.',
-          mailTools: MailToolRunner(
-            repository: MailRepository.test(),
-            profile: null,
-          ),
-          onToolTrace: (_) {},
-        ),
-      );
-
-      // Stable content is the system instruction; volatile context is not.
-      expect(
-        bridge.lastSystemInstruction,
-        contains('Prefers morning study blocks.'),
-      );
-      expect(
-        bridge.lastSystemInstruction,
-        isNot(contains('Current local timestamp')),
-      );
-
-      // The volatile per-turn context rides the message with the user text.
-      expect(prompts.single, contains('Current local timestamp'));
-      expect(prompts.single, contains('test-device'));
-      expect(prompts.single, contains('How is my day?'));
-    },
-  );
-
-  test('local provider resets the live stream before a tool follow-up', () async {
+  test('local provider keeps stable context in the system instruction and '
+      'ephemeral context on the turn', () async {
+    final prompts = <String>[];
     final bridge = _FakeNativeBridge.sequence(<String>[
-      '[TOOL:read_memories:{}]',
-      'Answer from tool results.',
-    ]);
+      'Plain local response.',
+    ], prompts: prompts);
     final provider = LocalNativeLlmProvider(bridge);
-    final deltas = <AgentStreamDelta>[];
 
-    final response = await provider.send(
+    await provider.send(
       AgentLlmRequest(
         config: const AgentConfig(
           provider: AgentProvider.local,
@@ -294,29 +237,86 @@ void main() {
         ),
         sessions: const <ChatSession>[],
         activeSessionId: null,
-        userText: 'What should I remember?',
+        userText: 'How is my day?',
         context: const PromptContext(
           profile: null,
-          memory: '',
-          worldState: <String, Object?>{},
+          memory: 'Prefers morning study blocks.',
+          worldState: <String, Object?>{'platform': 'test-device'},
         ),
-        memoryText: '',
+        memoryText: 'Prefers morning study blocks.',
         appendMemory: (_) async {},
-        readMemory: () async => 'Fresh memory from disk',
+        readMemory: () async => '',
         readSchedule: () async => 'No schedule.',
         mailTools: MailToolRunner(
           repository: MailRepository.test(),
           profile: null,
         ),
         onToolTrace: (_) {},
-        onDelta: deltas.add,
       ),
     );
 
-    expect(response, 'Answer from tool results.');
-    // The bracketed tool directive turn is cleared before the answer streams.
-    expect(deltas.where((delta) => delta.reset), hasLength(1));
+    // Stable content is the system instruction; volatile context is not.
+    expect(
+      bridge.lastSystemInstruction,
+      contains('Prefers morning study blocks.'),
+    );
+    expect(
+      bridge.lastSystemInstruction,
+      isNot(contains('Current local timestamp')),
+    );
+
+    // The volatile per-turn context rides the message with the user text.
+    expect(prompts.single, contains('Current local timestamp'));
+    expect(prompts.single, contains('test-device'));
+    expect(prompts.single, contains('How is my day?'));
   });
+
+  test(
+    'local provider resets the live stream before a tool follow-up',
+    () async {
+      final bridge = _FakeNativeBridge.sequence(<String>[
+        '[TOOL:read_memories:{}]',
+        'Answer from tool results.',
+      ]);
+      final provider = LocalNativeLlmProvider(bridge);
+      final deltas = <AgentStreamDelta>[];
+
+      final response = await provider.send(
+        AgentLlmRequest(
+          config: const AgentConfig(
+            provider: AgentProvider.local,
+            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+            cloudModel: 'test-model',
+            hasApiKey: false,
+            localModelId: 'test-local',
+            localModelPath: '/tmp/model.litertlm',
+          ),
+          sessions: const <ChatSession>[],
+          activeSessionId: null,
+          userText: 'What should I remember?',
+          context: const PromptContext(
+            profile: null,
+            memory: '',
+            worldState: <String, Object?>{},
+          ),
+          memoryText: '',
+          appendMemory: (_) async {},
+          readMemory: () async => 'Fresh memory from disk',
+          readSchedule: () async => 'No schedule.',
+          mailTools: MailToolRunner(
+            repository: MailRepository.test(),
+            profile: null,
+          ),
+          onToolTrace: (_) {},
+          onDelta: deltas.add,
+        ),
+      );
+
+      expect(response, 'Answer from tool results.');
+      // The bracketed tool directive turn is cleared before the answer streams.
+      expect(deltas.where((delta) => delta.reset), hasLength(1));
+    },
+  );
 
   test('local provider throws when tool rounds are exhausted', () async {
     final bridge = _FakeNativeBridge('[TOOL:read_memories:{}]');

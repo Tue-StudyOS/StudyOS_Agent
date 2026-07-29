@@ -109,22 +109,19 @@ void main() {
     });
 
     test('search_mail is also treated as a producer', () {
-      expect(
-        mailTriageComponentPayload('search_mail', inboxJson()),
-        isNotNull,
-      );
+      expect(mailTriageComponentPayload('search_mail', inboxJson()), isNotNull);
     });
 
     test('returns null for non-producer tools', () {
-      expect(
-        mailTriageComponentPayload('get_schedule', inboxJson()),
-        isNull,
-      );
+      expect(mailTriageComponentPayload('get_schedule', inboxJson()), isNull);
     });
 
     test('returns null for empty inboxes and unparseable output', () {
       expect(
-        mailTriageComponentPayload('get_recent_mail', inboxJson(withMessages: false)),
+        mailTriageComponentPayload(
+          'get_recent_mail',
+          inboxJson(withMessages: false),
+        ),
         isNull,
       );
       expect(
@@ -181,15 +178,15 @@ void main() {
         componentPayloadForTool('get_deadlines', deadlinesJson()),
         isNotNull,
       );
-      expect(
-        componentPayloadForTool('get_schedule', deadlinesJson()),
-        isNull,
-      );
+      expect(componentPayloadForTool('get_schedule', deadlinesJson()), isNull);
     });
 
     test('returns null for empty results and non-deadline tools', () {
       expect(
-        deadlineListComponentPayload('get_deadlines', deadlinesJson(withData: false)),
+        deadlineListComponentPayload(
+          'get_deadlines',
+          deadlinesJson(withData: false),
+        ),
         isNull,
       );
       expect(
@@ -287,10 +284,7 @@ void main() {
         ),
         isNull,
       );
-      expect(
-        componentPayloadForTool('get_recent_mail', statusJson()),
-        isNull,
-      );
+      expect(componentPayloadForTool('get_recent_mail', statusJson()), isNull);
     });
   });
 
@@ -356,10 +350,7 @@ void main() {
         ),
         isNull,
       );
-      expect(
-        componentPayloadForTool('get_deadlines', plannerJson()),
-        isNull,
-      );
+      expect(componentPayloadForTool('get_deadlines', plannerJson()), isNull);
     });
   });
 
@@ -384,7 +375,10 @@ void main() {
     }
 
     test('builds a mensa_menu card from get_mensa_options output', () {
-      final payload = mensaMenuComponentPayload('get_mensa_options', mensaJson());
+      final payload = mensaMenuComponentPayload(
+        'get_mensa_options',
+        mensaJson(),
+      );
       expect(payload, isNotNull);
 
       final validation = GenerativeUiRegistry.validate(payload!);
@@ -403,7 +397,10 @@ void main() {
 
     test('empty data and non-mensa tools yield no card', () {
       expect(
-        mensaMenuComponentPayload('get_mensa_options', mensaJson(withData: false)),
+        mensaMenuComponentPayload(
+          'get_mensa_options',
+          mensaJson(withData: false),
+        ),
         isNull,
       );
       expect(componentPayloadForTool('search_talks', mensaJson()), isNull);
@@ -456,7 +453,10 @@ void main() {
         ),
         isNull,
       );
-      expect(componentPayloadForTool('get_mensa_options', locationsJson()), isNull);
+      expect(
+        componentPayloadForTool('get_mensa_options', locationsJson()),
+        isNull,
+      );
     });
   });
 
@@ -506,7 +506,10 @@ void main() {
         isNull,
       );
       expect(
-        scheduleAgendaComponentPayload('get_schedule', scheduleJson(withEvents: false)),
+        scheduleAgendaComponentPayload(
+          'get_schedule',
+          scheduleJson(withEvents: false),
+        ),
         isNull,
       );
       expect(componentPayloadForTool('get_deadlines', scheduleJson()), isNull);

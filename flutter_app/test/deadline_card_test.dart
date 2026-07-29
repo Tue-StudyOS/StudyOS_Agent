@@ -22,10 +22,7 @@ void main() {
   group('reminderTimeForDeadline', () {
     test('defaults to one day before the deadline', () {
       final due = DateTime(2026, 12, 11, 18);
-      final when = reminderTimeForDeadline(
-        due,
-        now: DateTime(2026, 12, 1, 9),
-      );
+      final when = reminderTimeForDeadline(due, now: DateTime(2026, 12, 1, 9));
       expect(when, DateTime(2026, 12, 10, 18));
     });
 
@@ -62,71 +59,75 @@ void main() {
       expect(find.textContaining('Due '), findsWidgets);
     });
 
-    testWidgets('Add reminder emits a ReminderComponentAction with the due date', (
-      tester,
-    ) async {
-      final actions = <GeneratedComponentAction>[];
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: DeadlineCard(
-              component: deadlineComponent(),
-              onAction: actions.add,
+    testWidgets(
+      'Add reminder emits a ReminderComponentAction with the due date',
+      (tester) async {
+        final actions = <GeneratedComponentAction>[];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: DeadlineCard(
+                component: deadlineComponent(),
+                onAction: actions.add,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await tester.tap(find.text('Add reminder').first);
-      await tester.pump();
+        await tester.tap(find.text('Add reminder').first);
+        await tester.pump();
 
-      expect(actions, hasLength(1));
-      final action = actions.single as ReminderComponentAction;
-      expect(action.title, 'ML exercise sheet 7');
-      expect(
-        action.dueAt.isAtSameMomentAs(
-          DateTime.parse('2026-12-11T18:00:00.000Z'),
-        ),
-        isTrue,
-      );
-    });
+        expect(actions, hasLength(1));
+        final action = actions.single as ReminderComponentAction;
+        expect(action.title, 'ML exercise sheet 7');
+        expect(
+          action.dueAt.isAtSameMomentAs(
+            DateTime.parse('2026-12-11T18:00:00.000Z'),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('AppShellController reminder dispatch', () {
-    test('routes a reminder action to the native create_reminder tool', () async {
-      SharedPreferencesAsyncPlatform.instance =
-          InMemorySharedPreferencesAsync.empty();
-      addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
+    test(
+      'routes a reminder action to the native create_reminder tool',
+      () async {
+        SharedPreferencesAsyncPlatform.instance =
+            InMemorySharedPreferencesAsync.empty();
+        addTearDown(() => SharedPreferencesAsyncPlatform.instance = null);
 
-      final runner = _RecordingNativeToolRunner('Reminder set for Thursday.');
-      final controller = AppShellController(
-        initialProfile: null,
-        initialOnLogout: null,
-        initialOnSaveProfile: null,
-        nativeToolRunner: runner,
-      );
-      addTearDown(controller.dispose);
-      controller.createSession();
+        final runner = _RecordingNativeToolRunner('Reminder set for Thursday.');
+        final controller = AppShellController(
+          initialProfile: null,
+          initialOnLogout: null,
+          initialOnSaveProfile: null,
+          nativeToolRunner: runner,
+        );
+        addTearDown(controller.dispose);
+        controller.createSession();
 
-      controller.handleComponentAction(
-        ReminderComponentAction(
-          title: 'ML exercise sheet 7',
-          dueAt: DateTime(2026, 12, 11, 18),
-        ),
-      );
-      await Future<void>.delayed(Duration.zero);
+        controller.handleComponentAction(
+          ReminderComponentAction(
+            title: 'ML exercise sheet 7',
+            dueAt: DateTime(2026, 12, 11, 18),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(runner.calls, hasLength(1));
-      expect(runner.calls.single.name, nativeCreateReminderToolName);
-      final args =
-          jsonDecode(runner.calls.single.arguments) as Map<String, Object?>;
-      expect(args['title'], 'ML exercise sheet 7');
-      expect(args['time'], isNotNull);
+        expect(runner.calls, hasLength(1));
+        expect(runner.calls.single.name, nativeCreateReminderToolName);
+        final args =
+            jsonDecode(runner.calls.single.arguments) as Map<String, Object?>;
+        expect(args['title'], 'ML exercise sheet 7');
+        expect(args['time'], isNotNull);
 
-      // The native tool's result is surfaced back to the user.
-      final messages = controller.activeSession.messages;
-      expect(messages.last.text, 'Reminder set for Thursday.');
-    });
+        // The native tool's result is surfaced back to the user.
+        final messages = controller.activeSession.messages;
+        expect(messages.last.text, 'Reminder set for Thursday.');
+      },
+    );
   });
 }
 
@@ -138,8 +139,9 @@ class _RecordingNativeToolRunner implements NativeToolRunner {
       <({String name, String arguments})>[];
 
   @override
-  Future<Set<String>> supportedToolNames() async =>
-      <String>{nativeCreateReminderToolName};
+  Future<Set<String>> supportedToolNames() async => <String>{
+    nativeCreateReminderToolName,
+  };
 
   @override
   Future<String> execute(String toolName, String arguments) async {

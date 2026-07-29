@@ -65,63 +65,72 @@ void main() {
     expect(bridge.toolResultBatches, isEmpty);
   });
 
-  test('native FC path executes a tool call and feeds the result back', () async {
-    final bridge = _FakeToolBridge(<Map<String, Object?>>[
-      <String, Object?>{
-        'type': 'tool_calls',
-        'calls': <Object?>[
-          <String, Object?>{'name': 'read_memories', 'arguments': '{}'},
-        ],
-      },
-      <String, Object?>{'type': 'text', 'text': 'I used fresh memory.'},
-    ]);
-    final provider = LocalNativeLlmProvider(bridge);
-    final traces = <ToolTrace>[];
+  test(
+    'native FC path executes a tool call and feeds the result back',
+    () async {
+      final bridge = _FakeToolBridge(<Map<String, Object?>>[
+        <String, Object?>{
+          'type': 'tool_calls',
+          'calls': <Object?>[
+            <String, Object?>{'name': 'read_memories', 'arguments': '{}'},
+          ],
+        },
+        <String, Object?>{'type': 'text', 'text': 'I used fresh memory.'},
+      ]);
+      final provider = LocalNativeLlmProvider(bridge);
+      final traces = <ToolTrace>[];
 
-    final response = await provider.send(
-      _request(
-        bridge,
-        userText: 'What should I remember?',
-        readMemory: () async => 'Fresh memory from disk',
-        onToolTrace: traces.add,
-      ),
-    );
+      final response = await provider.send(
+        _request(
+          bridge,
+          userText: 'What should I remember?',
+          readMemory: () async => 'Fresh memory from disk',
+          onToolTrace: traces.add,
+        ),
+      );
 
-    expect(response, 'I used fresh memory.');
-    // The executed tool's output was returned to the native layer.
-    expect(bridge.toolResultBatches, hasLength(1));
-    final result = bridge.toolResultBatches.single.single;
-    expect(result['name'], 'read_memories');
-    expect(result['response'], 'Fresh memory from disk');
-    // Running + done traces were emitted for the tool.
-    expect(traces.map((t) => t.status), containsAll(<String>['running', 'done']));
-  });
+      expect(response, 'I used fresh memory.');
+      // The executed tool's output was returned to the native layer.
+      expect(bridge.toolResultBatches, hasLength(1));
+      final result = bridge.toolResultBatches.single.single;
+      expect(result['name'], 'read_memories');
+      expect(result['response'], 'Fresh memory from disk');
+      // Running + done traces were emitted for the tool.
+      expect(
+        traces.map((t) => t.status),
+        containsAll(<String>['running', 'done']),
+      );
+    },
+  );
 
-  test('native FC path resets the live stream before a tool follow-up', () async {
-    final bridge = _FakeToolBridge(<Map<String, Object?>>[
-      <String, Object?>{
-        'type': 'tool_calls',
-        'calls': <Object?>[
-          <String, Object?>{'name': 'read_memories', 'arguments': '{}'},
-        ],
-      },
-      <String, Object?>{'type': 'text', 'text': 'Answer from tool results.'},
-    ]);
-    final provider = LocalNativeLlmProvider(bridge);
-    final deltas = <AgentStreamDelta>[];
+  test(
+    'native FC path resets the live stream before a tool follow-up',
+    () async {
+      final bridge = _FakeToolBridge(<Map<String, Object?>>[
+        <String, Object?>{
+          'type': 'tool_calls',
+          'calls': <Object?>[
+            <String, Object?>{'name': 'read_memories', 'arguments': '{}'},
+          ],
+        },
+        <String, Object?>{'type': 'text', 'text': 'Answer from tool results.'},
+      ]);
+      final provider = LocalNativeLlmProvider(bridge);
+      final deltas = <AgentStreamDelta>[];
 
-    final response = await provider.send(
-      _request(
-        bridge,
-        userText: 'What should I remember?',
-        readMemory: () async => 'Fresh memory',
-        onDelta: deltas.add,
-      ),
-    );
+      final response = await provider.send(
+        _request(
+          bridge,
+          userText: 'What should I remember?',
+          readMemory: () async => 'Fresh memory',
+          onDelta: deltas.add,
+        ),
+      );
 
-    expect(response, 'Answer from tool results.');
-    expect(deltas.where((delta) => delta.reset), hasLength(1));
-  });
+      expect(response, 'Answer from tool results.');
+      expect(deltas.where((delta) => delta.reset), hasLength(1));
+    },
+  );
 
   test('native FC path ignores unknown tool names', () async {
     final bridge = _FakeToolBridge(<Map<String, Object?>>[
@@ -159,11 +168,7 @@ void main() {
 
     await expectLater(
       provider.send(
-        _request(
-          bridge,
-          userText: 'Loop forever',
-          readMemory: () async => 'x',
-        ),
+        _request(bridge, userText: 'Loop forever', readMemory: () async => 'x'),
       ),
       throwsA(isA<AgentException>()),
     );

@@ -59,11 +59,7 @@ void main() {
 
     expect(repository.forceRefreshCount, 0);
 
-    await tester.fling(
-      find.byType(ListView),
-      const Offset(0, 400),
-      1000,
-    );
+    await tester.fling(find.byType(ListView), const Offset(0, 400), 1000);
     await tester.pumpAndSettle();
 
     expect(repository.forceRefreshCount, 1);

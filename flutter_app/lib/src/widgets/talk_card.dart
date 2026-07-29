@@ -89,8 +89,9 @@ class _TalkRow extends StatelessWidget {
     final title = talk['title']?.toString() ?? 'Talk';
     final speaker = talk['speaker']?.toString().trim() ?? '';
     final location = talk['location']?.toString().trim() ?? '';
-    final start = DateTime.tryParse(talk['timestamp']?.toString() ?? '')
-        ?.toLocal();
+    final start = DateTime.tryParse(
+      talk['timestamp']?.toString() ?? '',
+    )?.toLocal();
     final meta = <String>[
       if (speaker.isNotEmpty) speaker,
       if (location.isNotEmpty) location,

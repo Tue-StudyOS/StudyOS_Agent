@@ -40,9 +40,7 @@ void main() {
   });
 
   testWidgets('GFM tables still render alongside math support', (tester) async {
-    await tester.pumpWidget(
-      host('| A | B |\n| - | - |\n| 1 | 2 |'),
-    );
+    await tester.pumpWidget(host('| A | B |\n| - | - |\n| 1 | 2 |'));
     expect(find.byType(Table), findsOneWidget);
   });
 

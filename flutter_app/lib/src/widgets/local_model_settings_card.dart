@@ -243,7 +243,9 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed: _isProbingToolCall ? null : _probeNativeToolCalling,
+                  onPressed: _isProbingToolCall
+                      ? null
+                      : _probeNativeToolCalling,
                   icon: _isProbingToolCall
                       ? const SizedBox.square(
                           dimension: 18,

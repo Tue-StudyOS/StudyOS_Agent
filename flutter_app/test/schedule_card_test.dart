@@ -53,9 +53,7 @@ void main() {
             return null;
           });
       addTearDown(
-        () => TestDefaultBinaryMessengerBinding
-            .instance
-            .defaultBinaryMessenger
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, null),
       );
 
@@ -97,7 +95,10 @@ void main() {
       expect(decoded['source_term'], 'WS 2026/27');
       final events = decoded['events'] as List<Object?>;
       expect(events, hasLength(1));
-      expect((events.first as Map<Object?, Object?>)['title'], 'Machine Learning');
+      expect(
+        (events.first as Map<Object?, Object?>)['title'],
+        'Machine Learning',
+      );
       // Refresh was requested exactly once (no null-snapshot race).
       expect(repository.refreshCalls, 1);
     });

@@ -9,33 +9,31 @@ void main() {
     'arguments': <String, Object?>{'modules': <Object?>[]},
   };
 
-  Map<String, Map<String, Object?>> captured() => <String, Map<String, Object?>>{
-    'get_study_planner': plannerCard(),
-  };
+  Map<String, Map<String, Object?>> captured() =>
+      <String, Map<String, Object?>>{'get_study_planner': plannerCard()};
 
   group('resolveComponentPayload', () {
     test('a tool_card reference resolves to the captured tool payload', () {
-      final resolved = resolveComponentPayload(
-        <String, Object?>{'type': 'tool_card', 'tool': 'get_study_planner'},
-        captured(),
-      );
+      final resolved = resolveComponentPayload(<String, Object?>{
+        'type': 'tool_card',
+        'tool': 'get_study_planner',
+      }, captured());
       expect(resolved, plannerCard());
     });
 
     test('a reference to a tool not called this turn resolves to null', () {
-      final resolved = resolveComponentPayload(
-        <String, Object?>{'type': 'tool_card', 'tool': 'get_recent_mail'},
-        captured(),
-      );
+      final resolved = resolveComponentPayload(<String, Object?>{
+        'type': 'tool_card',
+        'tool': 'get_recent_mail',
+      }, captured());
       expect(resolved, isNull);
     });
 
     test('a tool_card reference without a tool name resolves to null', () {
       expect(
-        resolveComponentPayload(
-          <String, Object?>{'type': 'tool_card'},
-          captured(),
-        ),
+        resolveComponentPayload(<String, Object?>{
+          'type': 'tool_card',
+        }, captured()),
         isNull,
       );
     });
@@ -69,18 +67,21 @@ void main() {
       expect(component, plannerCard());
     });
 
-    test('a pivot reply that ran the tool but omits the block shows no card', () {
-      // The model called get_study_planner while answering something else and
-      // did not reference it — the decoupling fix: no card, full text kept.
-      const raw =
-          'The Mensa has Gemüse-Lasagne and Rindergulasch today. '
-          'Both are available at lunch.';
-      final parts = splitAssistantComponent(raw);
-      final component = resolveComponentPayload(parts.component, captured());
+    test(
+      'a pivot reply that ran the tool but omits the block shows no card',
+      () {
+        // The model called get_study_planner while answering something else and
+        // did not reference it — the decoupling fix: no card, full text kept.
+        const raw =
+            'The Mensa has Gemüse-Lasagne and Rindergulasch today. '
+            'Both are available at lunch.';
+        final parts = splitAssistantComponent(raw);
+        final component = resolveComponentPayload(parts.component, captured());
 
-      expect(parts.text, raw);
-      expect(component, isNull);
-    });
+        expect(parts.text, raw);
+        expect(component, isNull);
+      },
+    );
   });
 
   group('isPresentationalLeadIn', () {
@@ -185,10 +186,7 @@ void main() {
         'get_study_planner': plannerCard(),
         'get_recent_mail': mailCard,
       };
-      expect(
-        resolve('Here you go:', capturedComponents: ordered),
-        mailCard,
-      );
+      expect(resolve('Here you go:', capturedComponents: ordered), mailCard);
     });
   });
 }
