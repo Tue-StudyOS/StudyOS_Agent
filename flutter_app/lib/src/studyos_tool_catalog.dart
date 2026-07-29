@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'alma_study_tools.dart';
 import 'native_tool_router.dart';
 import 'private_study_tools.dart';
@@ -17,6 +19,24 @@ class StudyOsToolSpec {
   final String traceSummary;
   final Map<String, Object?> properties;
   final List<String> required;
+
+  /// This spec as an OpenAPI-style function declaration — the shape LiteRT-LM's
+  /// native function calling expects from `OpenApiTool.getToolDescriptionJsonString()`.
+  /// The catalog's [properties]/[required] are already JSON-schema shaped, so this
+  /// only wraps them in the `parameters` object. See [toOpenApiToolJson].
+  Map<String, Object?> toOpenApiFunctionDeclaration() => <String, Object?>{
+    'name': name,
+    'description': description,
+    'parameters': <String, Object?>{
+      'type': 'object',
+      'properties': properties,
+      'required': required,
+    },
+  };
+
+  /// The function declaration serialized as JSON, ready to hand to a native
+  /// `OpenApiTool` for manual (Dart-executed) tool calling.
+  String toOpenApiToolJson() => jsonEncode(toOpenApiFunctionDeclaration());
 }
 
 const appendMemoryTool = StudyOsToolSpec(

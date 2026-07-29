@@ -192,10 +192,16 @@ class NativeBridge {
     });
   }
 
+  /// Sends one turn to the local (native) model.
+  ///
+  /// [systemInstruction] is the stable system prompt; the native LiteRT path
+  /// installs it once as the conversation's system instruction and only rebuilds
+  /// the conversation when it changes, so callers should pass the same stable
+  /// value across a turn's tool rounds. [text] carries only the per-turn content
+  /// (the user message with ephemeral context, or tool feedback).
   Future<String> sendMessage(
     String text, {
-    String? systemPrompt,
-    String? memory,
+    String? systemInstruction,
     String? localModelId,
     String? localModelPath,
     String? localBackend,
@@ -203,8 +209,7 @@ class NativeBridge {
     final result = await _methods
         .invokeMethod<String>('sendMessage', <String, Object?>{
           'text': text,
-          'systemPrompt': systemPrompt,
-          'memory': memory,
+          'systemInstruction': systemInstruction,
           'localModelId': localModelId,
           'localModelPath': localModelPath,
           'localBackend': localBackend,
@@ -216,6 +221,64 @@ class NativeBridge {
   /// platforms without a local model bridge.
   Future<void> cancelMessage() async {
     await _methods.invokeMethod<void>('cancelMessage');
+  }
+
+  /// Sends the first turn of a native function-calling exchange.
+  ///
+  /// [toolSchemas] are per-tool OpenAPI function declarations (JSON). The native
+  /// LiteRT-LM conversation is created with these tools and manual tool calling,
+  /// so it returns either a structured tool-call request or a final answer:
+  ///   `{'type': 'tool_calls', 'calls': [{'name': String, 'arguments': String}]}`
+  ///   `{'type': 'text', 'text': String}`
+  /// A plain-answer turn also streams its text live through `assistantDelta`
+  /// events on the [events] channel (a tool-request turn streams nothing); this
+  /// map is the settled result. Tool execution stays in Dart; results are
+  /// returned via [sendToolResults].
+  Future<Map<String, Object?>> sendMessageWithTools({
+    required String text,
+    String? systemInstruction,
+    required List<String> toolSchemas,
+    String? localModelId,
+    String? localModelPath,
+    String? localBackend,
+  }) async {
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'sendMessageWithTools',
+      <String, Object?>{
+        'text': text,
+        'systemInstruction': systemInstruction,
+        'toolSchemas': toolSchemas,
+        'localModelId': localModelId,
+        'localModelPath': localModelPath,
+        'localBackend': localBackend,
+      },
+    );
+    return result ?? const <String, Object?>{'type': 'text', 'text': ''};
+  }
+
+  /// Feeds executed tool results back into the active native tool conversation
+  /// and returns the next turn (same shape and live `assistantDelta` streaming as
+  /// [sendMessageWithTools]). Each entry is `{'name': String, 'response': String}`.
+  Future<Map<String, Object?>> sendToolResults(
+    List<Map<String, Object?>> results,
+  ) async {
+    final result = await _methods.invokeMapMethod<String, Object?>(
+      'sendToolResults',
+      <String, Object?>{'results': results},
+    );
+    return result ?? const <String, Object?>{'type': 'text', 'text': ''};
+  }
+
+  /// Debug spike: runs the LiteRT-LM native (manual) function-calling probe on
+  /// [localModelPath] and returns a diagnostic report. Android-only; verifies
+  /// whether the shipped model emits structured tool calls before committing to
+  /// migrating the production `[TOOL:]` bracket protocol.
+  Future<String> probeNativeToolCall({required String localModelPath}) async {
+    final result = await _methods.invokeMethod<String>(
+      'probeNativeToolCall',
+      <String, Object?>{'localModelPath': localModelPath},
+    );
+    return result ?? 'Native tool-calling probe returned no report.';
   }
 
   String _memoryPreview(String value) {

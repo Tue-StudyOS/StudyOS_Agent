@@ -669,7 +669,10 @@ class _FakeMailRepository extends MailRepository {
   _FakeMailRepository() : super.test();
 
   @override
-  Future<List<MailboxSummary>> listMailboxes(OnboardingProfile? profile) async {
+  Future<List<MailboxSummary>> listMailboxes(
+    OnboardingProfile? profile, {
+    bool forceRefresh = false,
+  }) async {
     return const <MailboxSummary>[
       MailboxSummary(
         name: 'INBOX',
@@ -691,6 +694,7 @@ class _FakeMailRepository extends MailRepository {
     String sender = '',
     String since = '',
     int scanLimit = 200,
+    bool forceRefresh = false,
   }) async {
     return const MailInboxSummary(
       account: 'ada42',
@@ -715,6 +719,7 @@ class _FakeMailRepository extends MailRepository {
     OnboardingProfile? profile, {
     required String uid,
     String mailbox = 'INBOX',
+    bool forceRefresh = false,
   }) async {
     return const MailMessageDetail(
       uid: '7',

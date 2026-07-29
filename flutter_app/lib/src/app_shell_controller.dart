@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'agent_config_store.dart';
 import 'agent_message_sender.dart';
@@ -10,11 +11,13 @@ import 'academic_repository.dart';
 import 'calendar_overview_repository.dart';
 import 'chat_scroll.dart';
 import 'chat_session_mutation.dart';
+import 'generated_ui_message.dart';
 import 'mail_repository.dart';
 import 'mail_tools.dart';
 import 'memory_store.dart';
 import 'models.dart';
 import 'native_bridge.dart';
+import 'native_tool_router.dart';
 import 'official_document_models.dart';
 import 'official_documents_repository.dart';
 import 'profile_context.dart';
@@ -47,6 +50,32 @@ class ChatRouteRequest {
   }
 }
 
+/// Chooses when a deadline reminder should fire: one day before the due time,
+/// stepping closer (one hour before, then a short delay) as the deadline nears
+/// so the reminder never lands in the past. Pure so it can be unit-tested.
+DateTime reminderTimeForDeadline(DateTime dueAt, {DateTime? now}) {
+  final reference = now ?? DateTime.now();
+  final dayBefore = dueAt.subtract(const Duration(days: 1));
+  if (dayBefore.isAfter(reference)) return dayBefore;
+  final hourBefore = dueAt.subtract(const Duration(hours: 1));
+  if (hourBefore.isAfter(reference)) return hourBefore;
+  return reference.add(const Duration(minutes: 10));
+}
+
+/// Builds the Google Maps search URL for coordinates. Mirrors the deep link the
+/// in-app map view uses for its "Open in maps" control, so both surfaces behave
+/// identically. Pure so it can be unit-tested.
+Uri campusMapsUri(double latitude, double longitude) {
+  return Uri.https('www.google.com', '/maps/search/', <String, String>{
+    'api': '1',
+    'query': '$latitude,$longitude',
+  });
+}
+
+Future<bool> _launchExternal(Uri uri) {
+  return launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 class AppShellController extends ChangeNotifier {
   AppShellController({
     required OnboardingProfile? initialProfile,
@@ -57,12 +86,20 @@ class AppShellController extends ChangeNotifier {
     NativeBridge? nativeBridge,
     TalksRepository? talksRepository,
     CalendarOverviewSource? calendarOverviewSource,
+    NativeToolRunner? nativeToolRunner,
+    AcademicRepository? academicRepository,
+    TimetableRepository? timetableRepository,
+    Future<bool> Function(Uri uri)? urlLauncher,
   }) : bridge = nativeBridge ?? NativeBridge(),
        talksRepository = talksRepository ?? TalksRepository(),
        _ownsTalksRepository = talksRepository == null,
+       _academicRepository = academicRepository ?? AcademicRepository(),
+       _timetableRepository = timetableRepository ?? TimetableRepository(),
+       _urlLauncher = urlLauncher ?? _launchExternal,
        _profile = initialProfile,
        _onLogout = initialOnLogout,
        _onSaveProfile = initialOnSaveProfile {
+    _nativeToolRunner = nativeToolRunner ?? NativeToolRouter(bridge);
     _privateStudyTools = CombinedPrivateStudyToolRunner(
       portal: LivePrivateStudyToolRunner(
         PrivateStudyCapability(profileProvider: () => _profile),
@@ -77,15 +114,20 @@ class AppShellController extends ChangeNotifier {
   }
 
   final NativeBridge bridge;
+  late final NativeToolRunner _nativeToolRunner;
+  final Future<bool> Function(Uri uri) _urlLauncher;
   final TalksRepository talksRepository;
   final bool _ownsTalksRepository;
   late final CalendarOverviewSource calendarOverviewSource;
   final SessionStore _sessionStore = SessionStore();
   final AgentConfigStore _configStore = AgentConfigStore();
   final MailRepository _mailRepository = MailRepository();
+
+  /// Shared mail repository so the mail view reuses the cached IMAP session.
+  MailRepository get mailRepository => _mailRepository;
   final MemoryStore _memoryStore = MemoryStore();
-  final TimetableRepository _timetableRepository = TimetableRepository();
-  final AcademicRepository _academicRepository = AcademicRepository();
+  final TimetableRepository _timetableRepository;
+  final AcademicRepository _academicRepository;
   final OfficialDocumentsRepository _documentsRepository =
       OfficialDocumentsRepository();
   final PublicStudyToolRunner _publicStudyTools = LivePublicStudyToolRunner();
@@ -112,8 +154,10 @@ class AppShellController extends ChangeNotifier {
   AgentConfig _agentConfig = const AgentConfig.defaults();
   String _memoryText = '';
   TimetableSnapshot? _timetable;
+  Future<void>? _timetableRefresh;
   AcademicStatusSnapshot? _academicStatus;
   String? _academicStatusError;
+  Future<void>? _academicStatusRefresh;
   String? _academicReportError;
   List<OfficialDocument> _officialDocuments = <OfficialDocument>[];
   String? _officialDocumentsError;
@@ -133,6 +177,15 @@ class AppShellController extends ChangeNotifier {
   StreamingAssistantMessage? _streaming;
   Timer? _streamNotifyTimer;
   AgentCancelToken? _cancelToken;
+
+  /// Generative-UI card payloads produced by tools during the in-flight turn,
+  /// keyed by tool name (last call of each tool wins). Nothing is shown just
+  /// because a tool ran: a card surfaces only if the assistant's final reply
+  /// references it with a `tool_card` block, which is resolved against this map
+  /// when the message is committed (see [addAssistantMessage]). Cleared at the
+  /// start of every turn.
+  final Map<String, Map<String, Object?>> _turnToolComponents =
+      <String, Map<String, Object?>>{};
 
   OnboardingProfile? get profile => _profile;
   VoidCallback? get onLogout => _onLogout;
@@ -313,9 +366,21 @@ class AppShellController extends ChangeNotifier {
     unawaited(refreshAcademicStatus());
   }
 
-  Future<void> refreshAcademicStatus() async {
+  Future<void> refreshAcademicStatus() {
     final profile = _profile;
-    if (profile == null || _isRefreshingAcademicStatus) return;
+    if (profile == null) return Future<void>.value();
+    // Coalesce concurrent refreshes so callers await the in-flight fetch
+    // instead of racing past a still-running one. Previously the guard made a
+    // second caller (e.g. the get_academic_status tool, fired while the
+    // background refresh started in initialize() was still running) return
+    // immediately and read a null snapshot — surfacing "Academic status is not
+    // available." and masking the real error. Callers now share one future.
+    return _academicStatusRefresh ??= _runAcademicStatusRefresh(
+      profile,
+    ).whenComplete(() => _academicStatusRefresh = null);
+  }
+
+  Future<void> _runAcademicStatusRefresh(OnboardingProfile profile) async {
     _isRefreshingAcademicStatus = true;
     _academicStatusError = null;
     _notify();
@@ -400,13 +465,18 @@ class AppShellController extends ChangeNotifier {
   }
 
   Future<String> readAcademicStatusForAgent() async {
-    final status = _academicStatus;
-    if (status == null) {
+    if (_profile == null) {
+      return 'Academic status is unavailable: no student profile is signed in.';
+    }
+    if (_academicStatus == null) {
       await refreshAcademicStatus();
     }
     final resolved = _academicStatus;
     if (resolved == null) {
-      return _academicStatusError ?? 'Academic status is not available.';
+      // The refresh finished without a snapshot; surface the real reason
+      // (e.g. an authentication prompt) instead of a generic string.
+      return _academicStatusError ??
+          'Academic status could not be loaded right now. Please try again in a moment.';
     }
     return jsonEncode(<String, Object?>{
       'term': resolved.term,
@@ -430,6 +500,75 @@ class AppShellController extends ChangeNotifier {
 
   void prefillChatPrompt(String text) {
     onOpenChatRequest?.call(ChatRouteRequest(prompt: text));
+  }
+
+  /// Dispatches an action emitted by an interactive generative-UI component.
+  /// Prompt actions go back through the agent; reminder actions create a native
+  /// device reminder directly (the tap is the user's authorization).
+  void handleComponentAction(GeneratedComponentAction action) {
+    switch (action) {
+      case PromptComponentAction(:final prompt):
+        unawaited(runComponentPrompt(prompt));
+      case ReminderComponentAction(:final title, :final dueAt):
+        unawaited(addDeadlineReminder(title: title, dueAt: dueAt));
+      case MapComponentAction(:final name, :final latitude, :final longitude):
+        unawaited(
+          openLocationInMaps(
+            name: name,
+            latitude: latitude,
+            longitude: longitude,
+          ),
+        );
+    }
+  }
+
+  /// Runs a prompt requested by a component (e.g. mail Summarize): prefills the
+  /// composer and sends it, reusing the autosent chat-route path so a turn is
+  /// created immediately.
+  Future<void> runComponentPrompt(String text) {
+    return applyChatRoute(prompt: text, autosend: true);
+  }
+
+  /// Creates a native device reminder ahead of [dueAt] via the capability-gated
+  /// native tool runner, then reports the outcome as an assistant message. On
+  /// platforms without reminder support the runner returns a friendly message,
+  /// which is surfaced as-is.
+  Future<void> addDeadlineReminder({
+    required String title,
+    required DateTime dueAt,
+  }) async {
+    final when = reminderTimeForDeadline(dueAt);
+    final result = await _nativeToolRunner.execute(
+      nativeCreateReminderToolName,
+      jsonEncode(<String, Object?>{
+        'title': title,
+        'time': when.toIso8601String(),
+      }),
+    );
+    if (_disposed) return;
+    final detail = result.trim();
+    addAssistantMessage(
+      detail.isEmpty ? 'Reminder requested for "$title".' : detail,
+    );
+  }
+
+  /// Opens a geocoded place in the device's external maps app. Reports a message
+  /// only on failure (success hands off to the maps app).
+  Future<void> openLocationInMaps({
+    required String name,
+    required double latitude,
+    required double longitude,
+  }) async {
+    bool opened;
+    try {
+      opened = await _urlLauncher(campusMapsUri(latitude, longitude));
+    } on Object {
+      opened = false;
+    }
+    if (_disposed) return;
+    if (!opened) {
+      addAssistantMessage('Could not open $name in maps.');
+    }
   }
 
   Future<void> applyChatRoute({
@@ -463,6 +602,7 @@ class AppShellController extends ChangeNotifier {
     if (text.isEmpty || _isSending) return;
 
     _isSending = true;
+    _turnToolComponents.clear();
     inputController.clear();
     _notify();
     appendMessage(ChatMessage(author: 'You', text: text, isUser: true));
@@ -575,7 +715,8 @@ class AppShellController extends ChangeNotifier {
     // interfere with the live streaming text.
     _scheduleStreamNotify();
     if (hasContent && voice.isVoicingReply) {
-      voice.pushReplyText(streaming.text);
+      // Never speak the trailing `ui` component block.
+      voice.pushReplyText(streamingVisibleText(streaming.text));
     }
   }
 
@@ -604,18 +745,31 @@ class AppShellController extends ChangeNotifier {
 
   void addAssistantMessage(String text, {String? reasoning}) {
     if (_disposed) return;
+    // Split off any model-emitted `ui` block (always stripped from the visible
+    // text so raw JSON is never shown), then decide the card: an explicit
+    // reference or composed component if present, else the most recent tool
+    // card when the reply reads as a short lead-in. A long pivot answer that
+    // merely ran a tool gets no card.
+    final parts = splitAssistantComponent(text);
+    final component = resolveMessageComponent(
+      emitted: parts.component,
+      capturedToolComponents: _turnToolComponents,
+      replyText: parts.text,
+    );
+    _turnToolComponents.clear();
     appendMessage(
       ChatMessage(
         author: 'StudyOS Agent',
-        text: text,
+        text: parts.text,
         isUser: false,
         reasoning: reasoning,
+        component: component,
       ),
     );
-    _status = text;
+    _status = parts.text;
     _notify();
     unawaited(HapticFeedback.lightImpact());
-    voice.endSpokenReply(text);
+    voice.endSpokenReply(parts.text);
   }
 
   Future<void> loadSessions() async {
@@ -658,6 +812,13 @@ class AppShellController extends ChangeNotifier {
   }
 
   void addToolTrace(ToolTrace trace) {
+    // Capture a tool's card payload for the turn, keyed by tool name. It is only
+    // shown if the assistant's final reply opts it in with a `tool_card`
+    // reference — running the tool alone never surfaces a card.
+    final component = trace.component;
+    if (component != null) {
+      _turnToolComponents[trace.toolName] = component;
+    }
     _applySessionMutation(
       upsertToolTraceInSessions(
         sessions: _sessions,
@@ -710,14 +871,22 @@ class AppShellController extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshTimetable() async {
-    if (_isRefreshingTimetable) return;
+  Future<void> refreshTimetable() {
     final profile = _profile;
     if (profile == null) {
       _timetableError = 'Sign in again to refresh your timetable.';
       _notify();
-      return;
+      return Future<void>.value();
     }
+    // Coalesce concurrent refreshes so a caller (e.g. the get_schedule tool)
+    // awaits the in-flight fetch instead of racing past it — same fix as
+    // academic status.
+    return _timetableRefresh ??= _runTimetableRefresh(
+      profile,
+    ).whenComplete(() => _timetableRefresh = null);
+  }
+
+  Future<void> _runTimetableRefresh(OnboardingProfile profile) async {
     _isRefreshingTimetable = true;
     _timetableError = null;
     _notify();
@@ -798,8 +967,30 @@ class AppShellController extends ChangeNotifier {
       await refreshTimetable();
       snapshot = _timetable;
     }
-    return snapshot?.compactSummary(limit: 12) ??
-        'No timetable has been synced yet.';
+    if (snapshot == null || snapshot.events.isEmpty) {
+      return _timetableError ?? 'No timetable has been synced yet.';
+    }
+    final upcoming = snapshot.upcoming.take(12).toList(growable: false);
+    if (upcoming.isEmpty) {
+      return 'No upcoming lectures in the synced timetable.';
+    }
+    // Structured output so the client can render an interactive schedule card
+    // (see schedule_agenda in GenerativeUiRegistry). The model gets the same
+    // data as JSON instead of a prose summary.
+    return jsonEncode(<String, Object?>{
+      'source_term': snapshot.sourceTerm,
+      'refreshed_at': snapshot.refreshedAt.toIso8601String(),
+      'events': upcoming
+          .map(
+            (event) => <String, Object?>{
+              'title': event.title,
+              'start': event.start.toIso8601String(),
+              'end': event.end?.toIso8601String(),
+              'location': event.location,
+            },
+          )
+          .toList(growable: false),
+    });
   }
 
   Future<String> searchTalksForAgent(String query, int limit) async {

@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
+import '../generated_ui_message.dart';
 import '../message_trace_compaction.dart';
 import '../models.dart';
 import '../studyos_theme.dart';
+import 'academic_status_card.dart';
+import 'campus_location_card.dart';
+import 'custom_view_card.dart';
+import 'deadline_card.dart';
+import 'deadline_highlight_card.dart';
+import 'mail_triage_card.dart';
+import 'markdown_math.dart';
+import 'mensa_card.dart';
+import 'next_action_card.dart';
+import 'quick_reply_card.dart';
+import 'schedule_card.dart';
+import 'study_progress_card.dart';
+import 'talk_card.dart';
 import 'thinking_trace.dart';
 
 class MessageList extends StatelessWidget {
@@ -12,6 +26,7 @@ class MessageList extends StatelessWidget {
     required this.compact,
     required this.controller,
     this.streaming,
+    this.onComponentAction,
     super.key,
   });
 
@@ -22,6 +37,10 @@ class MessageList extends StatelessWidget {
   /// The reply currently streaming in, rendered as a live bubble after the
   /// committed messages. Null when no reply is in flight.
   final StreamingAssistantMessage? streaming;
+
+  /// Dispatches an action requested by an interactive generative-UI component
+  /// (e.g. a mail or deadline card). Null disables component actions.
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +59,108 @@ class MessageList extends StatelessWidget {
         if (message.isTrace) {
           return _ToolTraceRow(message: message, compact: compact);
         }
-        return _MessageBubble(message: message, compact: compact);
+        return _MessageBubble(
+          message: message,
+          compact: compact,
+          onComponentAction: onComponentAction,
+        );
       },
     );
   }
+}
+
+/// Returns a rich generative-UI card for a message's component payload, or null
+/// to render nothing extra. Only the mail-list kind has a bespoke renderer
+/// today; unknown or invalid payloads are ignored so the reply degrades to
+/// plain text.
+Widget? generatedComponentCard(
+  Map<String, Object?>? payload, {
+  ValueChanged<GeneratedComponentAction>? onAction,
+  bool compact = false,
+}) {
+  if (payload == null) return null;
+  final component = GenerativeUiRegistry.validate(payload).component;
+  if (component == null) return null;
+  return switch (component.kind) {
+    GeneratedComponentKind.mailList => MailTriageCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.deadlineList => DeadlineCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.talkList => TalkCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.academicStatus => AcademicStatusCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.studyProgress => StudyProgressCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.mensaMenu => MensaCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.campusLocations => CampusLocationCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.scheduleAgenda => ScheduleCard(
+      component: component,
+      compact: compact,
+    ),
+    GeneratedComponentKind.quickReply => QuickReplyCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.nextAction => NextActionCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.deadlineCard => DeadlineHighlightCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    GeneratedComponentKind.customView => CustomViewCard(
+      component: component,
+      onAction: onAction,
+      compact: compact,
+    ),
+    _ => null,
+  };
+}
+
+/// Component kinds produced by a tool from fetched data (mail, deadlines, …).
+/// Their reply text is a one-line lead-in over a list the card already shows, so
+/// [_AssistantText] trims it to the lead-in. Model-emitted kinds (quick_reply,
+/// next_action, deadline_card) instead sit under a full prose answer, which is
+/// kept intact.
+const Set<String> _dataRestatingComponentTypes = <String>{
+  'mail_list',
+  'deadline_list',
+  'talk_list',
+  'academic_status',
+  'study_progress',
+  'mensa_menu',
+  'campus_locations',
+  'schedule_agenda',
+};
+
+bool _restatesData(Map<String, Object?>? payload) {
+  return payload != null &&
+      _dataRestatingComponentTypes.contains(payload['type']);
 }
 
 class _ToolTraceRow extends StatelessWidget {
@@ -150,15 +267,24 @@ class _TraceStatusStyle {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.compact});
+  const _MessageBubble({
+    required this.message,
+    required this.compact,
+    this.onComponentAction,
+  });
 
   final ChatMessage message;
   final bool compact;
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
 
   @override
   Widget build(BuildContext context) {
     if (!message.isUser) {
-      return _AssistantText(message: message, compact: compact);
+      return _AssistantText(
+        message: message,
+        compact: compact,
+        onComponentAction: onComponentAction,
+      );
     }
 
     return Align(
@@ -190,14 +316,33 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _AssistantText extends StatelessWidget {
-  const _AssistantText({required this.message, required this.compact});
+  const _AssistantText({
+    required this.message,
+    required this.compact,
+    this.onComponentAction,
+  });
 
   final ChatMessage message;
   final bool compact;
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
 
   @override
   Widget build(BuildContext context) {
     final reasoning = message.reasoning?.trim() ?? '';
+    final card = generatedComponentCard(
+      message.component,
+      onAction: onComponentAction,
+      compact: compact,
+    );
+    // A tool-backed data card *is* the answer, so drop everything after the
+    // model's lead-in line. The models don't reliably honour the "don't restate
+    // the data" prompt rule, and a restated table/list beneath the card reads as
+    // duplication. Keeping just the first line preserves "Here are your …:".
+    // Model-emitted cards (quick_reply, next_action, deadline_card) instead
+    // accompany a full prose answer, so their text is kept intact.
+    final text = card != null && _restatesData(message.component)
+        ? _leadInLine(message.text)
+        : message.text;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -207,16 +352,34 @@ class _AssistantText extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             if (reasoning.isNotEmpty) ThinkingTrace(reasoning: reasoning),
-            MarkdownBody(
-              data: message.text,
-              selectable: true,
-              styleSheet: assistantMarkdownStyle(context),
-            ),
+            if (text.trim().isNotEmpty)
+              MarkdownBody(
+                data: text,
+                selectable: true,
+                styleSheet: assistantMarkdownStyle(context),
+                extensionSet: mathMarkdownExtensionSet(),
+                builders: mathMarkdownBuilders(),
+              ),
+            ?card,
           ],
         ),
       ),
     );
   }
+}
+
+/// Returns the first non-empty line of [text], used as the lead-in above a
+/// generative-UI card. Anything after it (a restated list or table the card
+/// already shows) is dropped. A leading Markdown list/heading/quote marker is
+/// treated as "no lead-in" so a card-only restatement collapses to nothing.
+String _leadInLine(String text) {
+  for (final line in text.split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
+    if (RegExp(r'^([-*+>#]|\d+[.)]|\|)').hasMatch(trimmed)) return '';
+    return trimmed;
+  }
+  return '';
 }
 
 /// Live bubble for the reply that is still streaming in. Shows accumulated
@@ -231,6 +394,9 @@ class _StreamingBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reasoning = streaming.reasoning.trim();
+    // Hide a trailing `ui` component block while it streams in, so its raw JSON
+    // never flashes before the reply is committed and the card takes over.
+    final visibleText = streamingVisibleText(streaming.text);
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -241,11 +407,13 @@ class _StreamingBubble extends StatelessWidget {
           children: <Widget>[
             if (reasoning.isNotEmpty)
               ThinkingTrace(reasoning: reasoning, live: true),
-            if (streaming.hasText)
+            if (visibleText.trim().isNotEmpty)
               MarkdownBody(
-                data: streaming.text,
+                data: visibleText,
                 selectable: true,
                 styleSheet: assistantMarkdownStyle(context),
+                extensionSet: mathMarkdownExtensionSet(),
+                builders: mathMarkdownBuilders(),
               )
             else if (reasoning.isEmpty)
               const _TypingDots(),

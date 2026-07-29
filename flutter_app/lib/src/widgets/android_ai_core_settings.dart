@@ -101,6 +101,7 @@ class _AndroidAiCoreSettingsState extends State<AndroidAiCoreSettings> {
           DropdownButtonFormField<String>(
             key: ValueKey<String>(_selectedId),
             initialValue: selected.id,
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Built-in model',
               prefixIcon: Icon(Icons.android_rounded),

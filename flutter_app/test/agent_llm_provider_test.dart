@@ -107,12 +107,12 @@ void main() {
       );
 
       expect(response, 'Plain local response.');
-      expect(bridge.lastSystemPrompt, contains('search_talks'));
-      expect(bridge.lastSystemPrompt, contains('get_recent_mail'));
-      expect(bridge.lastSystemPrompt, contains('search_mail'));
-      expect(bridge.lastSystemPrompt, contains('find_mail_deadlines'));
+      expect(bridge.lastSystemInstruction, contains('search_talks'));
+      expect(bridge.lastSystemInstruction, contains('get_recent_mail'));
+      expect(bridge.lastSystemInstruction, contains('search_mail'));
+      expect(bridge.lastSystemInstruction, contains('find_mail_deadlines'));
       expect(
-        bridge.lastSystemPrompt,
+        bridge.lastSystemInstruction,
         isNot(contains(nativeSetFlashlightToolName)),
       );
     },
@@ -164,9 +164,9 @@ void main() {
       ),
     );
 
-    expect(bridge.lastSystemPrompt, contains(nativeDeviceStatusToolName));
+    expect(bridge.lastSystemInstruction, contains(nativeDeviceStatusToolName));
     expect(
-      bridge.lastSystemPrompt,
+      bridge.lastSystemInstruction,
       isNot(contains(nativeSetFlashlightToolName)),
     );
   });
@@ -212,7 +212,111 @@ void main() {
     expect(response, 'I used fresh memory.');
     expect(prompts.last, contains('Fresh memory from disk'));
     expect(prompts.last, isNot(contains('Stale memory snapshot')));
+    // The system instruction is installed once and reused verbatim across the
+    // tool round rather than rebuilt per message.
+    expect(bridge.systemInstructions.toSet(), hasLength(1));
   });
+
+  test('local provider keeps stable context in the system instruction and '
+      'ephemeral context on the turn', () async {
+    final prompts = <String>[];
+    final bridge = _FakeNativeBridge.sequence(<String>[
+      'Plain local response.',
+    ], prompts: prompts);
+    final provider = LocalNativeLlmProvider(bridge);
+
+    await provider.send(
+      AgentLlmRequest(
+        config: const AgentConfig(
+          provider: AgentProvider.local,
+          cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+          cloudModel: 'test-model',
+          hasApiKey: false,
+          localModelId: 'test-local',
+          localModelPath: '/tmp/model.litertlm',
+        ),
+        sessions: const <ChatSession>[],
+        activeSessionId: null,
+        userText: 'How is my day?',
+        context: const PromptContext(
+          profile: null,
+          memory: 'Prefers morning study blocks.',
+          worldState: <String, Object?>{'platform': 'test-device'},
+        ),
+        memoryText: 'Prefers morning study blocks.',
+        appendMemory: (_) async {},
+        readMemory: () async => '',
+        readSchedule: () async => 'No schedule.',
+        mailTools: MailToolRunner(
+          repository: MailRepository.test(),
+          profile: null,
+        ),
+        onToolTrace: (_) {},
+      ),
+    );
+
+    // Stable content is the system instruction; volatile context is not.
+    expect(
+      bridge.lastSystemInstruction,
+      contains('Prefers morning study blocks.'),
+    );
+    expect(
+      bridge.lastSystemInstruction,
+      isNot(contains('Current local timestamp')),
+    );
+
+    // The volatile per-turn context rides the message with the user text.
+    expect(prompts.single, contains('Current local timestamp'));
+    expect(prompts.single, contains('test-device'));
+    expect(prompts.single, contains('How is my day?'));
+  });
+
+  test(
+    'local provider resets the live stream before a tool follow-up',
+    () async {
+      final bridge = _FakeNativeBridge.sequence(<String>[
+        '[TOOL:read_memories:{}]',
+        'Answer from tool results.',
+      ]);
+      final provider = LocalNativeLlmProvider(bridge);
+      final deltas = <AgentStreamDelta>[];
+
+      final response = await provider.send(
+        AgentLlmRequest(
+          config: const AgentConfig(
+            provider: AgentProvider.local,
+            cloudEndpoint: 'https://example.invalid/v1/chat/completions',
+            cloudModel: 'test-model',
+            hasApiKey: false,
+            localModelId: 'test-local',
+            localModelPath: '/tmp/model.litertlm',
+          ),
+          sessions: const <ChatSession>[],
+          activeSessionId: null,
+          userText: 'What should I remember?',
+          context: const PromptContext(
+            profile: null,
+            memory: '',
+            worldState: <String, Object?>{},
+          ),
+          memoryText: '',
+          appendMemory: (_) async {},
+          readMemory: () async => 'Fresh memory from disk',
+          readSchedule: () async => 'No schedule.',
+          mailTools: MailToolRunner(
+            repository: MailRepository.test(),
+            profile: null,
+          ),
+          onToolTrace: (_) {},
+          onDelta: deltas.add,
+        ),
+      );
+
+      expect(response, 'Answer from tool results.');
+      // The bracketed tool directive turn is cleared before the answer streams.
+      expect(deltas.where((delta) => delta.reset), hasLength(1));
+    },
+  );
 
   test('local provider throws when tool rounds are exhausted', () async {
     final bridge = _FakeNativeBridge('[TOOL:read_memories:{}]');
@@ -297,7 +401,8 @@ class _FakeNativeBridge extends NativeBridge {
   final List<String>? responses;
   final List<String>? prompts;
   final List<Map<String, Object?>> nativeTools;
-  String? lastSystemPrompt;
+  String? lastSystemInstruction;
+  final List<String?> systemInstructions = <String?>[];
   int _responseIndex = 0;
 
   @override
@@ -308,13 +413,13 @@ class _FakeNativeBridge extends NativeBridge {
   @override
   Future<String> sendMessage(
     String text, {
-    String? systemPrompt,
-    String? memory,
+    String? systemInstruction,
     String? localModelId,
     String? localModelPath,
     String? localBackend,
   }) async {
-    lastSystemPrompt = systemPrompt;
+    lastSystemInstruction = systemInstruction;
+    systemInstructions.add(systemInstruction);
     prompts?.add(text);
     final queued = responses;
     if (queued == null) return response;

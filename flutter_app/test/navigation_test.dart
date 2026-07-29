@@ -172,6 +172,7 @@ void main() {
   testWidgets('home presents a daily focus before StudyOS controls', (
     WidgetTester tester,
   ) async {
+    var openedMail = false;
     await tester.pumpWidget(
       MaterialApp(
         theme: buildStudyOsTheme(),
@@ -191,7 +192,7 @@ void main() {
             onOpenAssistant: () {},
             onOpenNotes: () {},
             onOpenTalks: () {},
-            onOpenMail: () {},
+            onOpenMail: () => openedMail = true,
             onOpenMaps: () {},
             onOpenCampus: () {},
             onOpenSchedule: () {},
@@ -212,8 +213,20 @@ void main() {
     );
     expect(find.text('StudyOS'), findsOneWidget);
     expect(find.text('Tübingen Talks'), findsOneWidget);
+    expect(find.text('University Mail'), findsOneWidget);
     expect(find.text('Generated component preview'), findsNothing);
     expect(find.byType(RefreshIndicator), findsOneWidget);
+
+    final mailRow = find.byKey(const ValueKey<String>('home-status-mail'));
+    await tester.scrollUntilVisible(
+      mailRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(mailRow);
+    await tester.pumpAndSettle();
+    await tester.tap(mailRow);
+    expect(openedMail, isTrue);
   });
 
   test(

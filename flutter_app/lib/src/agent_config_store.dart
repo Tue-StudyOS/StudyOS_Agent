@@ -20,6 +20,8 @@ class AgentConfigStore {
   static const String _localModelIdKey = 'studyos.agent.localModelId.v1';
   static const String _localModelPathKey = 'studyos.agent.localModelPath.v1';
   static const String _localBackendKey = 'studyos.agent.localBackend.v1';
+  static const String _localToolProtocolKey =
+      'studyos.agent.localToolProtocol.v1';
   static const String _apiKeyKey = 'studyos.agent.cloudApiKey.v1';
 
   final SharedPreferencesAsync? _preferences;
@@ -36,6 +38,7 @@ class AgentConfigStore {
     final localModelId = await _prefs.getString(_localModelIdKey);
     final localModelPath = await _prefs.getString(_localModelPathKey);
     final localBackend = await _prefs.getString(_localBackendKey);
+    final localToolProtocol = await _prefs.getString(_localToolProtocolKey);
     final apiKey = await _secure.read(key: _apiKeyKey);
     if (_hasNoSavedConfig(
       providerName: providerName,
@@ -63,6 +66,7 @@ class AgentConfigStore {
       localModelId: localModelId ?? const AgentConfig.defaults().localModelId,
       localModelPath: localModelPath ?? '',
       localBackend: localBackendFromName(localBackend),
+      localToolProtocol: localToolProtocolFromName(localToolProtocol),
     );
   }
 
@@ -93,6 +97,10 @@ class AgentConfigStore {
     await _prefs.setString(_localModelIdKey, config.localModelId.trim());
     await _prefs.setString(_localModelPathKey, config.localModelPath.trim());
     await _prefs.setString(_localBackendKey, config.localBackend.name);
+    await _prefs.setString(
+      _localToolProtocolKey,
+      config.localToolProtocol.name,
+    );
   }
 
   bool _hasNoSavedConfig({

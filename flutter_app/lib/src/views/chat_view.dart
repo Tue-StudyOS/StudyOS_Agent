@@ -19,6 +19,7 @@ class ChatView extends StatelessWidget {
     this.onStop,
     this.streaming,
     this.voice,
+    this.onComponentAction,
     super.key,
   });
 
@@ -33,6 +34,10 @@ class ChatView extends StatelessWidget {
   final StreamingAssistantMessage? streaming;
   final VoiceController? voice;
 
+  /// Dispatches an action requested by an interactive component in the message
+  /// list (e.g. a mail card's Summarize or a deadline card's Add reminder).
+  final ValueChanged<GeneratedComponentAction>? onComponentAction;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -43,6 +48,7 @@ class ChatView extends StatelessWidget {
             compact: compactMessages,
             controller: messageScrollController,
             streaming: streaming,
+            onComponentAction: onComponentAction,
           ),
         ),
         if (messages.isEmpty) SuggestionStrip(onSelected: onSuggestionSelected),

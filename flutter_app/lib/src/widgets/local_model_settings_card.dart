@@ -35,6 +35,7 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
   List<Map<String, Object?>> _installedModels = <Map<String, Object?>>[];
   bool _isDownloadingModel = false;
   bool _isDeletingModel = false;
+  bool _isProbingToolCall = false;
   double? _downloadProgress;
   int _downloadedBytes = 0;
   int _downloadTotalBytes = -1;
@@ -105,6 +106,7 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
           children: <Widget>[
             DropdownButtonFormField<String>(
               initialValue: _localModelId,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Local model',
                 prefixIcon: Icon(Icons.storage_rounded),
@@ -163,6 +165,20 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
+            const SizedBox(height: StudyOsSpacing.sm),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Native function calling'),
+              subtitle: const Text(
+                'Experimental: structured tool calls instead of the text '
+                'protocol. Falls back automatically if the model lacks tool '
+                'support.',
+              ),
+              value:
+                  widget.config.localToolProtocol ==
+                  LocalToolProtocol.nativeFunctionCalling,
+              onChanged: _setToolProtocol,
+            ),
             const SizedBox(height: StudyOsSpacing.md),
             TextField(
               controller: _customModelUrlController,
@@ -217,6 +233,26 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
                 child: Text(
                   _downloadProgressLabel,
                   style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+            // Debug spike: verify LiteRT-LM native function calling on-device
+            // before migrating the production [TOOL:] bracket protocol.
+            if (kDebugMode) ...<Widget>[
+              const SizedBox(height: StudyOsSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _isProbingToolCall
+                      ? null
+                      : _probeNativeToolCalling,
+                  icon: _isProbingToolCall
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.science_rounded),
+                  label: const Text('Test native tool calling'),
                 ),
               ),
             ],
@@ -314,6 +350,60 @@ class _LocalModelSettingsCardState extends State<LocalModelSettingsCard> {
         });
       }
     }
+  }
+
+  Future<void> _setToolProtocol(bool useNativeFunctionCalling) async {
+    final next = useNativeFunctionCalling
+        ? LocalToolProtocol.nativeFunctionCalling
+        : LocalToolProtocol.bracket;
+    if (next == widget.config.localToolProtocol) return;
+    await widget.onSaveAgentConfig(
+      widget.config.copyWith(localToolProtocol: next),
+      null,
+    );
+    _showMessage(
+      useNativeFunctionCalling
+          ? 'Local model will use native function calling.'
+          : 'Local model will use the text tool protocol.',
+    );
+  }
+
+  Future<void> _probeNativeToolCalling() async {
+    final installed = _installedModelFor(_localModelId);
+    final modelPath = widget.config.localModelPath.isNotEmpty
+        ? widget.config.localModelPath
+        : installed?['path']?.toString() ?? '';
+    if (modelPath.isEmpty) {
+      _showMessage('Download a LiteRT-LM model first to probe tool calling.');
+      return;
+    }
+
+    setState(() => _isProbingToolCall = true);
+    String report;
+    try {
+      report = await widget.nativeBridge.probeNativeToolCall(
+        localModelPath: modelPath,
+      );
+    } catch (error) {
+      report = 'Probe failed: $error';
+    } finally {
+      if (mounted) setState(() => _isProbingToolCall = false);
+    }
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Native tool-calling probe'),
+        content: SingleChildScrollView(child: SelectableText(report)),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _cancelModelDownload() async {

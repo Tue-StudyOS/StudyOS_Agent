@@ -5,6 +5,10 @@ class _MailControls extends StatelessWidget {
     required this.mailboxes,
     required this.mailbox,
     required this.unreadOnly,
+    required this.queryController,
+    required this.onQueryChanged,
+    required this.onQuerySubmitted,
+    required this.onClearQuery,
     required this.onMailboxChanged,
     required this.onUnreadOnlyChanged,
   });
@@ -12,6 +16,10 @@ class _MailControls extends StatelessWidget {
   final List<MailboxSummary> mailboxes;
   final String mailbox;
   final bool unreadOnly;
+  final TextEditingController queryController;
+  final ValueChanged<String> onQueryChanged;
+  final ValueChanged<String> onQuerySubmitted;
+  final VoidCallback onClearQuery;
   final ValueChanged<String> onMailboxChanged;
   final ValueChanged<bool> onUnreadOnlyChanged;
 
@@ -29,46 +37,74 @@ class _MailControls extends StatelessWidget {
           ]
         : mailboxes;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: StudyOsSpacing.md),
+      padding: const EdgeInsets.all(StudyOsSpacing.md),
       decoration: BoxDecoration(
         color: StudyOsColors.surface,
         borderRadius: BorderRadius.circular(StudyOsRadii.md),
       ),
-      child: Row(
+      child: Column(
         children: <Widget>[
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: mailbox,
-              decoration: const InputDecoration(labelText: 'Mailbox'),
-              items: options
-                  .map(
-                    (item) => DropdownMenuItem<String>(
-                      value: item.name,
-                      child: Text(
-                        item.unreadCount == null || item.unreadCount == 0
-                            ? item.label
-                            : '${item.label} (${item.unreadCount})',
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) onMailboxChanged(value);
-              },
-            ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: queryController,
+            builder: (context, value, _) {
+              return TextField(
+                controller: queryController,
+                textInputAction: TextInputAction.search,
+                onChanged: onQueryChanged,
+                onSubmitted: onQuerySubmitted,
+                decoration: InputDecoration(
+                  labelText: 'Search mail',
+                  hintText: 'Subject, sender, or keyword',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: value.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear search',
+                          onPressed: onClearQuery,
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                ),
+              );
+            },
           ),
-          const SizedBox(width: StudyOsSpacing.sm),
-          IconButton(
-            tooltip: unreadOnly ? 'Show all messages' : 'Show unread only',
-            onPressed: () => onUnreadOnlyChanged(!unreadOnly),
-            icon: Icon(
-              unreadOnly
-                  ? Icons.mark_email_unread_rounded
-                  : Icons.mark_email_read_outlined,
-              color: unreadOnly
-                  ? StudyOsColors.accent
-                  : StudyOsColors.textMuted,
-            ),
+          const SizedBox(height: StudyOsSpacing.sm),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: mailbox,
+                  decoration: const InputDecoration(labelText: 'Mailbox'),
+                  items: options
+                      .map(
+                        (item) => DropdownMenuItem<String>(
+                          value: item.name,
+                          child: Text(
+                            item.unreadCount == null || item.unreadCount == 0
+                                ? item.label
+                                : '${item.label} (${item.unreadCount})',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) onMailboxChanged(value);
+                  },
+                ),
+              ),
+              const SizedBox(width: StudyOsSpacing.sm),
+              IconButton(
+                tooltip: unreadOnly ? 'Show all messages' : 'Show unread only',
+                onPressed: () => onUnreadOnlyChanged(!unreadOnly),
+                icon: Icon(
+                  unreadOnly
+                      ? Icons.mark_email_unread_rounded
+                      : Icons.mark_email_read_outlined,
+                  color: unreadOnly
+                      ? StudyOsColors.accent
+                      : StudyOsColors.textMuted,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -165,9 +201,10 @@ class _MailSummaryCard extends StatelessWidget {
 }
 
 class _MailDetailCard extends StatelessWidget {
-  const _MailDetailCard({required this.message});
+  const _MailDetailCard({required this.message, required this.onClose});
 
   final MailMessageDetail message;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +216,23 @@ class _MailDetailCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(message.subject, style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  message.subject,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Close message',
+                onPressed: onClose,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
           const SizedBox(height: StudyOsSpacing.xs),
           Text(
             '${message.senderLabel} · ${message.receivedAt ?? 'Unknown date'}',

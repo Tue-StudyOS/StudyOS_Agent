@@ -93,6 +93,7 @@ class _ChatRouteState extends State<ChatRoute> {
                           onStop: controller.cancelMessage,
                           streaming: controller.streaming,
                           voice: controller.voice,
+                          onComponentAction: controller.handleComponentAction,
                         ),
                       ),
                     ],

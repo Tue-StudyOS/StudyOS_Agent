@@ -8,6 +8,7 @@ import 'onboarding_flow.dart';
 import 'studyos_theme.dart';
 import 'views/chat_route.dart';
 import 'views/home_view.dart';
+import 'views/mail_view.dart';
 import 'views/maps_view.dart';
 import 'views/memories_view.dart';
 import 'views/official_documents_view.dart';
@@ -169,6 +170,13 @@ GoRouter buildAppRouter({
         ),
       ),
       GoRoute(
+        path: '/mail',
+        builder: (context, state) => _ScopedAppRoute(
+          controller: shellController(),
+          child: _MailRoute(controller: shellController()),
+        ),
+      ),
+      GoRoute(
         path: '/talks',
         builder: (context, state) => _ScopedAppRoute(
           controller: shellController(),
@@ -222,8 +230,7 @@ class _HomeRoute extends StatelessWidget {
         onOpenAssistant: () => context.push('/settings'),
         onOpenNotes: () => context.push('/memories'),
         onOpenTalks: () => context.push('/talks'),
-        onOpenMail: () =>
-            context.push('/chat?prompt=Show%20my%20university%20mail'),
+        onOpenMail: () => context.push('/mail'),
         onOpenMaps: () => context.push('/maps'),
         onOpenCampus: () => context.push(
           '/chat?prompt=What%20is%20good%20at%20the%20Mensa%20today%3F',
@@ -276,6 +283,28 @@ class _TalksRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = this.controller ?? AppShellScope.of(context);
     return TalksView(repository: controller.talksRepository);
+  }
+}
+
+class _MailRoute extends StatelessWidget {
+  const _MailRoute({required this.controller});
+
+  final AppShellController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = this.controller ?? AppShellScope.of(context);
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => _RouteScaffold(
+        title: 'Mail',
+        showTitle: false,
+        child: MailView(
+          profile: controller.profile,
+          repository: controller.mailRepository,
+        ),
+      ),
+    );
   }
 }
 

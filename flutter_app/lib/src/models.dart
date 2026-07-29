@@ -79,6 +79,7 @@ class ChatMessage {
     required this.isUser,
     this.trace,
     this.reasoning,
+    this.component,
   });
 
   ChatMessage.toolTrace({
@@ -90,6 +91,7 @@ class ChatMessage {
        text = summary,
        isUser = false,
        reasoning = null,
+       component = null,
        trace = ToolTrace(
          toolName: toolName,
          status: status,
@@ -105,6 +107,11 @@ class ChatMessage {
   /// Optional model "thinking"/reasoning trace, shown in a collapsed panel.
   final String? reasoning;
 
+  /// Optional generative-UI component (validated by [GenerativeUiRegistry])
+  /// rendered beneath this message's text. Set on the assistant turn whose tool
+  /// call produced it — e.g. a mail-triage card under "Here are your emails:".
+  final Map<String, Object?>? component;
+
   bool get isTrace => trace != null;
 
   Map<String, Object?> toJson() {
@@ -114,6 +121,7 @@ class ChatMessage {
       'isUser': isUser,
       if (trace != null) 'trace': trace!.toJson(),
       if (reasoning != null && reasoning!.isNotEmpty) 'reasoning': reasoning,
+      if (component != null) 'component': component,
     };
   }
 
@@ -123,12 +131,16 @@ class ChatMessage {
         ? ToolTrace.fromJson(Map<String, Object?>.from(rawTrace))
         : null;
     final reasoning = json['reasoning']?.toString();
+    final rawComponent = json['component'];
     return ChatMessage(
       author: json['author']?.toString() ?? 'StudyOS Agent',
       text: json['text']?.toString() ?? '',
       isUser: json['isUser'] == true,
       trace: trace,
       reasoning: reasoning == null || reasoning.isEmpty ? null : reasoning,
+      component: rawComponent is Map
+          ? Map<String, Object?>.from(rawComponent)
+          : null,
     );
   }
 }
@@ -144,6 +156,21 @@ LocalBackend localBackendFromName(String? name) {
   return name == LocalBackend.cpu.name ? LocalBackend.cpu : LocalBackend.gpu;
 }
 
+/// How the on-device model routes StudyOS tool calls.
+///
+/// [bracket] is the proven text protocol: the model emits `[TOOL:name:args]`
+/// text that the Dart layer parses. [nativeFunctionCalling] uses LiteRT-LM's
+/// structured function calling (manual mode) — cleaner, but model-template
+/// dependent. Defaults to [bracket]; the native path is behind a settings flag.
+enum LocalToolProtocol { bracket, nativeFunctionCalling }
+
+/// Parses a persisted tool-protocol name, defaulting to [LocalToolProtocol.bracket].
+LocalToolProtocol localToolProtocolFromName(String? name) {
+  return name == LocalToolProtocol.nativeFunctionCalling.name
+      ? LocalToolProtocol.nativeFunctionCalling
+      : LocalToolProtocol.bracket;
+}
+
 class AgentConfig {
   const AgentConfig({
     required this.provider,
@@ -153,6 +180,7 @@ class AgentConfig {
     required this.localModelId,
     required this.localModelPath,
     this.localBackend = LocalBackend.gpu,
+    this.localToolProtocol = LocalToolProtocol.bracket,
   });
 
   const AgentConfig.defaults()
@@ -162,7 +190,8 @@ class AgentConfig {
       hasApiKey = false,
       localModelId = 'platform-default',
       localModelPath = '',
-      localBackend = LocalBackend.gpu;
+      localBackend = LocalBackend.gpu,
+      localToolProtocol = LocalToolProtocol.bracket;
 
   final AgentProvider provider;
   final String cloudEndpoint;
@@ -171,6 +200,7 @@ class AgentConfig {
   final String localModelId;
   final String localModelPath;
   final LocalBackend localBackend;
+  final LocalToolProtocol localToolProtocol;
 
   bool get usesCloud => provider == AgentProvider.cloud;
 
@@ -182,6 +212,7 @@ class AgentConfig {
     String? localModelId,
     String? localModelPath,
     LocalBackend? localBackend,
+    LocalToolProtocol? localToolProtocol,
   }) {
     return AgentConfig(
       provider: provider ?? this.provider,
@@ -191,6 +222,7 @@ class AgentConfig {
       localModelId: localModelId ?? this.localModelId,
       localModelPath: localModelPath ?? this.localModelPath,
       localBackend: localBackend ?? this.localBackend,
+      localToolProtocol: localToolProtocol ?? this.localToolProtocol,
     );
   }
 }
