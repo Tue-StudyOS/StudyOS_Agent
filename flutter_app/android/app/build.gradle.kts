@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 
 // Zukunftssichere Konfiguration für moderne AGP-Versionen
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
-    namespace = "com.studyos.studyos_agent"
+    namespace = "com.studyostue.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

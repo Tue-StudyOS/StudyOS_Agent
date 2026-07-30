@@ -1,4 +1,4 @@
-package com.studyos.studyos_agent
+package com.studyostue.app
 
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation

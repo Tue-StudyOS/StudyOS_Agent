@@ -1,4 +1,4 @@
-package com.studyos.studyos_agent
+package com.studyostue.app
 
 import android.Manifest
 import android.content.ContentUris
