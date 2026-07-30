@@ -12,6 +12,11 @@ val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+val releaseStoreFile = keystoreProperties["storeFile"]?.toString()?.let { rootProject.file(it) }
+val hasReleaseSigningConfig =
+    releaseStoreFile?.exists() == true &&
+        listOf("keyAlias", "keyPassword", "storePassword")
+            .all { !keystoreProperties[it]?.toString().isNullOrBlank() }
 
 // Zukunftssichere Konfiguration für moderne AGP-Versionen
 extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
@@ -29,11 +34,13 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as? String
-            keyPassword = keystoreProperties["keyPassword"] as? String
-            storeFile = keystoreProperties["storeFile"]?.let { file(rootProject.file(it.toString())) }
-            storePassword = keystoreProperties["storePassword"] as? String
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = releaseStoreFile
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
@@ -47,7 +54,9 @@ extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
