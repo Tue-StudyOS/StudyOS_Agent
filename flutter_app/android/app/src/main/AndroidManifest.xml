@@ -93,7 +93,7 @@
         </provider>
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.studyostue.app.MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
