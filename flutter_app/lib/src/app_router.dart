@@ -236,6 +236,11 @@ class _HomeRoute extends StatelessWidget {
           '/chat?prompt=What%20is%20good%20at%20the%20Mensa%20today%3F',
         ),
         onOpenSchedule: () => context.go('/plan'),
+        onAskAssistant: (prompt) => context.push(
+          Uri(path: '/chat', queryParameters: <String, String>{
+            'prompt': prompt,
+          }).toString(),
+        ),
         onRefresh: controller.refreshHomeFeed,
       ),
     );
