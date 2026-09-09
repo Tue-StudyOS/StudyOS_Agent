@@ -18,8 +18,7 @@ val hasReleaseSigningConfig =
         listOf("keyAlias", "keyPassword", "storePassword")
             .all { !keystoreProperties[it]?.toString().isNullOrBlank() }
 
-// Zukunftssichere Konfiguration für moderne AGP-Versionen
-extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
+android {
     namespace = "com.studyostue.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
