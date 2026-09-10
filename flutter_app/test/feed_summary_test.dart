@@ -13,6 +13,8 @@ void main() {
     expect(snapshot.summary.title, 'Set up your StudyOS');
     expect(snapshot.summary.body, contains('Connect your profile'));
     expect(snapshot.nextAction.title, 'Complete profile');
+    expect(snapshot.assistantBrief.text, contains('setting up your feed'));
+    expect(snapshot.assistantBrief.isGenerating, isTrue);
     expect(snapshot.sources.first.status, HomeFeedSourceStatus.unavailable);
   });
 
@@ -50,7 +52,58 @@ void main() {
     expect(snapshot.summary.body, contains('Machine Learning in 1 h'));
     expect(snapshot.nextAction.title, 'Prepare for next lecture');
     expect(snapshot.nextAction.body, 'Machine Learning in 1 h in Room A');
+    expect(snapshot.assistantBrief.text, contains('Next is Machine Learning'));
+    expect(snapshot.todaySchedule.single.courseName, 'Machine Learning');
+    expect(snapshot.todaySchedule.single.type, isNull);
+    expect(snapshot.todaySchedule.single.timeToNextLabel, '1 h');
     expect(snapshot.sources.first.status, HomeFeedSourceStatus.fresh);
+  });
+
+  test('home feed schedule cards are sorted and typed for template UI', () {
+    final now = DateTime(2026, 7, 1, 9);
+    final snapshot = HomeFeedSnapshot.fromLocalState(
+      profile: const OnboardingProfile(
+        displayName: 'Ada',
+        username: 'ada42',
+        email: null,
+        degreeProgram: 'M.Sc. AI',
+        semester: 2,
+        livesInTuebingen: true,
+      ),
+      timetable: TimetableSnapshot(
+        refreshedAt: now,
+        sourceTerm: 'Summer 2026',
+        events: <LectureEvent>[
+          LectureEvent(
+            id: 'tutorial',
+            title: 'ML Practice',
+            start: DateTime(2026, 7, 1, 13),
+            end: DateTime(2026, 7, 1, 15),
+            location: 'Sand 14',
+            detail: 'Tutorial',
+          ),
+          LectureEvent(
+            id: 'lecture',
+            title: 'ML Lecture',
+            start: DateTime(2026, 7, 1, 10),
+            end: DateTime(2026, 7, 1, 12),
+            location: 'Room A',
+            detail: 'Lecture',
+          ),
+        ],
+      ),
+      memoryText: '',
+      now: now,
+    );
+
+    expect(snapshot.todaySchedule.map((item) => item.courseName), <String>[
+      'ML Lecture',
+      'ML Practice',
+    ]);
+    expect(snapshot.todaySchedule.first.type, 'Lecture');
+    expect(snapshot.todaySchedule.last.type, 'Tutorial');
+    expect(snapshot.highlights, isEmpty);
+    expect(snapshot.emails, isEmpty);
   });
 
   test('home feed does not duplicate the next lecture action as urgent', () {

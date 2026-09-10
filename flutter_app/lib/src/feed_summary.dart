@@ -5,11 +5,27 @@ enum HomeFeedSourceStatus { fresh, stale, unavailable }
 
 enum UrgentItemSeverity { info, warning }
 
+enum FeedTemplateCardKind { schedule, highlight, email }
+
 class DailySummary {
   const DailySummary({required this.title, required this.body});
 
   final String title;
   final String body;
+}
+
+class ForYouAssistantBrief {
+  const ForYouAssistantBrief({
+    required this.text,
+    this.isGenerating = false,
+    this.llmSummary,
+  });
+
+  final String text;
+  final bool isGenerating;
+
+  /// Template slot for the local LLM to overwrite this compact feed greeting.
+  final String? llmSummary;
 }
 
 class NextAction {
@@ -56,12 +72,88 @@ class HomeFeedSourceFreshness {
   }
 }
 
+class FeedScheduleCard {
+  const FeedScheduleCard({
+    required this.id,
+    required this.courseName,
+    required this.timeRange,
+    required this.hoursUntil,
+    this.type,
+    this.address,
+    this.llmSummary,
+  });
+
+  final String id;
+  final String courseName;
+  final String? type;
+  final String timeRange;
+  final int hoursUntil;
+  final String? address;
+
+  /// Template slot intentionally left for local LLM generated prep text.
+  final String? llmSummary;
+
+  String get timeToNextLabel {
+    if (hoursUntil <= 0) return 'now';
+    if (hoursUntil == 1) return '1 h';
+    return '$hoursUntil h';
+  }
+}
+
+class FeedArticleCard {
+  const FeedArticleCard({
+    required this.id,
+    required this.title,
+    required this.sourceLabel,
+    required this.body,
+    this.imageUrl,
+    this.publishedAt,
+    this.llmSummary,
+  });
+
+  final String id;
+  final String title;
+  final String sourceLabel;
+  final String body;
+  final String? imageUrl;
+  final DateTime? publishedAt;
+
+  /// Template slot intentionally left for local LLM generated summary text.
+  final String? llmSummary;
+}
+
+class FeedEmailCard {
+  const FeedEmailCard({
+    required this.id,
+    required this.subject,
+    required this.sender,
+    required this.preview,
+    this.receivedAt,
+    this.isUnread = false,
+    this.llmSummary,
+  });
+
+  final String id;
+  final String subject;
+  final String sender;
+  final String preview;
+  final DateTime? receivedAt;
+  final bool isUnread;
+
+  /// Template slot intentionally left for local LLM extracted action items.
+  final String? llmSummary;
+}
+
 class HomeFeedSnapshot {
   const HomeFeedSnapshot({
+    required this.assistantBrief,
     required this.summary,
     required this.nextAction,
     required this.urgentItems,
     required this.sources,
+    required this.todaySchedule,
+    required this.highlights,
+    required this.emails,
     required this.generatedAt,
   });
 
@@ -112,28 +204,114 @@ class HomeFeedSnapshot {
         now: now,
       ),
     );
+    final todaySchedule = _scheduleCardsFor(timetable: timetable, now: now);
 
     return HomeFeedSnapshot(
+      assistantBrief: _assistantBriefFor(
+        profile: profile,
+        nextLecture: nextLecture,
+        todayCount: todayCount,
+        now: now,
+      ),
       summary: summary,
       nextAction: nextAction,
       urgentItems: List<UrgentItem>.unmodifiable(urgentItems),
       sources: List<HomeFeedSourceFreshness>.unmodifiable(
         _sourcesFor(timetable: timetable, memoryText: memoryText, now: now),
       ),
+      todaySchedule: List<FeedScheduleCard>.unmodifiable(todaySchedule),
+      highlights: const <FeedArticleCard>[],
+      emails: const <FeedEmailCard>[],
       generatedAt: now,
     );
   }
 
+  final ForYouAssistantBrief assistantBrief;
   final DailySummary summary;
   final NextAction nextAction;
   final List<UrgentItem> urgentItems;
   final List<HomeFeedSourceFreshness> sources;
+  final List<FeedScheduleCard> todaySchedule;
+  final List<FeedArticleCard> highlights;
+  final List<FeedEmailCard> emails;
   final DateTime generatedAt;
 
   bool get hasUrgentItems => urgentItems.isNotEmpty;
   bool get isStale =>
       sources.any((source) => source.status == HomeFeedSourceStatus.stale);
   String get generatedAtLabel => _time(generatedAt);
+}
+
+List<FeedScheduleCard> _scheduleCardsFor({
+  required TimetableSnapshot? timetable,
+  required DateTime now,
+}) {
+  final events = timetable?.eventsOn(now) ?? const <LectureEvent>[];
+  return events.map((event) {
+    final hoursUntil = event.start.isAfter(now)
+        ? (event.start.difference(now).inMinutes / 60).ceil()
+        : 0;
+    return FeedScheduleCard(
+      id: event.id,
+      courseName: event.title,
+      type: _lectureType(event.detail),
+      timeRange: event.timeRangeText,
+      hoursUntil: hoursUntil,
+      address: event.location,
+      llmSummary: null,
+    );
+  }).toList()..sort((a, b) {
+    final hours = a.hoursUntil.compareTo(b.hoursUntil);
+    if (hours != 0) return hours;
+    return a.courseName.compareTo(b.courseName);
+  });
+}
+
+String? _lectureType(String? detail) {
+  final normalized = detail?.toLowerCase();
+  if (normalized == null || normalized.isEmpty) return null;
+  if (normalized.contains('tutorial') || normalized.contains('übung')) {
+    return 'Tutorial';
+  }
+  if (normalized.contains('lecture') || normalized.contains('vorlesung')) {
+    return 'Lecture';
+  }
+  if (normalized.contains('seminar')) return 'Seminar';
+  return null;
+}
+
+ForYouAssistantBrief _assistantBriefFor({
+  required OnboardingProfile? profile,
+  required LectureEvent? nextLecture,
+  required int todayCount,
+  required DateTime now,
+}) {
+  if (profile == null) {
+    return const ForYouAssistantBrief(
+      text:
+          'Hi, I’m setting up your feed. Tübingen fact: the Neckarfront still wins at golden hour.',
+      isGenerating: true,
+    );
+  }
+  if (nextLecture != null) {
+    final count = todayCount == 1 ? 'one lecture' : '$todayCount lectures';
+    return ForYouAssistantBrief(
+      text:
+          'Good ${_dayPart(now)}. I see $count today. Next is ${nextLecture.title} ${nextLecture.relativeTimeLabel(now)}.',
+      isGenerating: true,
+    );
+  }
+  return ForYouAssistantBrief(
+    text:
+        'Good ${_dayPart(now)}. I’m checking campus updates; no lecture is blocking your day right now.',
+    isGenerating: true,
+  );
+}
+
+String _dayPart(DateTime now) {
+  if (now.hour < 12) return 'morning';
+  if (now.hour < 18) return 'afternoon';
+  return 'evening';
 }
 
 class FeedMessage {

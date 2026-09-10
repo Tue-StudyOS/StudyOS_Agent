@@ -20,6 +20,7 @@ class HomeView extends StatelessWidget {
     required this.onOpenMaps,
     required this.onOpenCampus,
     required this.onOpenSchedule,
+    required this.onAskAssistant,
     required this.onRefresh,
     super.key,
   });
@@ -37,6 +38,7 @@ class HomeView extends StatelessWidget {
   final VoidCallback onOpenMaps;
   final VoidCallback onOpenCampus;
   final VoidCallback onOpenSchedule;
+  final ValueChanged<String> onAskAssistant;
   final Future<void> Function() onRefresh;
 
   @override
@@ -52,9 +54,11 @@ class HomeView extends StatelessWidget {
           const SizedBox(height: StudyOsSpacing.xxl),
           _TodayFocus(next: next, onTap: onOpenSchedule),
           const SizedBox(height: StudyOsSpacing.xxl),
-          _SectionLabel(label: 'For you'),
-          const SizedBox(height: StudyOsSpacing.sm),
-          ProactiveFeedSection(snapshot: snapshot, onRefresh: onRefresh),
+          ProactiveFeedSection(
+            snapshot: snapshot,
+            onRefresh: onRefresh,
+            onAskAssistant: onAskAssistant,
+          ),
           const SizedBox(height: StudyOsSpacing.xxl),
           _SectionLabel(label: 'StudyOS'),
           const SizedBox(height: StudyOsSpacing.sm),

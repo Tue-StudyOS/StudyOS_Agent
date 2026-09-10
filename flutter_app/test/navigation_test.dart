@@ -196,16 +196,34 @@ void main() {
             onOpenMaps: () {},
             onOpenCampus: () {},
             onOpenSchedule: () {},
+            onAskAssistant: (_) {},
             onRefresh: () async {},
           ),
         ),
       ),
     );
 
-    expect(find.text('Set up your StudyOS'), findsOneWidget);
-    expect(find.textContaining('Connect your profile'), findsOneWidget);
-    expect(find.text('Timetable: Unavailable'), findsOneWidget);
+    expect(find.text('Today’s Schedule'), findsOneWidget);
+    expect(find.text('No lectures today, have a great day'), findsOneWidget);
+    final emptyScheduleText = find.text('No lectures today, have a great day');
+    expect(
+      find.ancestor(of: emptyScheduleText, matching: find.byType(DecoratedBox)),
+      findsNothing,
+    );
+    expect(find.text('Highlights Tübingen'), findsOneWidget);
+    expect(find.text('News could not be loaded.'), findsOneWidget);
+    final newsText = find.text('News could not be loaded.');
+    expect(
+      find.ancestor(of: newsText, matching: find.byType(DecoratedBox)),
+      findsNothing,
+    );
     expect(find.text('For you'), findsOneWidget);
+    expect(find.textContaining('setting up your feed'), findsOneWidget);
+    final assistantText = find.textContaining('setting up your feed');
+    expect(
+      find.ancestor(of: assistantText, matching: find.byType(DecoratedBox)),
+      findsNothing,
+    );
     await tester.scrollUntilVisible(
       find.text('StudyOS'),
       300,
@@ -227,6 +245,77 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(mailRow);
     expect(openedMail, isTrue);
+  });
+
+  testWidgets('home feed card previews one lecture and icon refresh', (
+    WidgetTester tester,
+  ) async {
+    final now = DateTime(2026, 7, 1, 9);
+    final timetable = TimetableSnapshot(
+      refreshedAt: now,
+      sourceTerm: 'Summer 2026',
+      events: <LectureEvent>[
+        LectureEvent(
+          id: 'lecture',
+          title: 'ML Lecture',
+          start: DateTime(2026, 7, 1, 10),
+          end: DateTime(2026, 7, 1, 12),
+          detail: 'Lecture',
+        ),
+        LectureEvent(
+          id: 'practice',
+          title: 'ML Practice',
+          start: DateTime(2026, 7, 1, 13),
+          end: DateTime(2026, 7, 1, 15),
+          detail: 'Tutorial',
+        ),
+      ],
+    );
+    const profile = OnboardingProfile(
+      displayName: 'Ada',
+      username: 'ada42',
+      email: null,
+      degreeProgram: 'M.Sc. AI',
+      semester: 2,
+      livesInTuebingen: true,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildStudyOsTheme(),
+        home: Scaffold(
+          body: HomeView(
+            profile: profile,
+            config: const AgentConfig.defaults(),
+            snapshot: HomeFeedSnapshot.fromLocalState(
+              profile: profile,
+              timetable: timetable,
+              memoryText: '',
+              now: now,
+            ),
+            memoryText: '',
+            timetable: timetable,
+            onOpenProfile: () {},
+            onOpenAssistant: () {},
+            onOpenNotes: () {},
+            onOpenTalks: () {},
+            onOpenMail: () {},
+            onOpenMaps: () {},
+            onOpenCampus: () {},
+            onOpenSchedule: () {},
+            onAskAssistant: (_) {},
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('For you'), findsOneWidget);
+    expect(find.textContaining('Next is ML Lecture'), findsOneWidget);
+    expect(find.text('ML Lecture'), findsWidgets);
+    expect(find.text('ML Practice'), findsNothing);
+    expect(find.text('Refresh'), findsNothing);
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
   });
 
   test(
