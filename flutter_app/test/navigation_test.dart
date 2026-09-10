@@ -196,15 +196,17 @@ void main() {
             onOpenMaps: () {},
             onOpenCampus: () {},
             onOpenSchedule: () {},
+            onAskAssistant: (_) {},
             onRefresh: () async {},
           ),
         ),
       ),
     );
 
-    expect(find.text('Set up your StudyOS'), findsOneWidget);
-    expect(find.textContaining('Connect your profile'), findsOneWidget);
-    expect(find.text('Timetable: Unavailable'), findsOneWidget);
+    expect(find.text('Today’s Schedule'), findsOneWidget);
+    expect(find.text('No lectures today, have a great day'), findsOneWidget);
+    expect(find.text('Highlights Tübingen'), findsOneWidget);
+    expect(find.text('News could not be loaded.'), findsOneWidget);
     expect(find.text('For you'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('StudyOS'),
