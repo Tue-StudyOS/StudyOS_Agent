@@ -1,9 +1,73 @@
 # StudyOS Agent
 
-StudyOS Agent is a University of Tuebingen study assistant shell. The Flutter
-app provides the cross-platform UI, while native runners expose platform
-features such as Android services, sensors, speech/TTS, reminders, local model
-execution, and iOS-safe native APIs where available.
+StudyOS Agent is a mobile study assistant for students at the University of
+Tübingen. It brings university information into a Flutter application with a
+personal overview, a study plan, and a conversational assistant that can use
+university tools and display results as inline cards.
+
+## Product Artifact — Course Submission
+
+Developed for **Practical Machine Learning — Build your own Study OS**,
+summer semester 2026. This repository documents the product; the group journey
+portfolio and individual reflections are separate submissions.
+
+**Start here:** [Product walkthrough](docs/product-walkthrough.md). It explains
+the intended workflow and current limitations without requiring installation.
+Source code is included for inspection; running the app is optional.
+
+### Who it is for and what problem it addresses
+
+The intended users are University of Tübingen students, particularly those still
+learning which university systems contain the information they need. Course
+information, schedules, tasks, and deadlines are spread across ALMA, ILIAS,
+Moodle, and other services. The product aims to reduce both the navigation
+between these systems and the complexity of finding relevant information.
+
+### Main user workflow
+
+1. Connect a university account and complete the student profile.
+2. Open **Home** for the next lecture and a personalised information feed.
+3. Open **Plan** to inspect the timetable and academic registration overview.
+4. Use **Assistant** to ask about schedules, tasks, deadlines, or Mensa options.
+   The agent can retrieve information through tools and present supported results
+   as inline cards, alongside its answer.
+5. Revisit conversations and edit personal context in **Notes**; manage model
+   preferences in **Settings**.
+
+The interface was simplified during the project: more functionality moved from
+separate pages into assistant tools and inline cards. Home and Plan remain
+explicit navigation destinations. See the [walkthrough](docs/product-walkthrough.md)
+for a concrete example and links to the corresponding implementation.
+
+### Current state and limitations
+
+This is a course prototype with implemented university integrations and native
+Android/iOS code, not a claim of complete feature parity across platforms.
+
+- Personal data requires a university account and working portal sessions.
+  Changes to university pages or authentication can break integrations.
+- Local inference depends on supported devices, operating systems, and model
+  availability. Cloud inference requires the user's configured provider and key.
+- University requests execute on the device. With cloud inference, selected
+  study context and tool results are sent to the configured AI provider;
+  choosing cloud mode is not an entirely local data flow.
+- Web and desktop builds expose the Flutter interface but do not provide all
+  native capabilities. A web build is not equivalent to the mobile experience.
+- iOS distribution requires signing; macOS builds are not notarized. See the
+  installation notes below for the available routes.
+- Broader user testing, setup simplification, and distribution remain important
+  next steps. This documentation is based on source inspection and the team's
+  project account; it does not certify a fresh end-to-end test on every platform.
+
+### Contents of this repository
+
+| Material | Purpose |
+| --- | --- |
+| [Product walkthrough](docs/product-walkthrough.md) | User scenario, screen descriptions, and limitations |
+| [Flutter app](flutter_app/) | Product implementation and native platform runners |
+| [Developer instructions](flutter_app/README.md) | Running and inspecting the source |
+| [Download page](https://tue-studyos.github.io/StudyOS_Agent/) | Installation entry point |
+| [GitHub releases](https://github.com/Tue-StudyOS/StudyOS_Agent/releases) | Published build assets |
 
 ## Install A Release
 
