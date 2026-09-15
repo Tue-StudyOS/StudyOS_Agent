@@ -39,6 +39,11 @@ separate pages into assistant tools and inline cards. Home and Plan remain
 explicit navigation destinations. See the [walkthrough](docs/product-walkthrough.md)
 for a concrete example and links to the corresponding implementation.
 
+### Demo recording
+
+[Watch or download the app demo (MP4, about 2 minutes, 13 MB)](docs/assets/app-demo.mp4).
+The recording is included in the repository ZIP and can be opened locally.
+
 ### Product screenshots
 
 Captured from the iPhone 17 Pro simulator on 15 September 2026. Click a screen

@@ -5,6 +5,11 @@ implemented interface and an intended user scenario; the example questions are
 not a transcript of a recorded test. Actual results depend on the student's
 account, available university data, device capabilities, and configured model.
 
+## Demo recording
+
+[Watch or download the app demo](assets/app-demo.mp4) (MP4, about 2 minutes,
+13 MB). The file is included in the repository ZIP for offline viewing.
+
 ## A student preparing for the day
 
 The student wants to find their next lecture, check upcoming coursework, and
