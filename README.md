@@ -39,6 +39,18 @@ separate pages into assistant tools and inline cards. Home and Plan remain
 explicit navigation destinations. See the [walkthrough](docs/product-walkthrough.md)
 for a concrete example and links to the corresponding implementation.
 
+### Product screenshots
+
+Captured from the iPhone 17 Pro simulator on 15 September 2026. Click a screen
+for the full-size image. These show the prototype's interface and account state;
+the Assistant image contains an example conversation dated 2 July 2026.
+
+| Home — next lecture and personal feed | Plan — calendar item and academic status |
+| --- | --- |
+| [<img src="docs/assets/screenshots/home.png" width="260" alt="StudyOS Home with the next lecture and personalised feed">](docs/assets/screenshots/home.png) | [<img src="docs/assets/screenshots/plan.png" width="260" alt="StudyOS Plan showing an ALMA calendar item and no registrations returned">](docs/assets/screenshots/plan.png) |
+| **Assistant — example conversation and tool indicators** | **Settings — profile and model choice** |
+| [<img src="docs/assets/screenshots/assistant.png" width="260" alt="StudyOS Assistant with schedule and mail tool indicators and a day-summary table">](docs/assets/screenshots/assistant.png) | [<img src="docs/assets/screenshots/settings.png" width="260" alt="StudyOS Settings with account, appearance, and on-device or custom assistant choices">](docs/assets/screenshots/settings.png) |
+
 ### Current state and limitations
 
 This is a course prototype with implemented university integrations and native

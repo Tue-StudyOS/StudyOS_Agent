@@ -30,6 +30,10 @@ Notes, Tübingen Talks, and University Mail.
 This is the entry point for discovering information without first knowing the
 name of a university service or the exact question to ask.
 
+[<img src="assets/screenshots/home.png" width="320" alt="Home screen with next lecture and personalised feed">](assets/screenshots/home.png)
+
+*Home: the next scheduled lecture and a preparation suggestion.*
+
 ### 3. Inspect the study plan
 
 The bottom navigation offers **Home**, **Plan**, and **Assistant**. In **Plan**,
@@ -39,6 +43,12 @@ refresh data, and access supported calendar/report actions.
 This is an overview of information retrieved from university sources, not a
 promise that the assistant can enrol a student in a course or submit coursework.
 Missing data or a failed refresh should be checked against the source portal.
+
+[<img src="assets/screenshots/plan.png" width="320" alt="Plan screen with calendar item and academic registration status">](assets/screenshots/plan.png)
+
+*Plan: a selected ALMA calendar item. The academic status panel explicitly reports
+that no registrations were exposed in this overview; this is not proof that the
+student has no registrations.*
 
 ### 4. Ask a question and inspect the result
 
@@ -63,6 +73,13 @@ The central design decision is to expose many capabilities through a compact
 conversation instead of giving every tool its own top-level page. Dedicated
 views remain available where they make recurring information easier to inspect.
 
+[<img src="assets/screenshots/assistant.png" width="320" alt="Assistant conversation showing tool indicators and a day summary">](assets/screenshots/assistant.png)
+
+*Assistant: an example conversation displaying schedule and mail-deadline tool
+indicators. Its answer is dated 2 July 2026, not the screenshot capture date.
+This screen illustrates the conversation and table rendering, not an inline tool
+card or independent verification of the answer's correctness.*
+
 ### 5. Maintain personal context and choose the model
 
 The student can revisit conversations and edit the local memory document through
@@ -76,6 +93,11 @@ The student can revisit conversations and edit the local memory document through
 
 Local inference avoids sending prompts to a cloud model, but retrieving current
 university information still requires network access to the university services.
+
+[<img src="assets/screenshots/settings.png" width="320" alt="Settings with profile and assistant provider selection">](assets/screenshots/settings.png)
+
+*Settings: account details, compact-chat preference, and the choice between
+on-device and custom model configuration.*
 
 ## Current boundaries
 
